@@ -1,0 +1,335 @@
+
+"use client"
+
+import React, { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { SakeNote, SakeComment, RATING_LABELS, UserProfile } from '@/lib/types';
+import { SakeRadarChart } from '@/components/SakeRadarChart';
+import { UserBadge } from '@/components/UserBadge';
+import { 
+  ArrowLeft, 
+  Trash2, 
+  Share2, 
+  Loader2, 
+  MessageSquare, 
+  User, 
+  Calendar, 
+  Clock,
+  MapPin,
+  Tag,
+  FileText,
+  Award
+} from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import { useToast } from '@/hooks/use-toast';
+import { useDoc, useFirestore, useUser, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
+import Link from 'next/link';
+
+const RatingDots = ({ value }: { value: number }) => {
+  return (
+    <div className="flex gap-1 items-center">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className={`w-1.5 h-1.5 rounded-full ${
+            i <= value ? 'bg-primary shadow-[0_0_5px_rgba(249,115,22,0.5)]' : 'bg-white/10'
+          }`}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default function NoteDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
+  const [commentText, setCommentText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+
+  const noteDocRef = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    return doc(firestore, 'sakeTastingNotes', id);
+  }, [firestore, id]);
+  const { data: note, isLoading } = useDoc<SakeNote>(noteDocRef);
+
+  const authorRef = useMemoFirebase(() => {
+    if (!firestore || !note?.userId) return null;
+    return doc(firestore, 'users', note.userId);
+  }, [firestore, note?.userId]);
+  const { data: authorProfile } = useDoc<UserProfile>(authorRef);
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: profile } = useDoc(userDocRef);
+
+  const commentsQuery = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    const commentsRef = collection(firestore, 'sakeTastingNotes', id, 'comments');
+    return query(commentsRef, orderBy('createdAt', 'desc'));
+  }, [firestore, id]);
+  const { data: comments } = useCollection<SakeComment>(commentsQuery);
+
+  const handleAddComment = async () => {
+    if (!firestore || !user || !id || !commentText.trim()) return;
+    if (!profile?.username) {
+      toast({ variant: "destructive", title: "請先設定名稱" });
+      router.push('/profile');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const commentData = {
+        userId: user.uid,
+        username: profile.username,
+        text: commentText,
+        createdAt: new Date().toISOString()
+      };
+      const commentsRef = collection(firestore, 'sakeTastingNotes', id, 'comments');
+      addDocumentNonBlocking(commentsRef, commentData);
+      setCommentText("");
+      toast({ title: "留言已成功發布" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "留言失敗" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const executeDelete = () => {
+    if (!firestore || !note) return;
+    const noteRef = doc(firestore, 'sakeTastingNotes', note.id);
+    deleteDocumentNonBlocking(noteRef);
+    toast({ title: "正在刪除筆記..." });
+    router.replace('/');
+  };
+
+  if (isLoading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
+      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+      <p className="text-muted-foreground font-bold text-[10px] tracking-widest uppercase">載入中...</p>
+    </div>
+  );
+
+  if (!note) return (
+    <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
+      <p className="text-muted-foreground text-xs uppercase font-bold">筆記不存在或已被刪除</p>
+      <Button variant="link" onClick={() => router.push('/')} className="mt-4 text-primary text-xs">返回首頁</Button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen notebook-texture pb-20">
+      <div className="max-w-2xl auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-primary hover:bg-primary/10">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                toast({ title: "連結已複製" });
+            }}>
+              <Share2 className="w-5 h-5" />
+            </Button>
+            {user?.uid === note.userId && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="w-5 h-5" /></Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem] p-8 shadow-2xl backdrop-blur-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-primary font-headline text-xl gold-glow tracking-widest uppercase">確定要刪除嗎？</AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground text-xs leading-relaxed">此操作將永久刪除這篇品飲筆記及其所有評論。</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="mt-6 gap-3">
+                    <AlertDialogCancel className="rounded-full">取消</AlertDialogCancel>
+                    <AlertDialogAction onClick={executeDelete} className="rounded-full bg-destructive">確定刪除</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </div>
+
+        <div className="dark-glass rounded-[2rem] overflow-hidden mb-6 border border-white/10 shadow-2xl">
+          <div className="relative aspect-square bg-muted/10 overflow-hidden flex">
+            {note.imageUrls && note.imageUrls.length === 2 ? (
+              <>
+                <div className="h-full relative" style={{ width: `${note.imageSplitRatio || 50}%` }}>
+                  <Image src={note.imageUrls[0]} alt="img1" fill className="object-cover" />
+                </div>
+                <div className="h-full w-px bg-white/20 z-10" />
+                <div className="h-full relative" style={{ width: `${100 - (note.imageSplitRatio || 50)}%` }}>
+                  <Image src={note.imageUrls[1]} alt="img2" fill className="object-cover" />
+                </div>
+              </>
+            ) : note.imageUrls && note.imageUrls[0] ? (
+              <Image src={note.imageUrls[0]} alt="img1" fill className="object-cover" />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full text-muted-foreground/30 text-[10px] font-bold">NO PHOTO</div>
+            )}
+          </div>
+          
+          <div className="p-6 md:p-8 relative">
+            <div className="flex justify-between items-end mb-4">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-primary font-bold text-[10px] tracking-[0.2em] uppercase mb-1">
+                  <span>{note.brewery}</span>
+                  {note.origin && (
+                    <>
+                      <span className="opacity-40">|</span>
+                      <span className="flex items-center gap-0.5"><MapPin className="w-2 h-2" /> {note.origin}</span>
+                    </>
+                  )}
+                </div>
+                <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{note.brandName}</h1>
+                {note.subBrand && (
+                  <p className="text-accent font-bold text-xs uppercase tracking-widest mt-1 italic">{note.subBrand}</p>
+                )}
+                
+                <div className="flex flex-col gap-2 pt-3">
+                  <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+                    <Link href={`/users/${note.userId}`} className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/5 hover:bg-primary/10 transition-colors">
+                      <User className="w-2.5 h-2.5 text-primary" />
+                      <span className="text-xs font-bold text-foreground/80">{authorProfile?.username || note.username || "愛好者"}</span>
+                      <UserBadge userId={note.userId} />
+                    </Link>
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold">
+                      <Calendar className="w-2.5 h-2.5 opacity-50" />
+                      {new Date(note.tastingDate).toLocaleDateString('zh-TW')}
+                    </div>
+                  </div>
+                  
+                  {/* 唎酒師頭銜 (最多3個) */}
+                  {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
+                        <Badge key={idx} variant="outline" className="text-[8px] py-0.5 border-primary/20 bg-primary/5 text-primary/80 font-bold uppercase flex items-center gap-1">
+                          <Award className="w-2.5 h-2.5" /> {q}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-primary text-primary-foreground p-3 rounded-2xl text-center min-w-[60px] shadow-lg ml-4">
+                <span className="text-[9px] block opacity-80 uppercase font-bold tracking-widest">SCORE</span>
+                <span className="text-2xl font-headline font-bold">{note.overallRating}</span>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 items-center mb-6 border-t border-white/5 pt-6">
+              <div className="flex items-center justify-center">
+                <SakeRadarChart data={{ sweetness: note.sweetnessRating, acidity: note.acidityRating, bitterness: note.bitternessRating, umami: note.umamiRating, astringency: note.astringencyRating }} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="font-bold text-primary text-sm uppercase tracking-widest border-b border-primary/20 pb-1">風味分析</h3>
+                <div className="space-y-2">
+                   {[
+                    { label: '甘', value: note.sweetnessRating, text: RATING_LABELS.sweetness[note.sweetnessRating-1] },
+                    { label: '酸', value: note.acidityRating, text: RATING_LABELS.acidity[note.acidityRating-1] },
+                    { label: '苦', value: note.bitternessRating, text: RATING_LABELS.bitterness[note.bitternessRating-1] },
+                    { label: '旨', value: note.umamiRating, text: RATING_LABELS.umami[note.umamiRating-1] },
+                    { label: '澀', value: note.astringencyRating, text: RATING_LABELS.astringency[note.astringencyRating-1] },
+                   ].map((f, i) => (
+                     <div key={i} className="flex items-center justify-between text-[11px] border-b border-white/5 pb-1">
+                       <div className="flex items-center gap-2">
+                         <span className="text-muted-foreground font-bold">{f.label}</span>
+                         <RatingDots value={f.value} />
+                       </div>
+                       <span className="font-bold text-foreground text-right">{f.text}</span>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <FileText className="w-4 h-4" />
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest">品飲描述</h4>
+                </div>
+                <p className="text-foreground/80 leading-relaxed text-sm whitespace-pre-wrap">{note.description || "無詳細描述"}</p>
+              </div>
+
+              {note.styleTags && note.styleTags.length > 0 && (
+                <div className="pt-4 border-t border-white/5">
+                  <div className="flex items-center gap-2 mb-2 text-primary">
+                    <Tag className="w-3 h-3" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest">風格標籤</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {note.styleTags.map(tag => (
+                      <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <section className="mt-6 space-y-4">
+          <div className="flex items-center gap-2 text-primary">
+            <MessageSquare className="w-4 h-4" />
+            <h2 className="text-sm font-headline font-bold uppercase tracking-widest gold-glow">社群交流 ({comments?.length || 0})</h2>
+          </div>
+          <div className="dark-glass p-4 rounded-2xl border border-white/10 space-y-3">
+            {!profile?.username ? (
+              <div className="flex flex-col items-center gap-2 py-2">
+                <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest italic">設定名稱後即可留言</p>
+                <Button onClick={() => router.push('/profile')} variant="outline" size="sm" className="rounded-full h-8 text-[10px] uppercase font-bold">設定名稱</Button>
+              </div>
+            ) : (
+              <>
+                <Textarea placeholder="分享您的想法..." value={commentText} onChange={(e) => setCommentText(e.target.value)} className="bg-white/5 border-white/10 rounded-xl min-h-[60px] p-2 text-sm" />
+                <div className="flex justify-end">
+                  <Button onClick={handleAddComment} disabled={isSubmitting || !commentText.trim()} className="rounded-full px-4 h-8 text-[10px] uppercase font-bold">發布評論</Button>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="space-y-3">
+            {comments?.map((comment) => (
+              <div key={comment.id} className="dark-glass p-4 rounded-xl border border-white/5 space-y-2">
+                <p className="text-foreground/90 text-sm leading-relaxed">{comment.text}</p>
+                <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                  <Link href={`/users/${comment.userId}`} className="flex items-center gap-1.5 text-primary font-bold text-xs hover:underline">
+                    <span>@{comment.username}</span>
+                    <UserBadge userId={comment.userId} />
+                  </Link>
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold">{new Date(comment.createdAt).toLocaleString('zh-TW')}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

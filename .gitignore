@@ -1,0 +1,24 @@
+# Next.js build output
+.next/
+out/
+
+# Node modules
+node_modules/
+
+# Firebase specific files
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# Environment variables
+.env.local
+.env.*
+
+# npm package-lock.json
+package-lock.json
+
+# macOS specific files
+.DS_Store
+
+# VS Code files
+.vscode/

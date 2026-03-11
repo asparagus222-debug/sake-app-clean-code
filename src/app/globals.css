@@ -1,0 +1,115 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 15 80% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 5% 15%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 240 10% 4%;
+    --border: 240 5% 15%;
+    --input: 240 5% 15%;
+    --ring: 15 80% 50%;
+    --radius: 1rem;
+    
+    --glass-color: 20, 20, 25;
+    --glass-border: 255, 255, 255;
+    --texture-color: 255, 255, 255;
+
+    --font-size-base: 16px;
+  }
+
+  [data-theme="light"] {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 15 80% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 240 10% 4%;
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 240 10% 4%;
+    --border: 240 5% 80%;
+    --input: 240 5% 80%;
+    --ring: 15 80% 50%;
+    
+    --glass-color: 255, 255, 255;
+    --glass-border: 0, 0, 0;
+    --texture-color: 0, 0, 0;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    font-size: var(--font-size-base);
+  }
+  body {
+    @apply bg-background text-foreground font-body transition-colors duration-300;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline font-bold;
+  }
+}
+
+.dark-glass {
+  background: rgba(var(--glass-color), 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--glass-border), 0.1);
+}
+
+.gold-glow {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.notebook-texture {
+  background-image: radial-gradient(rgba(var(--texture-color), 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+@keyframes badge-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 2px #ffd700); opacity: 0.8; }
+  50% { filter: drop-shadow(0 0 8px #ffd700); opacity: 1; }
+}
+
+@keyframes badge-sparkle {
+  0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+  50% { transform: scale(1.2) rotate(180deg); filter: brightness(1.5); }
+  100% { transform: scale(1) rotate(360deg); filter: brightness(1); }
+}
+
+.animate-badge-glow {
+  animation: badge-glow-pulse 2s infinite ease-in-out;
+}
+
+.animate-badge-sparkle {
+  animation: badge-sparkle 3s infinite linear;
+}
+
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }

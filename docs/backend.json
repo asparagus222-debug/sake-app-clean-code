@@ -1,0 +1,197 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user profile within the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the Auth UID."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL to the user's profile picture."
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short biography."
+        },
+        "instagram": {
+          "type": "string",
+          "description": "Instagram handle."
+        },
+        "twitter": {
+          "type": "string",
+          "description": "Twitter/X handle."
+        },
+        "facebook": {
+          "type": "string",
+          "description": "Facebook handle."
+        },
+        "threads": {
+          "type": "string",
+          "description": "Threads handle."
+        },
+        "website": {
+          "type": "string",
+          "description": "Personal website URL."
+        },
+        "hasPin": {
+          "type": "boolean",
+          "description": "Whether the user has set a recovery PIN."
+        },
+        "isAccountDeleted": {
+          "type": "boolean",
+          "description": "Whether the account is marked as deleted but username is locked."
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "themeSettings": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["dark", "light", "custom"] },
+            "customBg": { "type": "string" },
+            "customPrimary": { "type": "string" }
+          }
+        },
+        "followersCount": { "type": "number" },
+        "followingCount": { "type": "number" },
+        "qualifications": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sake sommelier qualifications (SSI, JSA, etc.)"
+        }
+      },
+      "required": [
+        "id",
+        "username"
+      ]
+    },
+    "SakeTastingNote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SakeTastingNote",
+      "type": "object",
+      "description": "User's individual tasting note.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "brandName": { "type": "string" },
+        "brewery": { "type": "string" },
+        "origin": { "type": "string", "description": "The region where the sake was produced." },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "imageSplitRatio": { "type": "number" },
+        "sweetnessRating": { "type": "number" },
+        "acidityRating": { "type": "number" },
+        "bitternessRating": { "type": "number" },
+        "umamiRating": { "type": "number" },
+        "astringencyRating": { "type": "number" },
+        "overallRating": { "type": "number" },
+        "styleTags": { "type": "array", "items": { "type": "string" }, "description": "Tags like 薰酒, 爽酒, Modern, etc." },
+        "description": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "tastingDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likesCount": { "type": "number" },
+        "likedByUserIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "brandName", "tastingDate"]
+    },
+    "SakeComment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SakeComment",
+      "type": "object",
+      "description": "Comments left by users on tasting notes.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "text", "createdAt"]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "User reported issues or feedback.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "content", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous",
+      "google.com",
+      "password"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": { "$ref": "#/backend/entities/User" },
+          "description": "Private user profile."
+        }
+      },
+      {
+        "path": "/users/{userId}/followers/{followerId}",
+        "definition": {
+          "entityName": "Follower",
+          "schema": { "type": "object", "properties": { "uid": { "type": "string" }, "timestamp": { "type": "string" } } },
+          "description": "Users who follow this user."
+        }
+      },
+      {
+        "path": "/users/{userId}/following/{followingId}",
+        "definition": {
+          "entityName": "Following",
+          "schema": { "type": "object", "properties": { "uid": { "type": "string" }, "timestamp": { "type": "string" } } },
+          "description": "Users this user follows."
+        }
+      },
+      {
+        "path": "/sakeTastingNotes/{noteId}",
+        "definition": {
+          "entityName": "SakeTastingNote",
+          "schema": { "$ref": "#/backend/entities/SakeTastingNote" },
+          "description": "Public tasting notes."
+        }
+      },
+      {
+        "path": "/sakeTastingNotes/{noteId}/comments/{commentId}",
+        "definition": {
+          "entityName": "SakeComment",
+          "schema": { "$ref": "#/backend/entities/SakeComment" },
+          "description": "Comments nested under tasting notes."
+        }
+      },
+      {
+        "path": "/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": { "$ref": "#/backend/entities/Report" },
+          "description": "Global collection for user reports."
+        }
+      }
+    ]
+  }
+}

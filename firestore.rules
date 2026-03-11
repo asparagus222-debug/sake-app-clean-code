@@ -1,0 +1,58 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "asparagus222@gmail.com" ||
+        request.auth.token.email == "admin@example.com"
+      );
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // 筆記規則
+    match /sakeTastingNotes/{noteId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isOwner(resource.data.userId) || 
+                    (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedByUserIds', 'likesCount']));
+      allow delete: if isOwner(resource.data.userId);
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow delete: if isOwner(resource.data.userId) || isOwner(get(/databases/$(database)/documents/sakeTastingNotes/$(noteId)).data.userId);
+      }
+    }
+
+    // 使用者資料規則
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+
+      match /followers/{followerId} {
+        allow read: if true;
+        allow write: if isSignedIn() && (request.auth.uid == followerId || request.auth.uid == userId || isAdmin());
+      }
+
+      match /following/{followingId} {
+        allow read: if true;
+        allow write: if isSignedIn() && (request.auth.uid == userId || request.auth.uid == followingId || isAdmin());
+      }
+    }
+
+    // 問題回報規則
+    match /reports/{reportId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
