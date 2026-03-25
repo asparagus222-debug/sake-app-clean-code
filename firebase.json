@@ -2,8 +2,13 @@
   "apphosting": {
     "backends": [
       {
-        "workloadType": "nodejs",
+        "serviceId": "studio",
         "codebase": "default",
+        "source": {
+          "repository": "github://asparagus222-debug/sake-app-clean-code",
+          "branch": "main"
+        },
+        "workloadType": "nodejs",
         "cpuClass": "general",
         "minInstances": 1,
         "maxInstances": 5,
