@@ -14,9 +14,6 @@ firebase-debug.log
 .env.local
 .env.*
 
-# npm package-lock.json
-package-lock.json
-
 # macOS specific files
 .DS_Store
 
