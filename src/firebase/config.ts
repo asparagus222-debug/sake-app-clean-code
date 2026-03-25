@@ -10,6 +10,6 @@ export const firebaseConfig = {
   projectId: "drinking-notes",
   storageBucket: "drinking-notes.firebasestorage.app",
   messagingSenderId: "850044253764",
-  appId: "1:850044253764:web:b27189a2d53eadb10aae11",
+  appId: "1:850044253764:web:a90e4d0a388ce5570aae11",
   measurementId: "G-0WP8SKFE2E"
 };
