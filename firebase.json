@@ -4,6 +4,7 @@
       {
         "serviceId": "studio",
         "codebase": "default",
+        "rootDirectory": "/",
         "source": {
           "repository": "github://asparagus222-debug/sake-app-clean-code",
           "branch": "main"
