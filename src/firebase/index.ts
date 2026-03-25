@@ -19,10 +19,18 @@ export function initializeFirebase() {
       firebaseApp = getApp();
     }
 
+    // Only initialize Firestore if app is ready
+    let firestore: Firestore | null = null;
+    try {
+      firestore = getFirestore(firebaseApp);
+    } catch (firestoreError) {
+      console.warn("Firestore initialization failed - database may not be enabled in Firebase Console:", firestoreError);
+    }
+
     return {
       firebaseApp,
       auth: getAuth(firebaseApp),
-      firestore: getFirestore(firebaseApp)
+      firestore: firestore
     };
   } catch (error) {
     console.error("Firebase initialization failed:", error);

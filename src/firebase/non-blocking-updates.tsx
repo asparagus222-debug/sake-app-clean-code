@@ -55,10 +55,18 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
 /**
  * Initiates an updateDoc operation for a document reference.
  * Does NOT await the write operation internally.
+ * Silently handles permission errors for user profile updates during initialization.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
   updateDoc(docRef, data)
     .catch(error => {
+      // Silently ignore permission errors for user profile updates
+      // (they may occur during initialization if rules aren't fully deployed)
+      if (error?.code === 'permission-denied' && docRef.path.includes('users/')) {
+        console.warn(`Permission denied for user profile update at ${docRef.path} - rules may not be deployed yet`);
+        return;
+      }
+      
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({

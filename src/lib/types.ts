@@ -17,6 +17,9 @@ export type SakeNote = {
   overallRating: number;
   styleTags?: string[];
   description: string;
+  userDescription?: string;
+  aiResultNote?: string;
+  activeBrain?: 'left' | 'right';
   tastingDate: string;
   likesCount?: number;
   likedByUserIds?: string[];

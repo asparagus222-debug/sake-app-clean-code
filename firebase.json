@@ -1,0 +1,17 @@
+{
+  "apphosting": {
+    "backends": [
+      {
+        "workloadType": "nodejs",
+        "codebase": "default",
+        "cpuClass": "general",
+        "minInstances": 1,
+        "maxInstances": 5,
+        "refreshRate": 300,
+        "labels": {
+          "environment": "production"
+        }
+      }
+    ]
+  }
+}

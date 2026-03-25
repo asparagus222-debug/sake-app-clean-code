@@ -15,7 +15,11 @@ service cloud.firestore {
     }
 
     function isOwner(uid) {
-      return isSignedIn() && (request.auth.uid == uid || isAdmin());
+      return isSignedIn() && (
+        request.auth.uid == uid ||
+        request.auth.token.sub == uid ||
+        isAdmin()
+      );
     }
 
     // 筆記規則
@@ -36,7 +40,9 @@ service cloud.firestore {
     // 使用者資料規則
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId);
+      allow create: if request.auth != null && (request.auth.uid == userId || request.auth.token.sub == userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
 
       match /followers/{followerId} {
         allow read: if true;

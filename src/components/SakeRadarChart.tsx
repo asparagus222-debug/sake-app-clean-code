@@ -48,7 +48,7 @@ export function SakeRadarChart({ data }: SakeRadarChartProps) {
             domain={[0, 5]} 
             axisLine={false} 
             tick={{ fill: "transparent", fontSize: 0 }}
-            ticks={[0, 1, 2, 3, 4, 5]}
+            ticks={[0, 1, 2, 3, 4, 5] as any}
           />
           <PolarAngleAxis 
             dataKey="subject" 

@@ -20,7 +20,9 @@ import {
   MapPin,
   Tag,
   FileText,
-  Award
+  Award,
+  BrainCircuit,
+  Palette,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -33,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { useToast } from '@/hooks/use-toast';
@@ -266,33 +269,73 @@ export default function NoteDetailPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-primary">
-                  <FileText className="w-4 h-4" />
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest">品飲描述</h4>
-                </div>
-                <p className="text-foreground/80 leading-relaxed text-sm whitespace-pre-wrap">{note.description || "無詳細描述"}</p>
-              </div>
+            <div className="space-y-6">
+  {/* 標題欄位 */}
+  <div className="flex items-center gap-2 text-primary">
+    <FileText className="w-4 h-4" />
+    <h4 className="text-[10px] font-bold uppercase tracking-widest">品飲描述</h4>
+  </div>
 
-              {note.styleTags && note.styleTags.length > 0 && (
-                <div className="pt-4 border-t border-white/5">
-                  <div className="flex items-center gap-2 mb-2 text-primary">
-                    <Tag className="w-3 h-3" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">風格標籤</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {note.styleTags.map(tag => (
-                      <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+  {/* 1. 上方：AI 品鑑筆記 (特殊框架與字體) */}
+  {note.aiResultNote && (
+    <div className={cn(
+      "relative p-6 rounded-[2rem] border transition-all shadow-xl overflow-hidden mb-4",
+      note.activeBrain === 'left' 
+        ? "bg-blue-500/10 border-blue-500/30 text-blue-100/90" 
+        : "bg-rose-500/10 border-rose-500/30 text-rose-100/90"
+    )}>
+      {/* 裝飾性背光效果 */}
+      <div className={cn(
+        "absolute -top-10 -right-10 w-32 h-32 blur-[50px] rounded-full opacity-20",
+        note.activeBrain === 'left' ? "bg-blue-500" : "bg-rose-500"
+      )} />
+      
+      <div className="flex items-center gap-2 mb-3 relative z-10">
+        {note.activeBrain === 'left' ? (
+          <BrainCircuit size={14} className="text-blue-400" />
+        ) : (
+          <Palette size={14} className="text-rose-400" />
+        )}
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-70">
+          AI {note.activeBrain === 'left' ? '理性分析' : '感性想像'}修飾
+        </span>
+      </div>
+      
+      {/* 使用 font-serif 增加專業評論感 */}
+      <p className="text-[14px] leading-relaxed font-serif italic relative z-10 px-2">
+        「{note.aiResultNote}」
+      </p>
+    </div>
+  )}
+
+  {/* 2. 下方：作者原始筆記 */}
+  <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-5">
+    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">
+      作者原始筆記
+    </p>
+    <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+      {/* 優先顯示新欄位，若無則顯示舊有的 description */}
+      {note.userDescription || note.description || "未提供詳細描述"}
+    </p>
+  </div>
+
+  {/* 風格標籤區塊 (保持不變) */}
+  {note.styleTags && note.styleTags.length > 0 && (
+    <div className="pt-4 border-t border-white/5">
+      <div className="flex items-center gap-2 mb-2 text-primary">
+        <Tag className="w-3 h-3" />
+        <span className="text-[9px] font-bold uppercase tracking-widest">風格標籤</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {note.styleTags.map(tag => (
+          <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
+            {tag}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
 
         <section className="mt-6 space-y-4">
           <div className="flex items-center gap-2 text-primary">
@@ -331,5 +374,8 @@ export default function NoteDetailPage() {
         </section>
       </div>
     </div>
+  </div>
+</div>
   );
 }
+

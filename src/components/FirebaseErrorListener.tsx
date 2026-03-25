@@ -6,7 +6,8 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * An invisible component that listens for globally emitted 'permission-error' events.
- * It throws any received error to be caught by Next.js's global-error.tsx.
+ * For user profile updates, logs a warning instead of crashing.
+ * For other operations, throws the error to be caught by Next.js's global-error.tsx.
  */
 export function FirebaseErrorListener() {
   // Use the specific error type for the state for type safety.
@@ -15,7 +16,14 @@ export function FirebaseErrorListener() {
   useEffect(() => {
     // The callback now expects a strongly-typed error, matching the event payload.
     const handleError = (error: FirestorePermissionError) => {
-      // Set error in state to trigger a re-render.
+      // Silently handle permission errors for user profile operations
+      // (they may occur during initialization if Firestore rules aren't deployed)
+      if (error?.request?.path?.includes('users/')) {
+        console.warn(`[Firebase] Permission denied for user profile operation: ${error.request.path}`, error);
+        return;
+      }
+      
+      // For other operations, set error in state to trigger a re-render and crash.
       setError(error);
     };
 

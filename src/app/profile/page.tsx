@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { UserBadge } from '@/components/UserBadge';
+import { NumericKeypad } from '@/components/NumericKeypad';
 import { UserProfile, QUALIFICATION_OPTIONS, ThemeSettings } from '@/lib/types';
 import { 
   ArrowLeft, 
@@ -59,8 +60,8 @@ import {
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from '@/firebase';
-import { collection, doc, query, where, getDocs } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
+import { collection, doc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -77,7 +78,8 @@ const THEME_PRESETS = [
   { name: '紙白', bg: '#ffffff', primary: '#171717', mode: 'light' },
 ];
 
-const FONT_SIZE_LEVELS: ThemeSettings['fontSize'][] = ['xs', 'sm', 'base', 'lg'];
+const FONT_SIZE_LEVELS = ['xs', 'sm', 'base', 'lg'] as const;
+type FontSizeLevel = (typeof FONT_SIZE_LEVELS)[number];
 
 const FONT_PREVIEW_MAP = {
   xs: '0.8rem',
@@ -97,7 +99,7 @@ export default function ProfilePage() {
   const [customQual, setCustomQual] = useState("");
   
   const [themeMode, setThemeMode] = useState<'dark' | 'light' | 'custom'>('dark');
-  const [themeFontSize, setThemeFontSize] = useState<'xs' | 'sm' | 'base' | 'lg'>('base');
+  const [themeFontSize, setThemeFontSize] = useState<FontSizeLevel>('base');
   const [customBg, setCustomBg] = useState('#0a0a0c');
   const [customPrimary, setCustomPrimary] = useState('#f97316');
   const [showThemeDialog, setShowThemeDialog] = useState(false);
@@ -105,6 +107,21 @@ export default function ProfilePage() {
   const [reportContent, setReportContent] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  
+  // PIN 帳戶創建相關
+  const [showCreateAccountDialog, setShowCreateAccountDialog] = useState(false);
+  const [createAccountPin, setCreateAccountPin] = useState("");
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  
+  // 表單數據暫存（用於匿名用戶）
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
+  
+  // 修改密碼相關
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -216,6 +233,122 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCreateAccount = async () => {
+    if (!auth || !user || !firestore || createAccountPin.length !== 6) return;
+    
+    // 驗證 pendingFormData 中的 username
+    if (!pendingFormData?.username?.trim()) {
+      toast({ variant: "destructive", title: "缺少使用者名稱", description: "請先輸入使用者名稱" });
+      return;
+    }
+    
+    setIsCreatingAccount(true);
+    try {
+      const sanitizedUsername = pendingFormData.username.replace(/\s+/g, '').toLowerCase();
+      const email = `${sanitizedUsername}@sake-note.app`;
+      
+      // 創建正式帳戶
+      const userCredential = await createUserWithEmailAndPassword(auth, email, createAccountPin);
+      const newUser = userCredential.user;
+      
+      // 保存用戶資料（使用 setDoc 確保數據被保存）
+      await setDoc(doc(firestore, 'users', newUser.uid), {
+        id: newUser.uid,
+        username: pendingFormData.username,
+        bio: pendingFormData.bio || '',
+        avatarUrl: `https://picsum.photos/seed/${newUser.uid}/100/100`,
+        instagram: pendingFormData.instagram || '',
+        twitter: pendingFormData.twitter || '',
+        facebook: pendingFormData.facebook || '',
+        threads: pendingFormData.threads || '',
+        qualifications: pendingFormData.qualifications || [],
+        themeSettings: {
+          mode: 'dark',
+          fontSize: 'base',
+          customBg: '#0a0a0c',
+          customPrimary: '#f97316'
+        },
+        createdAt: new Date().toISOString()
+      });
+      
+      toast({ title: "帳戶創建成功", description: "現在可以修改個人資料了" });
+      setShowCreateAccountDialog(false);
+      setCreateAccountPin("");
+      setPendingFormData(null);
+      
+      // 刷新頁面以重新加載數據
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err: any) {
+      let message = "創建帳戶失敗";
+      if (err.code === 'auth/email-already-in-use') message = "使用者名稱已被使用";
+      if (err.code === 'auth/weak-password') message = "PIN 碼需至少 6 位數字";
+      toast({ variant: "destructive", title: "創建失敗", description: message });
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+  
+  const handleChangePassword = async () => {
+    if (!auth || !auth.currentUser || !newPassword.trim()) {
+      toast({ variant: "destructive", title: "缺少必要資訊" });
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast({ variant: "destructive", title: "密碼不一致", description: "新密碼和確認密碼必須相同" });
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast({ variant: "destructive", title: "密碼過短", description: "新密碼至少需要 6 位字符" });
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+      toast({ title: "密碼已更新", description: "您的密碼已成功更改" });
+      setShowChangePasswordDialog(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      let message = "變更密碼失敗";
+      if (err.code === 'auth/weak-password') message = "密碼強度不足";
+      toast({ variant: "destructive", title: "失敗", description: message });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+  
+  const handleCreateAccountClick = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get('username') as string;
+    const bio = formData.get('bio') as string;
+    const instagram = formData.get('instagram') as string;
+    const twitter = formData.get('twitter') as string;
+    const facebook = formData.get('facebook') as string;
+    const threads = formData.get('threads') as string;
+    
+    if (!username?.trim()) {
+      toast({ variant: "destructive", title: "缺少使用者名稱", description: "請輸入使用者名稱" });
+      return;
+    }
+    
+    const qualifications = pendingFormData?.qualifications || selectedQuals || [];
+    setPendingFormData({
+      username,
+      bio,
+      instagram,
+      twitter,
+      facebook,
+      threads,
+      qualifications
+    });
+    setShowCreateAccountDialog(true);
+  };
+
   const getBrightness = (hex: string) => {
     const cleanHex = hex.replace('#', '');
     if (cleanHex.length !== 6) return 128;
@@ -254,19 +387,28 @@ export default function ProfilePage() {
             </Button>
           </Link>
 
-          <Dialog>
+          <Dialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" className="flex-1 h-11 rounded-2xl border-accent/30 bg-accent/5 hover:bg-accent/10 shadow-lg p-2 flex items-center justify-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                <p className="text-[9px] font-bold uppercase tracking-widest truncate">安全救援</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest truncate">修改密碼</p>
               </Button>
             </DialogTrigger>
             <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-8 max-sm">
-              <DialogHeader><DialogTitle className="text-primary font-headline uppercase text-center">救援設定</DialogTitle></DialogHeader>
-              <p className="text-[10px] text-muted-foreground text-center">請設定您的 6 位數 PIN 碼以供未來找回帳戶。</p>
-              <div className="flex flex-col items-center gap-4 py-4">
-                <Input type="password" maxLength={6} className="text-center text-xl tracking-[1em]" placeholder="000000" />
-                <Button className="w-full rounded-full">儲存 PIN 碼</Button>
+              <DialogHeader><DialogTitle className="text-primary font-headline uppercase text-center">修改密碼</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-primary uppercase">新密碼</Label>
+                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="輸入新密碼" className="bg-white/5 border-primary/40 rounded-xl" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-primary uppercase">確認密碼</Label>
+                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="確認新密碼" className="bg-white/5 border-primary/40 rounded-xl" />
+                </div>
+                <Button onClick={handleChangePassword} disabled={isChangingPassword || !newPassword.trim()} className="w-full rounded-full font-bold uppercase">
+                  {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {isChangingPassword ? '更新中...' : '確認修改'}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -324,7 +466,7 @@ export default function ProfilePage() {
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-primary uppercase flex items-center gap-2"><Type className="w-3.5 h-3.5" /> 字體比例</Label>
-                  <Slider value={[fontSizeIndex]} max={3} step={1} onValueChange={(v) => setThemeFontSize(FONT_SIZE_LEVELS[v[0]])} className="py-2" />
+                  <Slider value={[fontSizeIndex]} max={3} step={1} onValueChange={(v) => setThemeFontSize(FONT_SIZE_LEVELS[(v?.[0] ?? 0) as 0 | 1 | 2 | 3])} className="py-2" />
                   <div className="flex justify-between text-[8px] font-bold text-muted-foreground/50 uppercase">
                     <span>特小</span><span>標</span><span>適中</span><span>大</span>
                   </div>
@@ -344,6 +486,151 @@ export default function ProfilePage() {
           </Dialog>
         </div>
 
+        {/* 匿名用戶創建帳戶流程 */}
+        {user?.isAnonymous && (
+        <form onSubmit={handleCreateAccountClick} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
+          <div className="flex flex-col items-center gap-1">
+            <Avatar className="w-12 h-12 border-4 border-primary/20 shadow-xl">
+              <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
+              <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
+            </Avatar>
+            <div className="flex items-center justify-center">{user && <UserBadge userId={user.uid} />}</div>
+          </div>
+
+          <section className="space-y-3">
+            <div className="grid grid-cols-1 gap-2">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground uppercase text-[8px] font-bold tracking-widest">使用者名稱 （建立帳戶後無法修改）</Label>
+                <Input 
+                  name="username" 
+                  className="bg-white/5 border-primary/40 h-10 rounded-xl text-xs" 
+                  defaultValue=""
+                  required 
+                  placeholder="輸入您的使用者名稱"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground uppercase text-[8px] font-bold tracking-widest ml-1">個人簡介</Label>
+                <Textarea name="bio" className="bg-white/5 border-primary/40 min-h-[60px] rounded-xl p-3 text-xs" defaultValue="" placeholder="介紹自己..." />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h2 className="text-[9px] font-bold text-primary uppercase tracking-widest border-b border-primary/10 pb-1">社群連結</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Instagram className="w-2.5 h-2.5" /> IG</Label>
+                <Input name="instagram" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+              </div>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Twitter className="w-2.5 h-2.5" /> X</Label>
+                <Input name="twitter" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+              </div>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Facebook className="w-2.5 h-2.5" /> FB</Label>
+                <Input name="facebook" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+              </div>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><MessageCircle className="w-2.5 h-2.5" /> Threads</Label>
+                <Input name="threads" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+              </div>
+            </div>
+          </section>
+          
+          <section className="space-y-2">
+            <h2 className="text-[9px] font-bold text-primary uppercase tracking-widest border-b border-primary/10 pb-1">專業頭銜 (顯示於貼文旁)</h2>
+            <div className="flex flex-wrap gap-1">
+              {QUALIFICATION_OPTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => {
+                    const updatedQuals = selectedQuals.includes(q)
+                      ? selectedQuals.filter(v => v !== q)
+                      : [...selectedQuals, q];
+                    setPendingFormData((prev: any) => ({ ...prev, qualifications: updatedQuals }));
+                  }}
+                  className={cn("px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors",
+                    pendingFormData?.qualifications?.includes(q)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-white/5 border-primary/30 text-muted-foreground"
+                  )}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Input
+                placeholder="自訂頭銜..."
+                value={customQual}
+                onChange={e => setCustomQual(e.target.value)}
+                className="bg-white/5 h-9 text-[10px] rounded-xl flex-1"
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  if (customQual.trim()) {
+                    const newQuals = [...(pendingFormData?.qualifications || selectedQuals), customQual.trim()];
+                    setPendingFormData((prev: any) => ({ ...prev, qualifications: newQuals }));
+                    setCustomQual("");
+                  }
+                }}
+                size="icon"
+                className="h-9 w-9 rounded-xl"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </section>
+
+          <Button type="submit" className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-gradient-to-r from-primary to-primary/80 uppercase tracking-widest">
+            <Save className="w-4 h-4 mr-2" /> 建立帳戶
+          </Button>
+          
+          {/* PIN 設置對話框 */}
+          <Dialog open={showCreateAccountDialog} onOpenChange={setShowCreateAccountDialog}>
+            <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-8">
+              <DialogHeader>
+                <DialogTitle className="text-primary font-headline uppercase text-center text-lg">設定 PIN 碼</DialogTitle>
+              </DialogHeader>
+              <p className="text-xs text-muted-foreground text-center">請輸入 6 位數 PIN 碼（用於登入與帳戶救援）</p>
+              
+              <div className="flex items-center justify-center gap-1 py-4 min-h-12">
+                {[...Array(6)].map((_, i) => (
+                  <div 
+                    key={i}
+                    className="w-10 h-10 rounded-lg border-2 border-primary/40 bg-white/5 flex items-center justify-center text-lg font-bold"
+                  >
+                    {createAccountPin[i] ? '●' : ''}
+                  </div>
+                ))}
+              </div>
+              
+              <NumericKeypad
+                onNumberClick={(num) => {
+                  if (createAccountPin.length < 6) setCreateAccountPin(createAccountPin + num);
+                }}
+                onDelete={() => setCreateAccountPin(createAccountPin.slice(0, -1))}
+                onClear={() => setCreateAccountPin('')}
+              />
+              
+              <Button 
+                onClick={handleCreateAccount}
+                disabled={createAccountPin.length !== 6 || isCreatingAccount}
+                className="w-full h-11 rounded-full font-bold uppercase text-sm mt-4"
+              >
+                {isCreatingAccount ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {isCreatingAccount ? '建立中...' : '確認建立'}
+              </Button>
+            </DialogContent>
+          </Dialog>
+        </form>
+        )}
+        
+        {/* 已註冊用戶個人資料表單 */}
+        {!user?.isAnonymous && (
         <form onSubmit={handleSave} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
             <Avatar className="w-12 h-12 border-4 border-primary/20 shadow-xl">
@@ -401,7 +688,19 @@ export default function ProfilePage() {
             <h2 className="text-[9px] font-bold text-primary uppercase tracking-widest border-b border-primary/10 pb-1">專業頭銜 (顯示於貼文旁)</h2>
             <div className="flex flex-wrap gap-1">
               {QUALIFICATION_OPTIONS.map((q) => (
-                <button key={q} type="button" onClick={() => setSelectedQuals(prev => prev.includes(q) ? prev.filter(v => v !== q) : [...prev, q])} className={cn("px-2.5 py-1 rounded-full border text-[8px] font-bold", selectedQuals.includes(q) ? "bg-primary text-primary-foreground border-primary" : "bg-white/5 border-primary/30 text-muted-foreground")}>{q}</button>
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setSelectedQuals(prev => prev.includes(q) ? prev.filter(v => v !== q) : [...prev, q])}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors",
+                    selectedQuals.includes(q)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-white/5 border-primary/30 text-muted-foreground"
+                  )}
+                >
+                  {q}
+                </button>
               ))}
             </div>
             <div className="flex gap-2 pt-1">
@@ -410,7 +709,7 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <Button type="submit" disabled={isSaving} className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-primary">
+          <Button type="submit" disabled={isSaving} className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-primary transition-opacity">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} 儲存資料
           </Button>
 
@@ -452,6 +751,7 @@ export default function ProfilePage() {
             )}
           </div>
         </form>
+        )}
       </div>
     </div>
   );
