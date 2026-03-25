@@ -9,9 +9,6 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Re-enable ignoreDuringBuilds
   },
-  serverActions: {
-    bodySizeLimit: '10mb',
-  },
   images: {
     remotePatterns: [
       {
