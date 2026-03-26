@@ -60,7 +60,7 @@ export const identifySakeFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await ai.generate({
-      model: googleAI.model('gemini-2.0-flash'),
+      model: googleAI.model('gemini-2.0-flash-latest'),
       // 關鍵修正 1：明確指定輸出 Schema
       output: {
         schema: IdentifySakeOutputSchema,
