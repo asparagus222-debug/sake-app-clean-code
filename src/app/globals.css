@@ -59,6 +59,7 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
   html {
     font-size: var(--font-size-base);

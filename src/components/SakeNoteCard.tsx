@@ -79,7 +79,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
           <Button 
             variant="ghost" 
             size="sm"
-            className={cn("h-9 px-2 rounded-full transition-all bg-transparent shadow-none border-none", isLiked ? "text-primary" : "text-white/60 hover:text-white")}
+            className={cn("h-9 px-2 rounded-full transition-all bg-transparent shadow-none border-none select-none [&]:[-webkit-tap-highlight-color:transparent] active:scale-90 active:opacity-60", isLiked ? "text-primary" : "text-white/60 hover:text-white")}
             onClick={handleLike}
           >
             <Heart className={cn("w-4 h-4 mr-1", isLiked && "fill-current")} />
