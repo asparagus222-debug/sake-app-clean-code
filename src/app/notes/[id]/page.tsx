@@ -250,7 +250,7 @@ export default function NoteDetailPage() {
               <div className="space-y-3">
                 <h3 className="font-bold text-primary text-sm uppercase tracking-widest border-b border-primary/20 pb-1">風味分析</h3>
                 <div className="space-y-2">
-                   {[
+                   {(() => {
                     const sw = note.sweetnessRating ?? (note as any).sweetness ?? 0;
                     const ac = note.acidityRating ?? (note as any).acidity ?? 0;
                     const bi = note.bitternessRating ?? (note as any).bitterness ?? 0;
@@ -262,7 +262,7 @@ export default function NoteDetailPage() {
                     { label: '苦', value: bi, text: RATING_LABELS.bitterness[bi-1] },
                     { label: '旨', value: um, text: RATING_LABELS.umami[um-1] },
                     { label: '澀', value: as_, text: RATING_LABELS.astringency[as_-1] },
-                   ]}.map((f, i) => (
+                   ];})().map((f, i) => (
                      <div key={i} className="flex items-center justify-between text-[11px] border-b border-white/5 pb-1">
                        <div className="flex items-center gap-2">
                          <span className="text-muted-foreground font-bold">{f.label}</span>
