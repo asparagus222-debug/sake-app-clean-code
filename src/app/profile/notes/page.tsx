@@ -1,7 +1,7 @@
 
 "use client"
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { SakeNote } from '@/lib/types';
@@ -58,11 +58,34 @@ export default function MyNotesPage() {
     });
   }, [rawNotes]);
 
+  const EDIT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 小時
+
   const isEditable = (createdAtStr?: string) => {
     if (!createdAtStr) return false;
     const createdAt = new Date(createdAtStr).getTime();
     const now = new Date().getTime();
-    return (now - createdAt) < (2 * 60 * 60 * 1000);
+    return (now - createdAt) < EDIT_WINDOW_MS;
+  };
+
+  const CountdownTimer = ({ createdAt }: { createdAt: string }) => {
+    const [remaining, setRemaining] = useState('');
+
+    useEffect(() => {
+      const update = () => {
+        const diff = EDIT_WINDOW_MS - (Date.now() - new Date(createdAt).getTime());
+        if (diff <= 0) { setRemaining(''); return; }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setRemaining(`${h > 0 ? h + ':' : ''}${String(m).padStart(h > 0 ? 2 : 1, '0')}:${String(s).padStart(2, '0')}`);
+      };
+      update();
+      const timer = setInterval(update, 1000);
+      return () => clearInterval(timer);
+    }, [createdAt]);
+
+    if (!remaining) return null;
+    return <div className="flex items-center gap-1 text-accent"><Clock className="w-2.5 h-2.5" /> {remaining}</div>;
   };
 
   const handleDelete = (noteId: string) => {
@@ -122,7 +145,7 @@ export default function MyNotesPage() {
                       <h3 className="text-sm font-bold break-words mb-1 group-hover:text-primary transition-colors leading-tight">{note.brandName}</h3>
                       <div className="flex items-center gap-3 text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                         <div className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5 opacity-50" /> {new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
-                        {editable && <div className="flex items-center gap-1 text-accent"><Clock className="w-2.5 h-2.5" /> 限時編輯中</div>}
+                        {editable && note.createdAt && <CountdownTimer createdAt={note.createdAt} />}
                       </div>
                     </div>
                   </Link>
