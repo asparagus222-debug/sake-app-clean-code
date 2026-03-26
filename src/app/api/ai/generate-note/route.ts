@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function POST(req: NextRequest) {
   try {
     const { brandName, subBrand, ratings, tags, userDescription, mode } = await req.json();
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const brainContext = mode === 'left' 
       ? "左腦品飲（分析與知識）：專注於邏輯、香氣辨識、構造與專業評分。" 
