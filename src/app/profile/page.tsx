@@ -186,10 +186,10 @@ export default function ProfilePage() {
         id: user.uid,
         username: username,
         bio: formData.get('bio') as string || '',
-        facebook: formData.get('facebook') as string || '',
-        twitter: formData.get('twitter') as string || '',
-        threads: formData.get('threads') as string || '',
-        instagram: formData.get('instagram') as string || '',
+        facebook: ((formData.get('facebook') as string) || '').replace('@', ''),
+        twitter: ((formData.get('twitter') as string) || '').replace('@', ''),
+        threads: ((formData.get('threads') as string) || '').replace('@', ''),
+        instagram: ((formData.get('instagram') as string) || '').replace('@', ''),
         qualifications: selectedQuals,
       };
       updateDocumentNonBlocking(doc(firestore, 'users', user.uid), updatedProfile);
@@ -326,10 +326,10 @@ export default function ProfilePage() {
     const formData = new FormData(e.currentTarget);
     const username = formData.get('username') as string;
     const bio = formData.get('bio') as string;
-    const instagram = formData.get('instagram') as string;
-    const twitter = formData.get('twitter') as string;
-    const facebook = formData.get('facebook') as string;
-    const threads = formData.get('threads') as string;
+    const instagram = (formData.get('instagram') as string)?.replace('@', '') || '';
+    const twitter = (formData.get('twitter') as string)?.replace('@', '') || '';
+    const facebook = (formData.get('facebook') as string)?.replace('@', '') || '';
+    const threads = (formData.get('threads') as string)?.replace('@', '') || '';
     
     if (!username?.trim()) {
       toast({ variant: "destructive", title: "缺少使用者名稱", description: "請輸入使用者名稱" });
@@ -521,11 +521,11 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Instagram className="w-2.5 h-2.5" /> IG</Label>
-                <Input name="instagram" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+                <Input name="instagram" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Twitter className="w-2.5 h-2.5" /> X</Label>
-                <Input name="twitter" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+                <Input name="twitter" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Facebook className="w-2.5 h-2.5" /> FB</Label>
@@ -533,7 +533,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><MessageCircle className="w-2.5 h-2.5" /> Threads</Label>
-                <Input name="threads" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
+                <Input name="threads" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue="" />
               </div>
             </div>
           </section>
@@ -692,19 +692,19 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Instagram className="w-2.5 h-2.5" /> IG</Label>
-                <Input name="instagram" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.instagram || ''} />
+                <Input name="instagram" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.instagram?.replace('@', '') || ''} />
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Twitter className="w-2.5 h-2.5" /> X</Label>
-                <Input name="twitter" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.twitter || ''} />
+                <Input name="twitter" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.twitter?.replace('@', '') || ''} />
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><Facebook className="w-2.5 h-2.5" /> FB</Label>
-                <Input name="facebook" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.facebook || ''} />
+                <Input name="facebook" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.facebook?.replace('@', '') || ''} />
               </div>
               <div className="space-y-1">
                 <Label className="flex items-center gap-1 text-[8px] uppercase text-muted-foreground"><MessageCircle className="w-2.5 h-2.5" /> Threads</Label>
-                <Input name="threads" placeholder="@handle" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.threads || ''} />
+                <Input name="threads" placeholder="username" className="bg-white/5 border-primary/30 h-9 rounded-xl text-[10px]" defaultValue={profile?.threads?.replace('@', '') || ''} />
               </div>
             </div>
           </section>
