@@ -78,7 +78,7 @@ export default function Home() {
                 {profile?.username || (isFormalUser ? "恢復身分中..." : "愛好者")}
               </p>
               <p className="text-[10px] text-primary/60 group-hover:text-primary transition-colors tracking-widest uppercase font-bold">
-                設定名稱
+                個人資料
               </p>
             </div>
             <Avatar className="w-10 h-10 border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg">
