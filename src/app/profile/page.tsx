@@ -561,27 +561,52 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-2 pt-1">
-              <Input
-                placeholder="自訂頭銜..."
-                value={customQual}
-                onChange={e => setCustomQual(e.target.value)}
-                className="bg-white/5 h-9 text-[10px] rounded-xl flex-1"
-              />
-              <Button
-                type="button"
-                onClick={() => {
-                  if (customQual.trim()) {
-                    const newQuals = [...(pendingFormData?.qualifications || selectedQuals), customQual.trim()];
-                    setPendingFormData((prev: any) => ({ ...prev, qualifications: newQuals }));
-                    setCustomQual("");
-                  }
-                }}
-                size="icon"
-                className="h-9 w-9 rounded-xl"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+            {/* 自訂頭銜泡泡 */}
+            {(pendingFormData?.qualifications || []).filter((q: string) => !QUALIFICATION_OPTIONS.includes(q)).length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {(pendingFormData?.qualifications || []).filter((q: string) => !QUALIFICATION_OPTIONS.includes(q)).map((q: string) => (
+                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary">
+                    {q}
+                    <button type="button" onClick={() => setPendingFormData((prev: any) => ({ ...prev, qualifications: (prev.qualifications || []).filter((v: string) => v !== q) }))} className="ml-0.5 opacity-60 hover:opacity-100">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-col gap-1 pt-1">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="自訂頭銜（最多 20 字元）"
+                  value={customQual}
+                  onChange={e => e.target.value.length <= 20 && setCustomQual(e.target.value)}
+                  maxLength={20}
+                  className="bg-white/5 h-9 text-[10px] rounded-xl flex-1"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (customQual.trim()) {
+                        const newQuals = [...(pendingFormData?.qualifications || selectedQuals), customQual.trim()];
+                        setPendingFormData((prev: any) => ({ ...prev, qualifications: newQuals }));
+                        setCustomQual("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (customQual.trim()) {
+                      const newQuals = [...(pendingFormData?.qualifications || selectedQuals), customQual.trim()];
+                      setPendingFormData((prev: any) => ({ ...prev, qualifications: newQuals }));
+                      setCustomQual("");
+                    }
+                  }}
+                  size="icon"
+                  className="h-9 w-9 rounded-xl"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {customQual.length > 0 && <p className="text-[8px] text-muted-foreground text-right">{customQual.length} / 20</p>}
             </div>
           </section>
 
@@ -703,9 +728,30 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-2 pt-1">
-              <Input placeholder="自訂頭銜..." value={customQual} onChange={e => setCustomQual(e.target.value)} className="bg-white/5 h-9 text-[10px] rounded-xl flex-1" />
-              <Button type="button" onClick={() => customQual.trim() && (setSelectedQuals([...selectedQuals, customQual.trim()]), setCustomQual(""))} size="icon" className="h-9 w-9 rounded-xl"><Plus className="w-4 h-4" /></Button>
+            {/* 自訂頭銜泡泡 */}
+            {selectedQuals.filter(q => !QUALIFICATION_OPTIONS.includes(q)).length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {selectedQuals.filter(q => !QUALIFICATION_OPTIONS.includes(q)).map((q) => (
+                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary">
+                    {q}
+                    <button type="button" onClick={() => setSelectedQuals(prev => prev.filter(v => v !== q))} className="ml-0.5 opacity-60 hover:opacity-100">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-col gap-1 pt-1">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="自訂頭銜（最多 20 字元）"
+                  value={customQual}
+                  onChange={e => e.target.value.length <= 20 && setCustomQual(e.target.value)}
+                  maxLength={20}
+                  className="bg-white/5 h-9 text-[10px] rounded-xl flex-1"
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), customQual.trim() && (setSelectedQuals([...selectedQuals, customQual.trim()]), setCustomQual("")))}
+                />
+                <Button type="button" onClick={() => customQual.trim() && (setSelectedQuals([...selectedQuals, customQual.trim()]), setCustomQual(""))} size="icon" className="h-9 w-9 rounded-xl"><Plus className="w-4 h-4" /></Button>
+              </div>
+              {customQual.length > 0 && <p className="text-[8px] text-muted-foreground text-right">{customQual.length} / 20</p>}
             </div>
           </section>
 
