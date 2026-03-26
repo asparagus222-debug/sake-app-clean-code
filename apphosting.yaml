@@ -7,3 +7,6 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+  # Disable automatic invoker IAM management to avoid setIamPolicy permission errors.
+  # Public access is managed separately via Cloud Run console.
+  invokerIamDisabled: true
