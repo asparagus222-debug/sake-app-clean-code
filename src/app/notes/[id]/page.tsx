@@ -245,18 +245,24 @@ export default function NoteDetailPage() {
 
             <div className="grid md:grid-cols-2 gap-6 items-center mb-6 border-t border-white/5 pt-6">
               <div className="flex items-center justify-center">
-                <SakeRadarChart data={{ sweetness: note.sweetnessRating, acidity: note.acidityRating, bitterness: note.bitternessRating, umami: note.umamiRating, astringency: note.astringencyRating }} />
+                <SakeRadarChart data={{ sweetness: note.sweetnessRating ?? (note as any).sweetness ?? 0, acidity: note.acidityRating ?? (note as any).acidity ?? 0, bitterness: note.bitternessRating ?? (note as any).bitterness ?? 0, umami: note.umamiRating ?? (note as any).umami ?? 0, astringency: note.astringencyRating ?? (note as any).astringency ?? 0 }} />
               </div>
               <div className="space-y-3">
                 <h3 className="font-bold text-primary text-sm uppercase tracking-widest border-b border-primary/20 pb-1">風味分析</h3>
                 <div className="space-y-2">
                    {[
-                    { label: '甘', value: note.sweetnessRating, text: RATING_LABELS.sweetness[note.sweetnessRating-1] },
-                    { label: '酸', value: note.acidityRating, text: RATING_LABELS.acidity[note.acidityRating-1] },
-                    { label: '苦', value: note.bitternessRating, text: RATING_LABELS.bitterness[note.bitternessRating-1] },
-                    { label: '旨', value: note.umamiRating, text: RATING_LABELS.umami[note.umamiRating-1] },
-                    { label: '澀', value: note.astringencyRating, text: RATING_LABELS.astringency[note.astringencyRating-1] },
-                   ].map((f, i) => (
+                    const sw = note.sweetnessRating ?? (note as any).sweetness ?? 0;
+                    const ac = note.acidityRating ?? (note as any).acidity ?? 0;
+                    const bi = note.bitternessRating ?? (note as any).bitterness ?? 0;
+                    const um = note.umamiRating ?? (note as any).umami ?? 0;
+                    const as_ = note.astringencyRating ?? (note as any).astringency ?? 0;
+                    return [
+                    { label: '甘', value: sw, text: RATING_LABELS.sweetness[sw-1] },
+                    { label: '酸', value: ac, text: RATING_LABELS.acidity[ac-1] },
+                    { label: '苦', value: bi, text: RATING_LABELS.bitterness[bi-1] },
+                    { label: '旨', value: um, text: RATING_LABELS.umami[um-1] },
+                    { label: '澀', value: as_, text: RATING_LABELS.astringency[as_-1] },
+                   ]}.map((f, i) => (
                      <div key={i} className="flex items-center justify-between text-[11px] border-b border-white/5 pb-1">
                        <div className="flex items-center gap-2">
                          <span className="text-muted-foreground font-bold">{f.label}</span>

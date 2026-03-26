@@ -297,13 +297,17 @@ const handleSave = async () => {
       userId: user.uid,
       username: profile.username,
       ...formData,
-      // 這裡務必確保獨立存儲，不要只存在 description 裡
+      // 統一用 Rating 後綴儲存，與 types.ts 一致
+      sweetnessRating: formData.sweetness,
+      acidityRating: formData.acidity,
+      bitternessRating: formData.bitterness,
+      umamiRating: formData.umami,
+      astringencyRating: formData.astringency,
       userDescription: formData.userDescription, 
       aiResultNote: formData.aiResultNote,
       activeBrain: formData.activeBrain,
       
       imageUrls: finalImages,
-      // ... 其他評分欄位
       tastingDate: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
