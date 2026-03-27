@@ -217,15 +217,9 @@ export default function ProfilePage() {
     if (!user || !firestore) return;
     setIsUploadingAvatar(true);
     try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const { getStorage, ref: sRef, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      const { getApp } = await import('firebase/app');
-      const storage = getStorage(getApp());
-      const storageRef = sRef(storage, `avatars/${user.uid}/avatar_${Date.now()}.jpg`);
-      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
-      const avatarUrl = await getDownloadURL(storageRef);
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { avatarUrl });
+      // 選項 B：直接存 base64 進 Firestore（不需要 Firebase Storage）
+      // 未來若升級 Blaze，只需把這裡換成 Storage 上傳邏輯即可
+      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { avatarUrl: dataUrl });
       toast({ title: '頭像已更新 ✓' });
       setShowAvatarEditor(false);
       setAvatarEditorStep('crop');
@@ -233,7 +227,7 @@ export default function ProfilePage() {
       setSelectedAvatarStyle(''); setCustomAvatarStyle(''); setShowCustomAvatarInput(false);
       setCropOffset({ x: 0, y: 0 }); setCropScale(1);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: '上傳失敗', description: err?.message || '請檢查 Firebase Storage 規則' });
+      toast({ variant: 'destructive', title: '儲存失敗', description: err?.message });
     } finally {
       setIsUploadingAvatar(false);
     }
