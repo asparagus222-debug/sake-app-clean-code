@@ -71,7 +71,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
               {note.brewery}
             </p>
             <Link href={`/notes/${note.id}`} className="inline-block max-w-full group/title">
-              <h3 className="font-headline text-base group-hover/title:text-primary transition-colors break-words leading-tight">
+              <h3 className="font-headline text-base text-foreground group-hover/title:text-primary transition-colors break-words leading-tight">
                 {note.brandName}
               </h3>
             </Link>

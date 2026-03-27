@@ -26,6 +26,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.removeProperty('--primary');
     root.style.removeProperty('--foreground');
     root.style.removeProperty('--card');
+    root.style.removeProperty('--card-foreground');
+    root.style.removeProperty('--popover-foreground');
+    root.style.removeProperty('--secondary-foreground');
+    root.style.removeProperty('--muted-foreground');
     root.style.removeProperty('--border');
     root.style.removeProperty('--glass-color');
     root.style.removeProperty('--glass-border');
@@ -78,6 +82,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.style.setProperty('--primary', primaryHsl);
       root.style.setProperty('--foreground', isBgDark ? '0 0% 98%' : '240 10% 4%');
       root.style.setProperty('--card', isBgDark ? '240 10% 7%' : '0 0% 100%');
+      root.style.setProperty('--card-foreground', isBgDark ? '0 0% 98%' : '240 10% 4%');
+      root.style.setProperty('--popover-foreground', isBgDark ? '0 0% 98%' : '240 10% 4%');
+      root.style.setProperty('--secondary-foreground', isBgDark ? '0 0% 98%' : '240 10% 4%');
+      root.style.setProperty('--muted-foreground', isBgDark ? '240 5% 65%' : '240 5% 45%');
       root.style.setProperty('--border', isBgDark ? '240 5% 15%' : '240 5% 85%');
       root.style.setProperty('--glass-color', isBgDark ? '20, 20, 25' : '255, 255, 255');
       root.style.setProperty('--glass-border', isBgDark ? '255, 255, 255' : '0, 0, 0');
