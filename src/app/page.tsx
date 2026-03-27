@@ -123,13 +123,13 @@ export default function Home() {
                       <img src={group.imageUrl} alt={group.brandName} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-6 bg-gradient-to-t from-black via-black/60 to-transparent">
-                      <p className="text-primary font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{group.brewery}</p>
-                      <h3 className="text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{group.brandName}</h3>
-                      <div className="flex items-center gap-1 text-accent">
+                      <p className="text-white/70 font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{group.brewery}</p>
+                      <h3 className="text-white text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{group.brandName}</h3>
+                      <div className="flex items-center gap-1 text-amber-400">
                         <span className="text-sm sm:text-2xl font-bold">{group.avgRating.toFixed(1)}</span>
                         <span className="text-[10px] opacity-60">/ 10</span>
                       </div>
-                      <div className="text-[9px] text-muted-foreground mt-0.5">{group.notes.length} 篇</div>
+                      <div className="text-[9px] text-white/50 mt-0.5">{group.notes.length} 篇</div>
                     </div>
                   </div>
                 </Link>
