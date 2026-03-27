@@ -287,8 +287,8 @@ export default function NoteDetailPage() {
     <div className={cn(
       "relative p-6 rounded-[2rem] border transition-all shadow-xl overflow-hidden mb-4",
       note.activeBrain === 'left' 
-        ? "bg-blue-500/10 border-blue-500/30 text-blue-100/90" 
-        : "bg-rose-500/10 border-rose-500/30 text-rose-100/90"
+        ? "bg-blue-500/10 border-blue-500/30" 
+        : "bg-rose-500/10 border-rose-500/30"
     )}>
       {/* 裝飾性背光效果 */}
       <div className={cn(
@@ -308,14 +308,14 @@ export default function NoteDetailPage() {
       </div>
       
       {/* 使用 font-serif 增加專業評論感 */}
-      <p className="text-[14px] leading-relaxed font-serif italic relative z-10 px-2">
+      <p className="text-[14px] leading-relaxed font-serif italic relative z-10 px-2 text-foreground">
         「{note.aiResultNote}」
       </p>
     </div>
   )}
 
   {/* 2. 下方：作者原始筆記 */}
-  <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-5">
+  <div className="dark-glass rounded-[1.5rem] p-5">
     <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">
       作者原始筆記
     </p>

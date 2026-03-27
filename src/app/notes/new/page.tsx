@@ -486,7 +486,7 @@ const handleSave = async () => {
       </div>
       <Textarea 
         placeholder="在此寫下你最直覺的品飲感受..."
-        className="min-h-[100px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0 placeholder:text-amber-500/20 text-amber-50/90"
+        className="min-h-[100px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0 placeholder:text-amber-500/40 text-foreground"
         value={formData.userDescription}
         onChange={e => setFormData(p => ({ ...p, userDescription: e.target.value }))}
       />
@@ -520,10 +520,7 @@ const handleSave = async () => {
       <Textarea 
         readOnly={!formData.aiResultNote}
         placeholder={formData.brandName ? "點擊上方按鈕，讓 AI 為你的筆記增色..." : "請先輸入銘柄名稱"}
-        className={cn(
-          "min-h-[80px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0",
-          formData.activeBrain === 'left' ? "text-blue-50/90" : "text-rose-50/90"
-        )}
+        className="min-h-[80px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0 text-foreground"
         value={formData.aiResultNote}
         onChange={e => setFormData(p => ({ ...p, aiResultNote: e.target.value }))}
       />
