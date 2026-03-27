@@ -265,9 +265,8 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg', style: styleToUse }),
       });
-      if (!response.ok) throw new Error('AI 服務暫時無法使用');
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (!response.ok || data.error) throw new Error(data.error || 'AI 服務暫時無法使用');
       setAiAvatarResult(`data:${data.mimeType};base64,${data.imageBase64}`);
       setAvatarEditorStep('preview');
     } catch (err: any) {

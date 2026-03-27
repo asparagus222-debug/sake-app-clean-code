@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const stylePrompt = STYLE_PROMPTS[style] || style;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-preview-image-generation',
+      model: 'gemini-2.0-flash-exp',
     });
 
     const result = await model.generateContent({
