@@ -49,16 +49,21 @@ export default function Home() {
 
   const top3Groups = React.useMemo(() => {
     if (!rankingNotes) return [];
-    const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[]; imageUrl?: string }>();
+    const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
     for (const note of rankingNotes) {
       const key = `${note.brandName}|||${note.brewery}`;
       if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
-      const g = map.get(key)!;
-      g.notes.push(note);
-      if (!g.imageUrl && note.imageUrls?.[0]) g.imageUrl = note.imageUrls[0];
+      map.get(key)!.notes.push(note);
     }
     return [...map.values()]
-      .map(g => ({ ...g, avgRating: g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length }))
+      .map(g => {
+        const avgRating = g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length;
+        // 取愛心數最高的貼文的圖片，若無則取最新的
+        const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+        const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
+        const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
+        return { ...g, avgRating, imageUrl };
+      })
       .sort((a, b) => b.avgRating - a.avgRating)
       .slice(0, 3);
   }, [rankingNotes]);
