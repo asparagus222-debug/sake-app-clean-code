@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,10 @@ import {
   MessageCircle,
   Plus,
   Type,
-  Lock
+  Lock,
+  Camera,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -54,7 +57,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   useFirestore, 
   useUser, 
-  useAuth, 
+  useAuth,
   useDoc, 
   useMemoFirebase, 
   addDocumentNonBlocking,
@@ -123,6 +126,24 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // 頭像編輯器
+  const [showAvatarEditor, setShowAvatarEditor] = useState(false);
+  const [avatarEditorStep, setAvatarEditorStep] = useState<'crop' | 'style' | 'processing' | 'preview'>('crop');
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [cropScale, setCropScale] = useState(1);
+  const [croppedSrc, setCroppedSrc] = useState<string | null>(null);
+  const [selectedAvatarStyle, setSelectedAvatarStyle] = useState('');
+  const [customAvatarStyle, setCustomAvatarStyle] = useState('');
+  const [showCustomAvatarInput, setShowCustomAvatarInput] = useState(false);
+  const [aiAvatarResult, setAiAvatarResult] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const pinchDistRef = useRef(0);
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'users', user.uid);
@@ -140,6 +161,156 @@ export default function ProfilePage() {
       if (profile.themeSettings.customPrimary) setCustomPrimary(profile.themeSettings.customPrimary);
     }
   }, [profile]);
+
+  // --- 頭像編輯器 helpers ---
+  const AVATAR_STYLES = ['寫實', '水彩', '動漫', '油畫', '賽博龐克', '日式版畫'];
+
+  const compressImage = (file: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 900;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+
+  const generateCircleCrop = (src: string, offsetX: number, offsetY: number, scale: number): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const OUTPUT = 400, PREVIEW = 224;
+        const canvas = document.createElement('canvas');
+        canvas.width = OUTPUT; canvas.height = OUTPUT;
+        const ctx = canvas.getContext('2d')!;
+        ctx.beginPath();
+        ctx.arc(OUTPUT / 2, OUTPUT / 2, OUTPUT / 2, 0, Math.PI * 2);
+        ctx.clip();
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const baseW = ratio >= 1 ? PREVIEW * ratio : PREVIEW;
+        const baseH = ratio >= 1 ? PREVIEW : PREVIEW / ratio;
+        const sf = OUTPUT / PREVIEW;
+        const drawW = baseW * scale * sf;
+        const drawH = baseH * scale * sf;
+        const drawX = (OUTPUT - drawW) / 2 + offsetX * sf;
+        const drawY = (OUTPUT - drawH) / 2 + offsetY * sf;
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = reject;
+      img.src = src;
+    });
+
+  const uploadAndSaveAvatar = async (dataUrl: string) => {
+    if (!user || !firestore) return;
+    setIsUploadingAvatar(true);
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const { getStorage, ref: sRef, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const { getApp } = await import('firebase/app');
+      const storage = getStorage(getApp());
+      const storageRef = sRef(storage, `avatars/${user.uid}/avatar_${Date.now()}.jpg`);
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+      const avatarUrl = await getDownloadURL(storageRef);
+      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { avatarUrl });
+      toast({ title: '頭像已更新 ✓' });
+      setShowAvatarEditor(false);
+      setAvatarEditorStep('crop');
+      setAvatarSrc(null); setCroppedSrc(null); setAiAvatarResult(null);
+      setSelectedAvatarStyle(''); setCustomAvatarStyle(''); setShowCustomAvatarInput(false);
+      setCropOffset({ x: 0, y: 0 }); setCropScale(1);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '上傳失敗', description: err?.message || '請檢查 Firebase Storage 規則' });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarFileSelect = async (file: File) => {
+    const compressed = await compressImage(file);
+    setAvatarSrc(compressed);
+    setCropOffset({ x: 0, y: 0 }); setCropScale(1);
+    setAvatarEditorStep('crop');
+    setShowAvatarEditor(true);
+  };
+
+  const handleCropConfirm = async () => {
+    if (!avatarSrc) return;
+    const cropped = await generateCircleCrop(avatarSrc, cropOffset.x, cropOffset.y, cropScale);
+    setCroppedSrc(cropped);
+    setAvatarEditorStep('style');
+  };
+
+  const handleDirectUse = async () => {
+    if (!croppedSrc) return;
+    await uploadAndSaveAvatar(croppedSrc);
+  };
+
+  const handleAITransform = async () => {
+    if (!croppedSrc) return;
+    const styleToUse = showCustomAvatarInput ? customAvatarStyle.trim() : selectedAvatarStyle;
+    if (!styleToUse) return;
+    setAvatarEditorStep('processing');
+    try {
+      const base64 = croppedSrc.split(',')[1];
+      const response = await fetch('/api/ai/transform-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg', style: styleToUse }),
+      });
+      if (!response.ok) throw new Error('AI 服務暫時無法使用');
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      setAiAvatarResult(`data:${data.mimeType};base64,${data.imageBase64}`);
+      setAvatarEditorStep('preview');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'AI 修飾失敗', description: err?.message });
+      setAvatarEditorStep('style');
+    }
+  };
+
+  const handleCropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointersRef.current.size === 1) {
+      isDraggingRef.current = true;
+      dragStartRef.current = { x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y };
+    } else if (activePointersRef.current.size >= 2) {
+      isDraggingRef.current = false;
+      const pts = Array.from(activePointersRef.current.values());
+      pinchDistRef.current = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    }
+  };
+
+  const handleCropPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointersRef.current.size === 1 && isDraggingRef.current) {
+      setCropOffset({ x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y });
+    } else if (activePointersRef.current.size >= 2) {
+      const pts = Array.from(activePointersRef.current.values());
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      if (pinchDistRef.current > 0) setCropScale(s => Math.min(5, Math.max(0.3, s * (dist / pinchDistRef.current))));
+      pinchDistRef.current = dist;
+    }
+  };
+
+  const handleCropPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    activePointersRef.current.delete(e.pointerId);
+    if (activePointersRef.current.size === 0) { isDraggingRef.current = false; pinchDistRef.current = 0; }
+  };
 
   const handleSaveTheme = () => {
     if (!user || !firestore) return;
@@ -372,6 +543,146 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen notebook-texture p-4 md:p-8 pb-32 font-body">
+      {/* 隱藏檔案選擇器 */}
+      <input
+        type="file" accept="image/*" className="hidden" ref={avatarInputRef}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarFileSelect(f); e.target.value = ''; }}
+      />
+
+      {/* 頭像編輯 Dialog */}
+      <Dialog open={showAvatarEditor} onOpenChange={(open) => { if (!open) { setShowAvatarEditor(false); setAvatarEditorStep('crop'); } }}>
+        <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-6 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-primary font-headline uppercase text-center text-base">
+              {avatarEditorStep === 'crop' ? '裁切頭像' : avatarEditorStep === 'style' ? '選擇風格' : avatarEditorStep === 'processing' ? 'AI 修飾中...' : '預覽效果'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step 1: Crop */}
+          {avatarEditorStep === 'crop' && avatarSrc && (
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-[10px] text-muted-foreground text-center">拖曳調整位置・按鍵縮放</p>
+              <div
+                className="w-56 h-56 rounded-full overflow-hidden border-2 border-primary/30 cursor-grab active:cursor-grabbing select-none touch-none"
+                onPointerDown={handleCropPointerDown}
+                onPointerMove={handleCropPointerMove}
+                onPointerUp={handleCropPointerUp}
+                onPointerLeave={handleCropPointerUp}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarSrc} alt="" draggable={false}
+                  className="w-full h-full object-cover select-none pointer-events-none"
+                  style={{ transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`, transformOrigin: 'center' }}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="sm" onClick={() => setCropScale(s => Math.max(0.3, +(s - 0.15).toFixed(2)))} className="h-8 w-8 rounded-full p-0 text-base font-bold">−</Button>
+                <span className="text-[10px] text-muted-foreground w-12 text-center">{Math.round(cropScale * 100)}%</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCropScale(s => Math.min(5, +(s + 0.15).toFixed(2)))} className="h-8 w-8 rounded-full p-0 text-base font-bold">+</Button>
+              </div>
+              <div className="flex gap-3 w-full">
+                <Button type="button" variant="ghost" onClick={() => setShowAvatarEditor(false)} className="flex-1 rounded-full h-10 text-xs">取消</Button>
+                <Button type="button" onClick={handleCropConfirm} className="flex-1 rounded-full h-10 text-xs font-bold">下一步 →</Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Style */}
+          {avatarEditorStep === 'style' && croppedSrc && (
+            <div className="flex flex-col items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={croppedSrc} alt="" className="w-20 h-20 rounded-full border-2 border-primary/30 object-cover" />
+              <div className="w-full space-y-2">
+                <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest text-center">AI 風格（可略過）</p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {AVATAR_STYLES.map((s) => (
+                    <button key={s} type="button"
+                      onClick={() => { setSelectedAvatarStyle(s); setShowCustomAvatarInput(false); }}
+                      className={cn('px-2.5 py-1 rounded-full border text-[9px] font-bold transition-colors',
+                        selectedAvatarStyle === s && !showCustomAvatarInput
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-white/5 border-primary/30 text-muted-foreground hover:border-primary/60'
+                      )}
+                    >{s}</button>
+                  ))}
+                  <button type="button"
+                    onClick={() => { setShowCustomAvatarInput(true); setSelectedAvatarStyle(''); }}
+                    className={cn('px-2.5 py-1 rounded-full border text-[9px] font-bold transition-colors',
+                      showCustomAvatarInput
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-white/5 border-primary/30 text-muted-foreground hover:border-primary/60'
+                    )}
+                  >自訂...</button>
+                </div>
+                {showCustomAvatarInput && (
+                  <Input placeholder="輸入風格（e.g. 印象派、蒸氣波）" value={customAvatarStyle}
+                    onChange={(e) => setCustomAvatarStyle(e.target.value)}
+                    className="bg-white/5 h-9 text-[10px] rounded-xl border-primary/30 mt-1" autoFocus
+                  />
+                )}
+              </div>
+              <div className="flex gap-2 w-full">
+                <Button type="button" variant="ghost" onClick={() => setAvatarEditorStep('crop')} className="h-9 px-3 rounded-full text-[10px]">← 重選</Button>
+                <Button type="button" variant="outline" onClick={handleDirectUse} disabled={isUploadingAvatar} className="flex-1 rounded-full h-9 text-[10px] font-bold">
+                  {isUploadingAvatar && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}直接使用
+                </Button>
+                <Button type="button" onClick={handleAITransform}
+                  disabled={(!selectedAvatarStyle && !customAvatarStyle.trim()) || isUploadingAvatar}
+                  className="flex-1 rounded-full h-9 text-[10px] font-bold"
+                >
+                  <Sparkles className="w-3 h-3 mr-1" /> AI 修飾
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Processing */}
+          {avatarEditorStep === 'processing' && (
+            <div className="flex flex-col items-center gap-5 py-6">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-2 border-primary/30 overflow-hidden">
+                  {croppedSrc && <img src={croppedSrc} alt="" className="w-full h-full object-cover" />}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-bold text-primary">AI 修飾中</p>
+                <p className="text-[9px] text-muted-foreground mt-1">{showCustomAvatarInput ? customAvatarStyle : selectedAvatarStyle} 風格處理中...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Preview */}
+          {avatarEditorStep === 'preview' && aiAvatarResult && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex gap-6 items-center">
+                <div className="text-center">
+                  <p className="text-[8px] text-muted-foreground mb-1.5 uppercase font-bold">原始</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={croppedSrc!} alt="" className="w-20 h-20 rounded-full border border-white/10 object-cover" />
+                </div>
+                <div className="text-primary/40 text-lg">→</div>
+                <div className="text-center">
+                  <p className="text-[8px] text-primary mb-1.5 uppercase font-bold flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" /> AI 效果</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={aiAvatarResult} alt="" className="w-20 h-20 rounded-full border-2 border-primary/50 object-cover shadow-lg shadow-primary/20" />
+                </div>
+              </div>
+              <div className="flex gap-3 w-full">
+                <Button type="button" variant="ghost" onClick={() => setAvatarEditorStep('style')} className="flex-1 rounded-full h-10 text-xs">
+                  <RefreshCw className="w-3 h-3 mr-1" /> 重試
+                </Button>
+                <Button type="button" onClick={() => uploadAndSaveAvatar(aiAvatarResult)} disabled={isUploadingAvatar} className="flex-1 rounded-full h-10 text-xs font-bold">
+                  {isUploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null} 套用頭像
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-4xl mx-auto space-y-4">
         <header className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="hover:bg-primary/10 text-primary"><ArrowLeft className="w-5 h-5" /></Button>
@@ -490,10 +801,15 @@ export default function ProfilePage() {
         {user?.isAnonymous && (
         <form onSubmit={handleCreateAccountClick} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
-            <Avatar className="w-12 h-12 border-4 border-primary/20 shadow-xl">
-              <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
-              <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
-            </Avatar>
+            <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
+              <Avatar className="w-14 h-14 border-4 border-primary/20 shadow-xl">
+                <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
+                <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+            </div>
             <div className="flex items-center justify-center">{user && <UserBadge userId={user.uid} />}</div>
           </div>
 
@@ -658,10 +974,15 @@ export default function ProfilePage() {
         {!user?.isAnonymous && (
         <form onSubmit={handleSave} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
-            <Avatar className="w-12 h-12 border-4 border-primary/20 shadow-xl">
-              <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
-              <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
-            </Avatar>
+            <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
+              <Avatar className="w-14 h-14 border-4 border-primary/20 shadow-xl">
+                <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
+                <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+            </div>
             <div className="flex items-center justify-center">{user && <UserBadge userId={user.uid} />}</div>
           </div>
 
