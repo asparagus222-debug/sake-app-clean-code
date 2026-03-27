@@ -41,11 +41,27 @@ export default function Home() {
     return latestNotes.filter(note => followingIds.includes(note.userId));
   }, [latestNotes, followingIds]);
 
-  const top3Query = useMemoFirebase(() => {
+  const rankingQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(3));
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(200));
   }, [firestore]);
-  const { data: top3Notes } = useCollection<SakeNote>(top3Query);
+  const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
+
+  const top3Groups = React.useMemo(() => {
+    if (!rankingNotes) return [];
+    const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[]; imageUrl?: string }>();
+    for (const note of rankingNotes) {
+      const key = `${note.brandName}|||${note.brewery}`;
+      if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
+      const g = map.get(key)!;
+      g.notes.push(note);
+      if (!g.imageUrl && note.imageUrls?.[0]) g.imageUrl = note.imageUrls[0];
+    }
+    return [...map.values()]
+      .map(g => ({ ...g, avgRating: g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length }))
+      .sort((a, b) => b.avgRating - a.avgRating)
+      .slice(0, 3);
+  }, [rankingNotes]);
 
   if (isUserLoading || isProfileLoading || !user) {
     return (
@@ -90,29 +106,30 @@ export default function Home() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
-        {top3Notes && top3Notes.length > 0 && (
+        {top3Groups.length > 0 && (
           <section className="space-y-6">
             <div className="flex items-center gap-2 text-accent">
               <Trophy className="w-5 h-5" />
               <h2 className="text-base sm:text-lg font-headline font-bold uppercase tracking-widest">銘柄殿堂 Top 3</h2>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
-              {top3Notes.map((note, idx) => (
-                <Link key={note.id} href={`/notes/${note.id}`}>
+              {top3Groups.map((group, idx) => (
+                <Link key={`${group.brandName}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
                   <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/5] dark-glass border border-white/10 hover:border-primary/50 transition-all">
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-accent text-accent-foreground font-bold rounded-full w-5 h-5 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg text-[10px] sm:text-sm">
                       {idx + 1}
                     </div>
-                    {note.imageUrls && note.imageUrls[0] && (
-                      <img src={note.imageUrls[0]} alt={note.brandName} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
+                    {group.imageUrl && (
+                      <img src={group.imageUrl} alt={group.brandName} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-6 bg-gradient-to-t from-black via-black/60 to-transparent">
-                      <p className="text-primary font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{note.brewery}</p>
-                      <h3 className="text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{note.brandName}</h3>
+                      <p className="text-primary font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{group.brewery}</p>
+                      <h3 className="text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{group.brandName}</h3>
                       <div className="flex items-center gap-1 text-accent">
-                        <span className="text-sm sm:text-2xl font-bold">{note.overallRating}</span>
+                        <span className="text-sm sm:text-2xl font-bold">{group.avgRating.toFixed(1)}</span>
                         <span className="text-[10px] opacity-60">/ 10</span>
                       </div>
+                      <div className="text-[9px] text-muted-foreground mt-0.5">{group.notes.length} 篇</div>
                     </div>
                   </div>
                 </Link>
