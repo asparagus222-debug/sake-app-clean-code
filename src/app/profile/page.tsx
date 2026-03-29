@@ -63,7 +63,7 @@ import {
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from '@/firebase';
-import { collection, doc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
 import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -334,11 +334,11 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      // 只有在第一次設定名稱時才檢查重複
+      // 只有在第一次設定名稱時才檢查重複（強制查伺服器，避免快取誤判）
       if (!profile?.username) {
         const usersRef = collection(firestore, 'users');
         const q = query(usersRef, where('username', '==', username));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         if (querySnapshot.docs.some(d => d.id !== user.uid && !d.data().isAccountDeleted)) {
           toast({ variant: "destructive", title: "名稱已被佔用" });
           setIsSaving(false);
@@ -501,11 +501,11 @@ export default function ProfilePage() {
       return;
     }
 
-    // 建立帳號前先檢查名稱是否已被佔用
+    // 建立帳號前先檢查名稱是否已被佔用（強制查伺服器，避免快取誤判）
     try {
       const usersRef = collection(firestore, 'users');
       const q = query(usersRef, where('username', '==', username.trim()));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocsFromServer(q);
       if (querySnapshot.docs.some(d => !d.data().isAccountDeleted)) {
         toast({ variant: "destructive", title: "名稱已被佔用", description: "請選擇其他使用者名稱" });
         return;
