@@ -339,7 +339,7 @@ export default function ProfilePage() {
         const usersRef = collection(firestore, 'users');
         const q = query(usersRef, where('username', '==', username));
         const querySnapshot = await getDocs(q);
-        if (querySnapshot.docs.some(d => d.id !== user.uid)) {
+        if (querySnapshot.docs.some(d => d.id !== user.uid && !d.data().isAccountDeleted)) {
           toast({ variant: "destructive", title: "名稱已被佔用" });
           setIsSaving(false);
           return;
@@ -368,7 +368,7 @@ export default function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (!user || !firestore || !auth) return;
     try {
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { isAccountDeleted: true, deletedAt: new Date().toISOString() });
+      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { isAccountDeleted: true, deletedAt: new Date().toISOString(), username: '' });
       try { await deleteUser(user); } catch (authErr) { await auth.signOut(); }
       router.push('/');
     } catch (err) {
@@ -485,8 +485,9 @@ export default function ProfilePage() {
     }
   };
   
-  const handleCreateAccountClick = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateAccountClick = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!firestore) return;
     const formData = new FormData(e.currentTarget);
     const username = formData.get('username') as string;
     const bio = formData.get('bio') as string;
@@ -498,6 +499,19 @@ export default function ProfilePage() {
     if (!username?.trim()) {
       toast({ variant: "destructive", title: "缺少使用者名稱", description: "請輸入使用者名稱" });
       return;
+    }
+
+    // 建立帳號前先檢查名稱是否已被佔用
+    try {
+      const usersRef = collection(firestore, 'users');
+      const q = query(usersRef, where('username', '==', username.trim()));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.docs.some(d => !d.data().isAccountDeleted)) {
+        toast({ variant: "destructive", title: "名稱已被佔用", description: "請選擇其他使用者名稱" });
+        return;
+      }
+    } catch {
+      // 檢查失敗時仍允許繼續，交由後端再驗證
     }
     
     const qualifications = pendingFormData?.qualifications || selectedQuals || [];

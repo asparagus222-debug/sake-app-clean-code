@@ -58,8 +58,8 @@ import {
   deleteDocumentNonBlocking,
   initiateGoogleSignIn
 } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { collection, doc } from 'firebase/firestore';
+import { signOut, getIdToken } from 'firebase/auth';
 
 // 管理員名單
 const ADMIN_EMAILS = ["asparagus222@gmail.com", "admin@example.com"];
@@ -125,13 +125,19 @@ export default function AdminPage() {
   };
 
   const handleDeleteUserRecord = async (userId: string, username: string) => {
-    if (!firestore) return;
+    if (!auth || !auth.currentUser) return;
     try {
-      const userRef = doc(firestore, 'users', userId);
-      await deleteDoc(userRef);
-      toast({ title: `使用者「${username}」已刪除，名稱已釋放` });
-    } catch (err) {
-      toast({ variant: "destructive", title: "刪除失敗" });
+      const idToken = await getIdToken(auth.currentUser);
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUid: userId, callerIdToken: idToken }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '刪除失敗');
+      toast({ title: `使用者「${username}」已完全刪除，名稱已釋放` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "刪除失敗", description: err.message });
     }
   };
 
