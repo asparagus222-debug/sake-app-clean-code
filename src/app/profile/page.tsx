@@ -81,14 +81,16 @@ const THEME_PRESETS = [
   { name: '紙白', bg: '#ffffff', primary: '#171717', mode: 'light' },
 ];
 
-const FONT_SIZE_LEVELS = ['xs', 'sm', 'base', 'lg'] as const;
+const FONT_SIZE_LEVELS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl'] as const;
 type FontSizeLevel = (typeof FONT_SIZE_LEVELS)[number];
 
 const FONT_PREVIEW_MAP = {
   xs: '0.8rem',
   sm: '0.9rem',
   base: '1rem',
-  lg: '1.1rem'
+  lg: '1.1rem',
+  xl: '1.25rem',
+  '2xl': '1.4rem'
 };
 
 export default function ProfilePage() {
@@ -156,7 +158,7 @@ export default function ProfilePage() {
     if (profile?.themeSettings) {
       setThemeMode(profile.themeSettings.mode);
       const savedSize = profile.themeSettings.fontSize as any;
-      setThemeFontSize(savedSize === 'xl' ? 'lg' : (savedSize || 'base'));
+      setThemeFontSize(FONT_SIZE_LEVELS.includes(savedSize) ? savedSize : 'base');
       if (profile.themeSettings.customBg) setCustomBg(profile.themeSettings.customBg);
       if (profile.themeSettings.customPrimary) setCustomPrimary(profile.themeSettings.customPrimary);
     }
@@ -784,9 +786,9 @@ export default function ProfilePage() {
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-primary uppercase flex items-center gap-2"><Type className="w-3.5 h-3.5" /> 字體比例</Label>
-                  <Slider value={[fontSizeIndex]} max={3} step={1} onValueChange={(v) => setThemeFontSize(FONT_SIZE_LEVELS[(v?.[0] ?? 0) as 0 | 1 | 2 | 3])} className="py-2" />
+                  <Slider value={[fontSizeIndex]} max={5} step={1} onValueChange={(v) => setThemeFontSize(FONT_SIZE_LEVELS[(v?.[0] ?? 0) as 0 | 1 | 2 | 3 | 4 | 5])} className="py-2" />
                   <div className="flex justify-between text-[8px] font-bold text-muted-foreground/50 uppercase">
-                    <span>特小</span><span>標</span><span>適中</span><span>大</span>
+                    <span>特小</span><span>小</span><span>標準</span><span>適中</span><span>大</span><span>特大</span>
                   </div>
                 </div>
 

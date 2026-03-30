@@ -41,11 +41,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       xs: '13px', 
       sm: '14.5px', 
       base: '16px', 
-      lg: '17.5px' 
+      lg: '18px',
+      xl: '20px',
+      '2xl': '23px'
     };
     
-    // 降級校驗：如果舊資料中存在 'xl'，則回退到 'lg'
-    const currentSize = (theme?.fontSize === 'xl' ? 'lg' : (theme?.fontSize || 'base')) as keyof typeof fontSizeMap;
+    // 降級校驗：確保值在已知範圍內
+    const validSizes = Object.keys(fontSizeMap);
+    const currentSize = (validSizes.includes(theme?.fontSize || '') ? theme?.fontSize : 'base') as keyof typeof fontSizeMap;
     root.style.setProperty('--font-size-base', fontSizeMap[currentSize]);
 
     if (!theme || theme.mode === 'dark') {
