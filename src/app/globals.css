@@ -107,6 +107,7 @@
   animation: badge-sparkle 3s infinite linear;
 }
 
+/* 標準 Tailwind 文字大小 — 使用 rem 讓所有文字跟著 html font-size 縮放 */
 .text-xs { font-size: 0.75rem; }
 .text-sm { font-size: 0.875rem; }
 .text-base { font-size: 1rem; }
@@ -114,3 +115,11 @@
 .text-xl { font-size: 1.25rem; }
 .text-2xl { font-size: 1.5rem; }
 .text-3xl { font-size: 1.875rem; }
+
+/* Arbitrary px 文字大小 — 換算為 rem（基準 16px），同樣跟著縮放 */
+.text-\[7px\]  { font-size: 0.4375rem; }
+.text-\[8px\]  { font-size: 0.5rem; }
+.text-\[9px\]  { font-size: 0.5625rem; }
+.text-\[10px\] { font-size: 0.625rem; }
+.text-\[11px\] { font-size: 0.6875rem; }
+.text-\[12px\] { font-size: 0.75rem; }
