@@ -169,17 +169,24 @@ export default function EditNotePage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
     canvas.width = 1200; canvas.height = 1200;
-    
-    const pz = idx === 0 ? pinchZoomRef0.current : pinchZoomRef1.current;
-    const { x, y, scale } = pz ? pz.getTransform() : { x: 0, y: 0, scale: 1 };
-    
+
+    // 從 img DOM 元素的 transform style 解析出 translate/scale
+    const imgEl = idx === 0 ? imgRef0.current : imgRef1.current;
+    let x = 0, y = 0, scale = 1;
+    if (imgEl) {
+      const matrix = new DOMMatrixReadOnly(imgEl.style.transform || 'matrix(1,0,0,1,0,0)');
+      x = matrix.m41;
+      y = matrix.m42;
+      scale = matrix.m11;
+    }
+
     const imgRatio = img.width / img.height;
     let drawWidth, drawHeight;
     if (imgRatio > 1) { drawHeight = 1200 * scale; drawWidth = drawHeight * imgRatio; }
     else { drawWidth = 1200 * scale; drawHeight = drawWidth / imgRatio; }
     const baseOffsetX = (1200 - drawWidth) / 2;
     const baseOffsetY = (1200 - drawHeight) / 2;
-    
+
     const container = document.getElementById(`container-${idx}`);
     const scaleFactor = 1200 / (container?.clientWidth || 640);
 
