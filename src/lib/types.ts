@@ -38,7 +38,7 @@ export type ThemeSettings = {
   mode: 'dark' | 'light' | 'custom';
   customBg?: string;
   customPrimary?: string;
-  fontSize?: 'xs' | 'sm' | 'base' | 'lg' | 'xl';
+  fontSize?: 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 };
 
 export type UserProfile = {

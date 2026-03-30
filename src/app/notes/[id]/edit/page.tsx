@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -60,7 +60,9 @@ export default function EditNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
-    description: '',
+    userDescription: '',
+    aiResultNote: '',
+    activeBrain: null as 'left' | 'right' | null,
   });
 
   // 縮放手勢更新函數
@@ -92,7 +94,9 @@ export default function EditNotePage() {
         astringency: note.astringencyRating,
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
-        description: note.description || '',
+        userDescription: note.userDescription || note.description || '',
+        aiResultNote: note.aiResultNote || '',
+        activeBrain: note.activeBrain || null,
       });
       if (note.imageUrls) setImages(note.imageUrls);
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
@@ -119,10 +123,11 @@ export default function EditNotePage() {
     setShowSuggestions(false);
   };
 
-  // AI 自動生成筆記
-  const generateAINote = async () => {
-    if (isGenerating) return;
+  // AI 雙腦品鑑
+  const generateBrainNote = async (mode: 'left' | 'right') => {
+    if (isGenerating || !formData.brandName) return;
     setIsGenerating(true);
+    setFormData(prev => ({ ...prev, activeBrain: mode }));
     try {
       const response = await fetch('/api/ai/generate-note', {
         method: 'POST',
@@ -138,16 +143,17 @@ export default function EditNotePage() {
             astringency: formData.astringency
           },
           tags: formData.styleTags,
-          userDescription: formData.description
+          userDescription: formData.userDescription,
+          mode
         })
       });
       const data = await response.json();
       if (data.text) {
-        setFormData(prev => ({ ...prev, description: data.text }));
-        toast({ title: "AI 品鑑筆記已生成" });
+        setFormData(prev => ({ ...prev, aiResultNote: data.text }));
+        toast({ title: `${mode === 'left' ? '左腦理性' : '右腦感性'}筆記生成成功` });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "生成失敗，請稍後再試" });
+      toast({ variant: "destructive", title: "AI 連線失敗" });
     } finally {
       setIsGenerating(false);
     }
@@ -156,9 +162,9 @@ export default function EditNotePage() {
   const captureCurrentView = async (idx: number): Promise<string> => {
     if (!images[idx]) return "";
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
     img.src = images[idx];
-    await new Promise((resolve) => { img.onload = resolve; });
+    await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve(); });
+    if (!img.width) return images[idx];
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
@@ -178,8 +184,12 @@ export default function EditNotePage() {
     const scaleFactor = 1200 / (container?.clientWidth || 640);
 
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 1200, 1200);
-    ctx.drawImage(img, baseOffsetX + (x * scaleFactor), baseOffsetY + (y * scaleFactor), drawWidth, drawHeight);
-    return canvas.toDataURL('image/jpeg', 0.85);
+    try {
+      ctx.drawImage(img, baseOffsetX + (x * scaleFactor), baseOffsetY + (y * scaleFactor), drawWidth, drawHeight);
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } catch {
+      return images[idx];
+    }
   };
 
   const toggleStyleTag = (tag: string) => {
@@ -195,7 +205,16 @@ export default function EditNotePage() {
     try {
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
       const noteData = {
-        ...formData,
+        brandName: formData.brandName,
+        subBrand: formData.subBrand,
+        brewery: formData.brewery,
+        origin: formData.origin,
+        overallRating: formData.overallRating,
+        styleTags: formData.styleTags,
+        userDescription: formData.userDescription,
+        aiResultNote: formData.aiResultNote,
+        activeBrain: formData.activeBrain,
+        description: formData.userDescription,
         imageUrls: finalImages,
         imageSplitRatio: images.length === 2 ? splitRatio : 50,
         sweetnessRating: formData.sweetness,
@@ -311,27 +330,80 @@ export default function EditNotePage() {
           <div className="flex flex-col items-center justify-center pt-2"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
         </section>
 
-        {/* 品飲描述區塊 - 已新增 AI 按鈕 */}
-        <section className="space-y-3">
-          <div className="flex justify-between items-center px-1">
-            <Label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">品飲描述</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={generateAINote}
-              disabled={isGenerating}
-              className="h-7 rounded-full border-primary/40 text-[9px] font-bold bg-primary/5 text-primary gold-glow transition-all active:scale-95"
-            >
-              {isGenerating ? <Loader2 className="w-2.5 h-2.5 animate-spin mr-1" /> : <Sparkles className="w-2.5 h-2.5 mr-1" />}
-              AI 品鑑
-            </Button>
+        {/* AI 雙腦品鑑筆記區塊 */}
+        <section className="space-y-4">
+          <div className="flex justify-between items-end px-1">
+            <div className="flex flex-col">
+              <Label className="text-[11px] font-bold text-primary uppercase tracking-widest ml-1">AI 雙腦品鑑筆記</Label>
+              <span className="text-[8px] text-muted-foreground ml-1">LEFT: 理性分析 / RIGHT: 感性想像</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline" size="sm"
+                onClick={() => generateBrainNote('left')}
+                disabled={isGenerating || !formData.brandName}
+                className={cn(
+                  "h-8 rounded-full text-[9px] font-bold transition-all border-blue-500/40 bg-blue-500/5 text-blue-400 hover:bg-blue-500/20",
+                  formData.activeBrain === 'left' && "ring-1 ring-blue-500 ring-offset-1 ring-offset-black"
+                )}
+              >
+                <Sparkles className="w-2.5 h-2.5 mr-1" /> 左腦品鑑
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => generateBrainNote('right')}
+                disabled={isGenerating || !formData.brandName}
+                className={cn(
+                  "h-8 rounded-full text-[9px] font-bold transition-all border-rose-500/40 bg-rose-500/5 text-rose-400 hover:bg-rose-500/20",
+                  formData.activeBrain === 'right' && "ring-1 ring-rose-500 ring-offset-1 ring-offset-black"
+                )}
+              >
+                <Sparkles className="w-2.5 h-2.5 mr-1" /> 右腦品鑑
+              </Button>
+            </div>
           </div>
-          <Textarea 
-            placeholder="點擊 AI 品鑑按鈕，根據上方資料自動生成筆記..."
-            className="min-h-[160px] bg-white/5 border-primary/40 rounded-xl p-3 text-xs leading-relaxed" 
-            value={formData.description} 
-            onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} 
-          />
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="relative overflow-hidden bg-amber-500/5 border border-amber-500/20 rounded-[1.5rem] p-4 transition-all hover:border-amber-500/40">
+              <div className="flex items-center gap-2 mb-2 text-amber-500/70">
+                <div className="p-1 bg-amber-500/10 rounded-md"><Info size={12} /></div>
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em]">作者的原始筆記</span>
+              </div>
+              <Textarea
+                placeholder="在此寫下你最直覺的品飲感受..."
+                className="min-h-[100px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0 placeholder:text-amber-500/40 text-foreground"
+                value={formData.userDescription}
+                onChange={e => setFormData(p => ({ ...p, userDescription: e.target.value }))}
+              />
+            </div>
+
+            <div className={cn(
+              "relative overflow-hidden rounded-[1.5rem] p-4 transition-all duration-500 border min-h-[120px]",
+              formData.activeBrain === 'left' ? "bg-blue-500/10 border-blue-500/40" :
+              formData.activeBrain === 'right' ? "bg-rose-500/10 border-rose-500/40" :
+              "bg-white/5 border-white/10 opacity-50"
+            )}>
+              <div className="absolute -top-10 -right-10 w-32 h-32 blur-[50px] rounded-full transition-colors duration-700"
+                style={{ background: formData.activeBrain === 'left' ? 'rgba(59,130,246,0.2)' : formData.activeBrain === 'right' ? 'rgba(244,63,94,0.2)' : 'transparent' }} />
+              <div className="flex items-center justify-between mb-2">
+                <div className={cn(
+                  "flex items-center gap-2 font-bold text-[9px] uppercase tracking-[0.2em]",
+                  formData.activeBrain === 'left' ? "text-blue-400" : "text-rose-400"
+                )}>
+                  {formData.activeBrain === 'left' ? <BrainCircuit size={12} /> : <Palette size={12} />}
+                  {formData.activeBrain === 'left' ? "AI 理性分析修飾" : formData.activeBrain === 'right' ? "AI 感性想像引導" : "等待點擊上方按鈕生成"}
+                </div>
+                {isGenerating && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+              </div>
+              <Textarea
+                readOnly={!formData.aiResultNote}
+                placeholder={formData.brandName ? "點擊上方按鈕，讓 AI 為你的筆記增色..." : "請先輸入銘柄名稱"}
+                className="min-h-[80px] bg-transparent border-none p-0 text-xs leading-relaxed focus-visible:ring-0 text-foreground"
+                value={formData.aiResultNote}
+                onChange={e => setFormData(p => ({ ...p, aiResultNote: e.target.value }))}
+              />
+            </div>
+          </div>
         </section>
 
         <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
