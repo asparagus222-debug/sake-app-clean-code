@@ -12,8 +12,8 @@ import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import QuickPinchZoom, { make3dTransformValue } from 'react-quick-pinch-zoom';
 
@@ -223,11 +223,12 @@ export default function EditNotePage() {
         umamiRating: formData.umami,
         astringencyRating: formData.astringency,
       };
-      updateDocumentNonBlocking(doc(firestore, 'sakeTastingNotes', note.id), noteData);
+      await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), noteData);
       toast({ title: "修改已儲存" });
       router.push('/profile');
-    } catch (err) {
-      toast({ variant: "destructive", title: "儲存失敗" });
+    } catch (err: any) {
+      console.error('[EditNote] save error:', err);
+      toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
       setIsSaving(false);
     }
   };
