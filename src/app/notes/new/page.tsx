@@ -48,6 +48,7 @@ export default function NewNotePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   
   const [images, setImages] = useState<string[]>([]);
+  const [originals, setOriginals] = useState<string[]>([]); // resized originals for re-editing
   const [zooms, setZooms] = useState<number[]>([1, 1]);
   const [offsets, setOffsets] = useState<{ x: number; y: number }[]>([{ x: 0, y: 0 }, { x: 0, y: 0 }]);
   const [splitRatio, setSplitRatio] = useState<number>(50);
@@ -186,13 +187,13 @@ export default function NewNotePage() {
       const isFirstUpload = images.length === 0;
       filesToProcess.forEach((file, index) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
           const base64 = reader.result as string;
-          setImages(prev => {
-            const next = [...prev, base64];
-            if (isFirstUpload && index === 0) triggerAIIdentification(base64);
-            return next;
-          });
+          // resize to 1024px for display in editor (saves memory vs raw camera photo)
+          const resized = await resizeImage(base64, 1024);
+          setImages(prev => [...prev, resized]);
+          setOriginals(prev => [...prev, resized]);
+          if (isFirstUpload && index === 0) triggerAIIdentification(resized);
         };
         reader.readAsDataURL(file);
       });
@@ -308,6 +309,8 @@ const handleSave = async () => {
       activeBrain: formData.activeBrain,
       
       imageUrls: finalImages,
+      imageOriginals: originals,
+      imageTransforms: images.map((_, i) => ({ x: offsets[i].x, y: offsets[i].y, scale: zooms[i] })),
       tastingDate: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };

@@ -8,6 +8,8 @@ export type SakeNote = {
   brewery: string;
   origin?: string;
   imageUrls: string[];
+  imageOriginals?: string[];
+  imageTransforms?: Array<{ x: number; y: number; scale: number }>;
   imageSplitRatio?: number;
   sweetnessRating: number;
   acidityRating: number;

@@ -98,7 +98,7 @@ export default function EditNotePage() {
         aiResultNote: note.aiResultNote || '',
         activeBrain: note.activeBrain || null,
       });
-      if (note.imageUrls) setImages(note.imageUrls);
+      if (note.imageUrls) setImages(note.imageOriginals || note.imageUrls);
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
     }
   }, [note]);
@@ -211,6 +211,16 @@ export default function EditNotePage() {
     setIsSaving(true);
     try {
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
+      // 儲存目前的縮放位移參數，供下次重新編輯時還原
+      const transforms = images.map((_, i) => {
+        const imgEl = i === 0 ? imgRef0.current : imgRef1.current;
+        let x = 0, y = 0, scale = 1;
+        if (imgEl && imgEl.style.transform) {
+          const m = new DOMMatrixReadOnly(imgEl.style.transform);
+          x = m.m41; y = m.m42; scale = m.m11;
+        }
+        return { x, y, scale };
+      });
       const noteData = {
         brandName: formData.brandName,
         subBrand: formData.subBrand,
@@ -223,6 +233,8 @@ export default function EditNotePage() {
         activeBrain: formData.activeBrain,
         description: formData.userDescription,
         imageUrls: finalImages,
+        imageOriginals: images,
+        imageTransforms: transforms,
         imageSplitRatio: images.length === 2 ? splitRatio : 50,
         sweetnessRating: formData.sweetness,
         acidityRating: formData.acidity,
@@ -270,21 +282,21 @@ export default function EditNotePage() {
               {images.length === 2 ? (
                 <>
                   <div id="container-0" className="h-full relative overflow-hidden" style={{ width: `${splitRatio}%` }}>
-                    <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0} draggableUnZoomed={true}>
-                      <img ref={imgRef0} src={images[0]} className="w-full h-full object-contain pointer-events-none" alt="img1" />
+                    <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0} draggableUnZoomed={true} style={{ height: '100%', width: '100%' }}>
+                      <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" alt="img1" />
                     </QuickPinchZoom>
                   </div>
                   <div className="h-full w-px bg-white/20 z-10" />
                   <div id="container-1" className="h-full relative overflow-hidden" style={{ width: `${100 - splitRatio}%` }}>
-                    <QuickPinchZoom ref={pinchZoomRef1} onUpdate={onUpdate1} draggableUnZoomed={true}>
-                      <img ref={imgRef1} src={images[1]} className="w-full h-full object-contain pointer-events-none" alt="img2" />
+                    <QuickPinchZoom ref={pinchZoomRef1} onUpdate={onUpdate1} draggableUnZoomed={true} style={{ height: '100%', width: '100%' }}>
+                      <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" alt="img2" />
                     </QuickPinchZoom>
                   </div>
                 </>
               ) : (
                 <div id="container-0" className="w-full h-full relative overflow-hidden">
-                  <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0}>
-                    <img ref={imgRef0} src={images[0]} className="w-full h-full object-contain pointer-events-none" alt="img1" />
+                  <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0} style={{ height: '100%', width: '100%' }}>
+                    <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" alt="img1" />
                   </QuickPinchZoom>
                 </div>
               )}
