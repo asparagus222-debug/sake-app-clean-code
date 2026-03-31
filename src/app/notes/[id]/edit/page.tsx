@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
-import QuickPinchZoom, { make3dTransformValue } from 'react-quick-pinch-zoom';
 
 export default function EditNotePage() {
   const router = useRouter();
@@ -30,12 +29,16 @@ export default function EditNotePage() {
   
   const [images, setImages] = useState<string[]>([]);
   const [splitRatio, setSplitRatio] = useState<number>(50);
+  const [zooms, setZooms] = useState<number[]>([1, 1]);
+  const [offsets, setOffsets] = useState<{ x: number; y: number }[]>([{ x: 0, y: 0 }, { x: 0, y: 0 }]);
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [initialDist, setInitialDist] = useState<number | null>(null);
+  const [initialZoom, setInitialZoom] = useState<number | null>(null);
 
-  // 用於縮放套件的 Ref
+  // img refs only needed for captureCurrentView container sizing
   const imgRef0 = useRef<HTMLImageElement>(null);
   const imgRef1 = useRef<HTMLImageElement>(null);
-  const pinchZoomRef0 = useRef<any>(null);
-  const pinchZoomRef1 = useRef<any>(null);
 
   const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -100,6 +103,10 @@ export default function EditNotePage() {
       });
       if (note.imageUrls) setImages(note.imageOriginals || note.imageUrls);
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
+      if (note.imageTransforms) {
+        setZooms(note.imageTransforms.map(t => t.scale));
+        setOffsets(note.imageTransforms.map(t => ({ x: t.x, y: t.y })));
+      }
     }
   }, [note]);
 
@@ -159,6 +166,48 @@ export default function EditNotePage() {
     }
   };
 
+  const onTouchStart = (e: React.TouchEvent, idx: number) => {
+    setDraggingIdx(idx);
+    if (e.touches.length === 1) {
+      setDragStart({ x: e.touches[0].clientX - offsets[idx].x, y: e.touches[0].clientY - offsets[idx].y });
+    } else if (e.touches.length === 2) {
+      setInitialDist(Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY));
+      setInitialZoom(zooms[idx]);
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (draggingIdx === null) return;
+    if (e.touches.length === 1) {
+      setOffsets(prev => {
+        const next = [...prev];
+        next[draggingIdx] = { x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y };
+        return next;
+      });
+    } else if (e.touches.length === 2 && initialDist && initialZoom) {
+      const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
+      setZooms(prev => {
+        const next = [...prev];
+        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, 1), 5);
+        return next;
+      });
+    }
+  };
+
+  const onMouseDown = (e: React.MouseEvent, idx: number) => {
+    setDraggingIdx(idx);
+    setDragStart({ x: e.clientX - offsets[idx].x, y: e.clientY - offsets[idx].y });
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (draggingIdx === null) return;
+    setOffsets(prev => {
+      const next = [...prev];
+      next[draggingIdx] = { x: e.clientX - dragStart.x, y: e.clientY - dragStart.y };
+      return next;
+    });
+  };
+
   const captureCurrentView = async (idx: number): Promise<string> => {
     if (!images[idx]) return "";
     const img = new window.Image();
@@ -170,20 +219,14 @@ export default function EditNotePage() {
     if (!ctx) return images[idx];
     canvas.width = 1200; canvas.height = 1200;
 
-    // 從 img DOM 元素的 transform style 解析出 translate/scale
-    const imgEl = idx === 0 ? imgRef0.current : imgRef1.current;
-    let x = 0, y = 0, scale = 1;
-    if (imgEl) {
-      const matrix = new DOMMatrixReadOnly(imgEl.style.transform || 'matrix(1,0,0,1,0,0)');
-      x = matrix.m41;
-      y = matrix.m42;
-      scale = matrix.m11;
-    }
+    // 直接從 state 讀取 zoom/offset，不需要解析 DOM transform
+    const zoom = zooms[idx] ?? 1;
+    const offset = offsets[idx] ?? { x: 0, y: 0 };
 
     const imgRatio = img.width / img.height;
     let drawWidth, drawHeight;
-    if (imgRatio > 1) { drawHeight = 1200 * scale; drawWidth = drawHeight * imgRatio; }
-    else { drawWidth = 1200 * scale; drawHeight = drawWidth / imgRatio; }
+    if (imgRatio > 1) { drawHeight = 1200 * zoom; drawWidth = drawHeight * imgRatio; }
+    else { drawWidth = 1200 * zoom; drawHeight = drawWidth / imgRatio; }
     const baseOffsetX = (1200 - drawWidth) / 2;
     const baseOffsetY = (1200 - drawHeight) / 2;
 
@@ -192,7 +235,7 @@ export default function EditNotePage() {
 
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 1200, 1200);
     try {
-      ctx.drawImage(img, baseOffsetX + (x * scaleFactor), baseOffsetY + (y * scaleFactor), drawWidth, drawHeight);
+      ctx.drawImage(img, baseOffsetX + (offset.x * scaleFactor), baseOffsetY + (offset.y * scaleFactor), drawWidth, drawHeight);
       return canvas.toDataURL('image/jpeg', 0.85);
     } catch {
       return images[idx];
@@ -212,15 +255,7 @@ export default function EditNotePage() {
     try {
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
       // 儲存目前的縮放位移參數，供下次重新編輯時還原
-      const transforms = images.map((_, i) => {
-        const imgEl = i === 0 ? imgRef0.current : imgRef1.current;
-        let x = 0, y = 0, scale = 1;
-        if (imgEl && imgEl.style.transform) {
-          const m = new DOMMatrixReadOnly(imgEl.style.transform);
-          x = m.m41; y = m.m42; scale = m.m11;
-        }
-        return { x, y, scale };
-      });
+      const transforms = images.map((_, i) => ({ x: offsets[i]?.x ?? 0, y: offsets[i]?.y ?? 0, scale: zooms[i] ?? 1 }));
       const noteData = {
         brandName: formData.brandName,
         subBrand: formData.subBrand,
@@ -262,7 +297,7 @@ export default function EditNotePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none">
+    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
       <div className="flex items-center mb-6">
         <Button variant="ghost" size="icon" onClick={() => router.push('/profile')} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
@@ -281,23 +316,17 @@ export default function EditNotePage() {
             <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
               {images.length === 2 ? (
                 <>
-                  <div id="container-0" className="h-full relative overflow-hidden" style={{ width: `${splitRatio}%` }}>
-                    <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0} draggableUnZoomed={true} style={{ height: '100%', width: '100%' }}>
-                      <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" alt="img1" />
-                    </QuickPinchZoom>
+                  <div id="container-0" className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                    <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
                   </div>
                   <div className="h-full w-px bg-white/20 z-10" />
-                  <div id="container-1" className="h-full relative overflow-hidden" style={{ width: `${100 - splitRatio}%` }}>
-                    <QuickPinchZoom ref={pinchZoomRef1} onUpdate={onUpdate1} draggableUnZoomed={true} style={{ height: '100%', width: '100%' }}>
-                      <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" alt="img2" />
-                    </QuickPinchZoom>
+                  <div id="container-1" className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
+                    <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
                   </div>
                 </>
               ) : (
-                <div id="container-0" className="w-full h-full relative overflow-hidden">
-                  <QuickPinchZoom ref={pinchZoomRef0} onUpdate={onUpdate0} style={{ height: '100%', width: '100%' }}>
-                    <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" alt="img1" />
-                  </QuickPinchZoom>
+                <div id="container-0" className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                  <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
                 </div>
               )}
             </div>
