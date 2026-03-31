@@ -77,24 +77,20 @@ export const identifySakeFlow = ai.defineFlow(
       throw new Error('AI 回傳資料為空，請確保酒標清晰可見。');
     }
 
-    // Step 2: 若三大資訊有缺，用 Google Search grounding 補齊
+    // Step 2: 若三大資訊有缺，用以圖搜圖（圖片 + Google Search grounding）補齊
     const missingSeimaibuai = !visionOutput.seimaibuai;
     const missingAlcohol = !visionOutput.alcoholPercent;
     const missingRice = !visionOutput.riceName;
 
     if ((missingSeimaibuai || missingAlcohol || missingRice) && visionOutput.brandName) {
       try {
-        const breweryHint = visionOutput.brewery ? `（酒造：${visionOutput.brewery}）` : '';
         const searchResponse = await ai.generate({
           model: googleAI.model('gemini-flash-latest'),
           config: { googleSearchRetrieval: true },
-          prompt: `搜尋日本清酒「${visionOutput.brandName}」${breweryHint}的規格資訊。
-請找出以下三項資訊，並只回傳這個 JSON（不要任何說明文字）：
-{
-  "seimaibuai": "精米步合（格式如：50%），找不到填 null",
-  "alcoholPercent": "酒精濃度（格式如：16度），找不到填 null",
-  "riceName": "使用酒米品種（日文原文，如：山田錦），找不到填 null"
-}`,
+          prompt: [
+            { text: `你是清酒專家。請用這張酒標圖片進行以圖搜圖，找到這款清酒（${visionOutput.brandName}）的精確規格。\n請只回傳以下 JSON，不要任何說明文字：\n{\n  "seimaibuai": "精米步合（如：50%），找不到填 null",\n  "alcoholPercent": "酒精濃度（如：16度），找不到填 null",\n  "riceName": "使用酒米品種（日文原文，如：山田錦），找不到填 null"\n}` },
+            { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
+          ],
         });
 
         const searchText = searchResponse.text ?? '';

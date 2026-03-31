@@ -199,7 +199,7 @@ export default function NewNotePage() {
           const resized = await resizeImage(base64, 1024);
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
-          if (isFirstUpload && index === 0) triggerAIIdentification(resized);
+          // AI 辨識由使用者手動觸發（右上角按鈕），不自動執行
         };
         reader.readAsDataURL(file);
       });
@@ -397,6 +397,17 @@ const handleSave = async () => {
                     <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
                   </div>
                 )}
+                {/* AI 辨識按鈕 — 右上角 */}
+                {!isIdentifying && originals.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => triggerAIIdentification(originals[0])}
+                    className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    AI 辨識
+                  </button>
+                )}
                 {isIdentifying && (
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                     <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
@@ -461,7 +472,7 @@ const handleSave = async () => {
                 </span>
               ))}
               {formData.sakeInfoTags.length === 0 && (
-                <span className="text-[8px] text-muted-foreground/40 italic ml-1">上傳酒標後 AI 自動填入...</span>
+                <span className="text-[8px] text-muted-foreground/40 italic ml-1">按右上角 AI 辨識鈕後自動填入...</span>
               )}
             </div>
             <div className="flex gap-2">
