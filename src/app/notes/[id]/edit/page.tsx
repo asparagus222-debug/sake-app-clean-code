@@ -83,7 +83,7 @@ export default function EditNotePage() {
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
         sakeInfoTags: note.sakeInfoTags || [],
-        userDescription: note.userDescription || note.description || '',,
+        userDescription: note.userDescription || note.description || '',
         aiResultNote: note.aiResultNote || '',
         activeBrain: note.activeBrain || null,
       });
