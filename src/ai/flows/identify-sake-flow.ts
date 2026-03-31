@@ -21,6 +21,10 @@ const IdentifySakeOutputSchema = z.object({
   brandName: z.string().describe('銘柄名稱 (例如：十四代、新政、而今) 請保持日文原文。'),
   brewery: z.string().describe('酒造名稱 (例如：高木酒造) 請保持日文原文。'),
   origin: z.string().describe('產地縣市 (例如：山形県) 請保持日文原文。'),
+  alcoholPercent: z.string().optional().describe('酒精濃度，格式如 "16度" 或 "16%"，若看不到則回傳空字串。'),
+  seimaibuai: z.string().optional().describe('精米步合，格式如 "50%" 或 "50割"，若看不到則回傳空字串。'),
+  riceName: z.string().optional().describe('使用酒米品種 (例如：山田錦、五百万石)，若看不到則回傳空字串。保持日文原文。'),
+  specialProcess: z.array(z.string()).optional().describe('特殊製程標籤陣列，從酒標上辨識，例如：["生原酒","無濾過","生酛"]，若無則回傳空陣列。保持日文原文。'),
 });
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
@@ -67,7 +71,7 @@ export const identifySakeFlow = ai.defineFlow(
       },
       // 關鍵修正 2：在 prompt 裡強調 JSON 格式
       prompt: [
-        { text: '你是一位世界級的清酒專家。請精確識別這張照片中的清酒資訊，並以 JSON 格式回傳銘柄、酒造與產地。請務必保持日文原文。' },
+        { text: '你是一位世界級的清酒專家。請精確識別這張照片中的清酒資訊，並以 JSON 格式回傳。請務必保持日文原文。\n\n請提取：\n- brandName: 銘柄名稱\n- brewery: 酒造名稱\n- origin: 產地縣市\n- alcoholPercent: 酒精濃度（如 "16度"，看不到填空字串）\n- seimaibuai: 精米步合（如 "50%"，看不到填空字串）\n- riceName: 使用酒米品種（如 "山田錦"，看不到填空字串）\n- specialProcess: 特殊製程標籤陣列（如 ["生原酒","無濾過"]，無則空陣列）' },
         { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
       ],
     });

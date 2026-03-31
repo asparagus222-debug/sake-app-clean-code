@@ -208,8 +208,16 @@ export default function NoteDetailPage() {
                   )}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{note.brandName}</h1>
-                {note.subBrand && (
-                  <p className="text-accent font-bold text-xs uppercase tracking-widest mt-1 italic">{note.subBrand}</p>
+                
+                {/* 酒鑑資訊標籤 */}
+                {note.sakeInfoTags && note.sakeInfoTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {note.sakeInfoTags.map((tag, idx) => (
+                      <span key={idx} className="bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 )}
                 
                 <div className="flex flex-col gap-2 pt-3">

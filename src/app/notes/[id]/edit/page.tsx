@@ -53,7 +53,6 @@ export default function EditNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
     sweetness: 3,
@@ -63,6 +62,7 @@ export default function EditNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
+    sakeInfoTags: [] as string[],
     userDescription: '',
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
@@ -82,7 +82,8 @@ export default function EditNotePage() {
         astringency: note.astringencyRating,
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
-        userDescription: note.userDescription || note.description || '',
+        sakeInfoTags: note.sakeInfoTags || [],
+        userDescription: note.userDescription || note.description || '',,
         aiResultNote: note.aiResultNote || '',
         activeBrain: note.activeBrain || null,
       });
@@ -126,7 +127,6 @@ export default function EditNotePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandName: formData.brandName,
-          subBrand: formData.subBrand,
           ratings: {
             sweetness: formData.sweetness,
             acidity: formData.acidity,
@@ -253,11 +253,11 @@ export default function EditNotePage() {
       const transforms = images.map((_, i) => ({ x: offsets[i]?.x ?? 0, y: offsets[i]?.y ?? 0, scale: zooms[i] ?? 1 }));
       const noteData = {
         brandName: formData.brandName,
-        subBrand: formData.subBrand,
         brewery: formData.brewery,
         origin: formData.origin,
         overallRating: formData.overallRating,
         styleTags: formData.styleTags,
+        sakeInfoTags: formData.sakeInfoTags,
         userDescription: formData.userDescription,
         aiResultNote: formData.aiResultNote,
         activeBrain: formData.activeBrain,
@@ -347,15 +347,59 @@ export default function EditNotePage() {
               </div>
             )}
           </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副標 / 規格</Label>
-            <div className="relative">
-              <Input placeholder="例如：生原酒" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs pl-8" value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} />
-              <Info className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
-            </div>
-          </div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} /></div>
+        </section>
+
+        {/* 酒譜資訊標籤 */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <Label className="text-[9px] uppercase font-bold text-muted-foreground">酒譜資訊標籤</Label>
+            <span className="text-[8px] text-muted-foreground/60">可手動加入/刪除</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+            {formData.sakeInfoTags.map(tag => (
+              <span key={tag} className="flex items-center gap-1 bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-full text-[9px] font-bold">
+                {tag}
+                <button type="button" onClick={() => setFormData(p => ({ ...p, sakeInfoTags: p.sakeInfoTags.filter(t => t !== tag) }))}>
+                  <X className="w-2.5 h-2.5 hover:text-white" />
+                </button>
+              </span>
+            ))}
+            {formData.sakeInfoTags.length === 0 && (
+              <span className="text-[8px] text-muted-foreground/40 italic ml-1">尚無資訊標籤...</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              id="edit-sake-info-tag-input"
+              placeholder="自訂標籤（如：生原酒、無濾過、720ml）..."
+              className="bg-white/5 h-8 text-[9px] rounded-xl flex-1 border-sky-500/30"
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const v = (e.target as HTMLInputElement).value.trim();
+                  if (v && !formData.sakeInfoTags.includes(v)) {
+                    setFormData(p => ({ ...p, sakeInfoTags: [...p.sakeInfoTags, v] }));
+                    (e.target as HTMLInputElement).value = '';
+                  }
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="h-8 w-8 rounded-xl bg-sky-500/20 hover:bg-sky-500/40 border border-sky-500/30"
+              onClick={() => {
+                const input = document.getElementById('edit-sake-info-tag-input') as HTMLInputElement;
+                const v = input?.value.trim();
+                if (v && !formData.sakeInfoTags.includes(v)) {
+                  setFormData(p => ({ ...p, sakeInfoTags: [...p.sakeInfoTags, v] }));
+                  if (input) input.value = '';
+                }
+              }}
+            ><Plus className="w-3 h-3 text-sky-300" /></Button>
+          </div>
         </section>
 
         <section className="space-y-4 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">

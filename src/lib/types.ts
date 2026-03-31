@@ -11,6 +11,7 @@ export type SakeNote = {
   imageOriginals?: string[];
   imageTransforms?: Array<{ x: number; y: number; scale: number }>;
   imageSplitRatio?: number;
+  sakeInfoTags?: string[];  // 酒精濃度、精米步合、酒米、特殊製程等標籤
   sweetnessRating: number;
   acidityRating: number;
   bitternessRating: number;

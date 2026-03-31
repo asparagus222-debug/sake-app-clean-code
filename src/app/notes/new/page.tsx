@@ -71,7 +71,6 @@ export default function NewNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
     sweetness: 3,
@@ -81,9 +80,10 @@ export default function NewNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
-    userDescription: '',  // 👈 新增：作者原始筆記
-    aiResultNote: '',     // 👈 新增：AI 生成的修飾筆記
-    activeBrain: null as 'left' | 'right' | null, // 👈 新增：紀錄目前點擊的是哪一邊
+    sakeInfoTags: [] as string[],  // 酒精濃度、精米步合、酒米、特殊製程
+    userDescription: '',
+    aiResultNote: '',
+    activeBrain: null as 'left' | 'right' | null,
   });
 
   useEffect(() => {
@@ -163,11 +163,17 @@ export default function NewNotePage() {
       const optimizedPhoto = await resizeImage(photoDataUri, 1024);
       const result = await identifySake({ photoDataUri: optimizedPhoto });
       if (result) {
+        const newInfoTags: string[] = [];
+        if (result.alcoholPercent) newInfoTags.push(result.alcoholPercent);
+        if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
+        if (result.riceName) newInfoTags.push(result.riceName);
+        if (result.specialProcess) newInfoTags.push(...result.specialProcess);
         setFormData(prev => ({
           ...prev,
           brandName: result.brandName || prev.brandName,
           brewery: result.brewery || prev.brewery,
-          origin: result.origin || prev.origin
+          origin: result.origin || prev.origin,
+          sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
         }));
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
       }
@@ -319,6 +325,7 @@ const handleSave = async () => {
       userDescription: formData.userDescription, 
       aiResultNote: formData.aiResultNote,
       activeBrain: formData.activeBrain,
+      sakeInfoTags: formData.sakeInfoTags,
       
       imageUrls: finalImages,
       imageOriginals: originals,
@@ -409,35 +416,84 @@ const handleSave = async () => {
         </section>
 
         {/* 基礎資訊 */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-3 relative" ref={suggestionRef}>
-          <div className="space-y-1 relative">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
-              <Input placeholder="例如：十四代" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
-            </div>
-            {showSuggestions && brandSuggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
-                {brandSuggestions.map((item, idx) => (
-                  <button key={idx} className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 transition-colors" onClick={() => selectSuggestion(item)}>
-                    <p className="font-bold text-primary text-xs">{item.brand}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
-                  </button>
-                ))}
+        <section className="space-y-3 relative" ref={suggestionRef}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1 relative">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
+                <Input placeholder="例如：十四代" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
               </div>
-            )}
+              {showSuggestions && brandSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
+                  {brandSuggestions.map((item, idx) => (
+                    <button key={idx} className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 transition-colors" onClick={() => selectSuggestion(item)}>
+                      <p className="font-bold text-primary text-xs">{item.brand}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
+              <Input placeholder="例如：高木酒造" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label>
+              <Input placeholder="例如：山形縣" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副標 / 規格</Label>
-            <Input placeholder="例如：生原酒" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
-            <Input placeholder="例如：高木酒造" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label>
-            <Input placeholder="例如：山形縣" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
+
+          {/* 酒鑑資訊標籤 — AI 自動填入，可手動補充/刪除 */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒鑑資訊標籤</Label>
+              <span className="text-[8px] text-muted-foreground/60">AI 自動辨識，可手動加刪</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+              {formData.sakeInfoTags.map(tag => (
+                <span key={tag} className="flex items-center gap-1 bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-full text-[9px] font-bold">
+                  {tag}
+                  <button type="button" onClick={() => setFormData(p => ({ ...p, sakeInfoTags: p.sakeInfoTags.filter(t => t !== tag) }))}>
+                    <X className="w-2.5 h-2.5 hover:text-white" />
+                  </button>
+                </span>
+              ))}
+              {formData.sakeInfoTags.length === 0 && (
+                <span className="text-[8px] text-muted-foreground/40 italic ml-1">上傳酒標後 AI 自動填入...</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id="sake-info-tag-input"
+                placeholder="自訂標籤（如：生原酒、無濾過、720ml）..."
+                className="bg-white/5 h-8 text-[9px] rounded-xl flex-1 border-sky-500/30"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    if (v && !formData.sakeInfoTags.includes(v)) {
+                      setFormData(p => ({ ...p, sakeInfoTags: [...p.sakeInfoTags, v] }));
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="icon"
+                className="h-8 w-8 rounded-xl bg-sky-500/20 hover:bg-sky-500/40 border border-sky-500/30"
+                onClick={() => {
+                  const input = document.getElementById('sake-info-tag-input') as HTMLInputElement;
+                  const v = input?.value.trim();
+                  if (v && !formData.sakeInfoTags.includes(v)) {
+                    setFormData(p => ({ ...p, sakeInfoTags: [...p.sakeInfoTags, v] }));
+                    if (input) input.value = '';
+                  }
+                }}
+              ><Plus className="w-3 h-3 text-sky-300" /></Button>
+            </div>
           </div>
         </section>
 
