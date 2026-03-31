@@ -63,23 +63,60 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
-    const { output } = await ai.generate({
+    // Step 1: 從圖片辨識酒標資訊
+    const { output: visionOutput } = await ai.generate({
       model: googleAI.model('gemini-flash-latest'),
-      // 關鍵修正 1：明確指定輸出 Schema
-      output: {
-        schema: IdentifySakeOutputSchema,
-      },
-      // 關鍵修正 2：在 prompt 裡強調 JSON 格式
+      output: { schema: IdentifySakeOutputSchema },
       prompt: [
         { text: '你是一位世界級的清酒專家。請精確識別這張照片中的清酒資訊，並以 JSON 格式回傳。請務必保持日文原文。\n\n請提取：\n- brandName: 銘柄名稱\n- brewery: 酒造名稱\n- origin: 產地縣市\n- alcoholPercent: 酒精濃度（如 "16度"，看不到填空字串）\n- seimaibuai: 精米步合（如 "50%"，看不到填空字串）\n- riceName: 使用酒米品種（如 "山田錦"，看不到填空字串）\n- specialProcess: 特殊製程標籤陣列（如 ["生原酒","無濾過"]，無則空陣列）' },
         { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
       ],
     });
 
-    if (!output) {
+    if (!visionOutput) {
       throw new Error('AI 回傳資料為空，請確保酒標清晰可見。');
     }
 
-    return output;
+    // Step 2: 若三大資訊有缺，用 Google Search grounding 補齊
+    const missingSeimaibuai = !visionOutput.seimaibuai;
+    const missingAlcohol = !visionOutput.alcoholPercent;
+    const missingRice = !visionOutput.riceName;
+
+    if ((missingSeimaibuai || missingAlcohol || missingRice) && visionOutput.brandName) {
+      try {
+        const breweryHint = visionOutput.brewery ? `（酒造：${visionOutput.brewery}）` : '';
+        const searchResponse = await ai.generate({
+          model: googleAI.model('gemini-flash-latest'),
+          config: { googleSearchRetrieval: true },
+          prompt: `搜尋日本清酒「${visionOutput.brandName}」${breweryHint}的規格資訊。
+請找出以下三項資訊，並只回傳這個 JSON（不要任何說明文字）：
+{
+  "seimaibuai": "精米步合（格式如：50%），找不到填 null",
+  "alcoholPercent": "酒精濃度（格式如：16度），找不到填 null",
+  "riceName": "使用酒米品種（日文原文，如：山田錦），找不到填 null"
+}`,
+        });
+
+        const searchText = searchResponse.text ?? '';
+        const jsonMatch = searchText.match(/\{[\s\S]*?\}/);
+        if (jsonMatch) {
+          const searchData = JSON.parse(jsonMatch[0]) as {
+            seimaibuai?: string | null;
+            alcoholPercent?: string | null;
+            riceName?: string | null;
+          };
+          return {
+            ...visionOutput,
+            seimaibuai: visionOutput.seimaibuai || searchData.seimaibuai || undefined,
+            alcoholPercent: visionOutput.alcoholPercent || searchData.alcoholPercent || undefined,
+            riceName: visionOutput.riceName || searchData.riceName || undefined,
+          };
+        }
+      } catch {
+        // 搜尋失敗不影響主流程，直接回傳圖片辨識結果
+      }
+    }
+
+    return visionOutput;
   }
 );
