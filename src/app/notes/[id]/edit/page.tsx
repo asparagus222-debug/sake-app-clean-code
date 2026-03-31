@@ -68,21 +68,6 @@ export default function EditNotePage() {
     activeBrain: null as 'left' | 'right' | null,
   });
 
-  // 縮放手勢更新函數
-  const onUpdate0 = useCallback(({ x, y, scale }: { x: number, y: number, scale: number }) => {
-    if (imgRef0.current) {
-      const value = make3dTransformValue({ x, y, scale });
-      imgRef0.current.style.setProperty('transform', value);
-    }
-  }, []);
-
-  const onUpdate1 = useCallback(({ x, y, scale }: { x: number, y: number, scale: number }) => {
-    if (imgRef1.current) {
-      const value = make3dTransformValue({ x, y, scale });
-      imgRef1.current.style.setProperty('transform', value);
-    }
-  }, []);
-
   useEffect(() => {
     if (note) {
       setFormData({
