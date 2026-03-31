@@ -217,25 +217,35 @@ export default function EditNotePage() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
-    canvas.width = 1200; canvas.height = 1200;
+    const SIZE = 1200;
+    canvas.width = SIZE; canvas.height = SIZE;
 
-    // 直接從 state 讀取 zoom/offset，不需要解析 DOM transform
+    // 直接從 state 讀取 zoom/offset
     const zoom = zooms[idx] ?? 1;
     const offset = offsets[idx] ?? { x: 0, y: 0 };
 
+    // object-cover 語義：短邊撐滿 SIZE，長邊溢出（裁切）
     const imgRatio = img.width / img.height;
-    let drawWidth, drawHeight;
-    if (imgRatio > 1) { drawHeight = 1200 * zoom; drawWidth = drawHeight * imgRatio; }
-    else { drawWidth = 1200 * zoom; drawHeight = drawWidth / imgRatio; }
-    const baseOffsetX = (1200 - drawWidth) / 2;
-    const baseOffsetY = (1200 - drawHeight) / 2;
-
+    let coverW, coverH;
+    if (imgRatio > 1) { coverH = SIZE; coverW = SIZE * imgRatio; }
+    else { coverW = SIZE; coverH = SIZE / imgRatio; }
+    // 基礎居中（cover 裁切為正中央）
+    const baseX = (SIZE - coverW) / 2;
+    const baseY = (SIZE - coverH) / 2;
+    // 將畫面裡的 px offset 比例導成 canvas 數值
     const container = document.getElementById(`container-${idx}`);
-    const scaleFactor = 1200 / (container?.clientWidth || 640);
-
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 1200, 1200);
+    const scaleFactor = SIZE / (container?.clientWidth || 390);
+    const drawW = coverW * zoom;
+    const drawH = coverH * zoom;
+    // zoom 從中心縮放
+    const zoomOffX = (coverW - drawW) / 2;
+    const zoomOffY = (coverH - drawH) / 2;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SIZE, SIZE);
     try {
-      ctx.drawImage(img, baseOffsetX + (offset.x * scaleFactor), baseOffsetY + (offset.y * scaleFactor), drawWidth, drawHeight);
+      ctx.drawImage(img,
+        baseX + zoomOffX + (offset.x * scaleFactor),
+        baseY + zoomOffY + (offset.y * scaleFactor),
+        drawW, drawH);
       return canvas.toDataURL('image/jpeg', 0.85);
     } catch {
       return images[idx];

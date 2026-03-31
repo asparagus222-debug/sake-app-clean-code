@@ -208,18 +208,30 @@ export default function NewNotePage() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
-    canvas.width = 1200; canvas.height = 1200;
+    const SIZE = 1200;
+    canvas.width = SIZE; canvas.height = SIZE;
     const zoom = zooms[idx]; const offset = offsets[idx];
+    // object-cover 語義：短邊擐滿 SIZE
     const imgRatio = img.width / img.height;
-    let drawWidth, drawHeight;
-    if (imgRatio > 1) { drawHeight = 1200 * zoom; drawWidth = drawHeight * imgRatio; }
-    else { drawWidth = 1200 * zoom; drawHeight = drawWidth / imgRatio; }
-    const baseOffsetX = (1200 - drawWidth) / 2;
-    const baseOffsetY = (1200 - drawHeight) / 2;
+    let coverW, coverH;
+    if (imgRatio > 1) { coverH = SIZE; coverW = SIZE * imgRatio; }
+    else { coverW = SIZE; coverH = SIZE / imgRatio; }
+    // 基礎居中（cover 裁切為正中央）
+    const baseX = (SIZE - coverW) / 2;
+    const baseY = (SIZE - coverH) / 2;
+    // 將畫面裏的 px offset 比例導成 canvas 小數
     const editorWidth = window.innerWidth < 640 ? window.innerWidth - 64 : 640;
-    const scaleFactor = 1200 / editorWidth;
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 1200, 1200);
-    ctx.drawImage(img, baseOffsetX + (offset.x * scaleFactor), baseOffsetY + (offset.y * scaleFactor), drawWidth, drawHeight);
+    const scaleFactor = SIZE / editorWidth;
+    const drawW = coverW * zoom;
+    const drawH = coverH * zoom;
+    // zoom 從中心漲將
+    const zoomOffX = (coverW - drawW) / 2;
+    const zoomOffY = (coverH - drawH) / 2;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.drawImage(img,
+      baseX + zoomOffX + (offset.x * scaleFactor),
+      baseY + zoomOffY + (offset.y * scaleFactor),
+      drawW, drawH);
     return canvas.toDataURL('image/jpeg', 0.85);
   };
 
