@@ -7,7 +7,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Sparkles, Clock, Star } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 function SakeDetailInner() {
@@ -18,9 +18,9 @@ function SakeDetailInner() {
   const firestore = useFirestore();
 
   const [sortMode, setSortMode] = useState<'newest' | 'score'>('newest');
-  const [summary, setSummary] = useState('');
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-  const [summaryFetched, setSummaryFetched] = useState(false);
+  const [intro, setIntro] = useState('');
+  const [isIntroLoading, setIsIntroLoading] = useState(false);
+  const [introFetched, setIntroFetched] = useState(false);
 
   const notesQuery = useMemoFirebase(() => {
     if (!firestore || !brand) return null;
@@ -47,27 +47,44 @@ function SakeDetailInner() {
     : 0;
 
   useEffect(() => {
-    if (summaryFetched || filteredNotes.length === 0) return;
-    setSummaryFetched(true);
-    setIsSummaryLoading(true);
-    fetch('/api/ai/sake-summary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        brandName: brand,
-        brewery,
-        notes: filteredNotes.map(n => ({
-          overallRating: n.overallRating,
-          description: n.description || n.aiResultNote || '',
-          tags: n.styleTags || [],
-        })),
-      }),
-    })
-      .then(r => r.json())
-      .then(data => { if (data.text) setSummary(data.text); })
-      .catch(() => {})
-      .finally(() => setIsSummaryLoading(false));
-  }, [filteredNotes, summaryFetched, brand, brewery]);
+    if (introFetched || !brewery || !firestore) return;
+    setIntroFetched(true);
+    setIsIntroLoading(true);
+
+    // key: sanitise brewery name for use as Firestore document ID
+    const breweryKey = brewery.replace(/[/\\#%?]/g, '_').slice(0, 200);
+    const introRef = doc(firestore, 'breweryIntros', breweryKey);
+
+    (async () => {
+      try {
+        const snap = await getDoc(introRef);
+        if (snap.exists()) {
+          // Cache hit — no API call needed
+          setIntro(snap.data().intro as string);
+        } else {
+          // Cache miss — generate and save
+          const res = await fetch('/api/ai/sake-summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brewery }),
+          });
+          const data = await res.json();
+          if (data.text) {
+            setIntro(data.text);
+            await setDoc(introRef, {
+              intro: data.text,
+              brewery,
+              generatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch {
+        // silent fail
+      } finally {
+        setIsIntroLoading(false);
+      }
+    })();
+  }, [brewery, firestore, introFetched]);
 
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
@@ -99,17 +116,17 @@ function SakeDetailInner() {
           <div className="border-t border-white/10 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Sparkles className="w-3 h-3 text-primary" />
-              <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">AI 綜合評語</span>
+              <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">酒造介紹</span>
             </div>
-            {isSummaryLoading ? (
+            {isIntroLoading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                <span className="text-[10px] text-muted-foreground">生成中...</span>
+                <span className="text-[10px] text-muted-foreground">搜尋酒造資料中...</span>
               </div>
-            ) : summary ? (
-              <p className="text-xs leading-relaxed text-foreground/90">{summary}</p>
-            ) : !isLoading && filteredNotes.length > 0 ? (
-              <p className="text-[10px] text-muted-foreground">尚無評語</p>
+            ) : intro ? (
+              <p className="text-xs leading-relaxed text-foreground/90">{intro}</p>
+            ) : !isIntroLoading ? (
+              <p className="text-[10px] text-muted-foreground">暫無酒造介紹</p>
             ) : null}
           </div>
         </section>
