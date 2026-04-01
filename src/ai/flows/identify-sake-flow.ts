@@ -63,56 +63,21 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
-    // Step 1: 從圖片辨識酒標資訊
-    const { output: visionOutput } = await ai.generate({
+    // 單次 call：圖片讀取 + Google Search grounding 同步執行，省去第二輪等待
+    const { output } = await ai.generate({
       model: googleAI.model('gemini-flash-latest'),
+      config: { googleSearchRetrieval: true },
       output: { schema: IdentifySakeOutputSchema },
       prompt: [
-        { text: '你是一位世界級的清酒專家。請精確識別這張照片中的清酒資訊，並以 JSON 格式回傳。請務必保持日文原文。\n\n請提取：\n- brandName: 銘柄名稱\n- brewery: 酒造名稱\n- origin: 產地縣市\n- alcoholPercent: 酒精濃度（如 "16度"，看不到填空字串）\n- seimaibuai: 精米步合（如 "50%"，看不到填空字串）\n- riceName: 使用酒米品種（如 "山田錦"，看不到填空字串）\n- specialProcess: 特殊製程標籤陣列（如 ["生原酒","無濾過"]，無則空陣列）' },
+        { text: '你是一位世界級的清酒專家。請同時完成兩件事：\n1. 從這張酒標圖片讀取可見的清酒資訊\n2. 用 Google Search 搜尋這款清酒的官方規格，補齊圖片上看不到的資訊\n\n請輸出（保持日文原文）：\n- brandName: 銘柄名稱\n- brewery: 酒造名稱\n- origin: 產地縣市\n- alcoholPercent: 酒精濃度（如 "16度"），圖片看不到就用搜尋結果補齊\n- seimaibuai: 精米步合（如 "50%"），圖片看不到就用搜尋結果補齊\n- riceName: 使用酒米品種（如 "山田錦"），圖片看不到就用搜尋結果補齊\n- specialProcess: 特殊製程標籤陣列（如 ["生原酒","無濾過"]），無則回傳空陣列' },
         { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
       ],
     });
 
-    if (!visionOutput) {
+    if (!output) {
       throw new Error('AI 回傳資料為空，請確保酒標清晰可見。');
     }
 
-    // Step 2: 若三大資訊有缺，用以圖搜圖（圖片 + Google Search grounding）補齊
-    const missingSeimaibuai = !visionOutput.seimaibuai;
-    const missingAlcohol = !visionOutput.alcoholPercent;
-    const missingRice = !visionOutput.riceName;
-
-    if ((missingSeimaibuai || missingAlcohol || missingRice) && visionOutput.brandName) {
-      try {
-        const searchResponse = await ai.generate({
-          model: googleAI.model('gemini-flash-latest'),
-          config: { googleSearchRetrieval: true },
-          prompt: [
-            { text: `你是清酒專家。請用這張酒標圖片進行以圖搜圖，找到這款清酒（${visionOutput.brandName}）的精確規格。\n請只回傳以下 JSON，不要任何說明文字：\n{\n  "seimaibuai": "精米步合（如：50%），找不到填 null",\n  "alcoholPercent": "酒精濃度（如：16度），找不到填 null",\n  "riceName": "使用酒米品種（日文原文，如：山田錦），找不到填 null"\n}` },
-            { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
-          ],
-        });
-
-        const searchText = searchResponse.text ?? '';
-        const jsonMatch = searchText.match(/\{[\s\S]*?\}/);
-        if (jsonMatch) {
-          const searchData = JSON.parse(jsonMatch[0]) as {
-            seimaibuai?: string | null;
-            alcoholPercent?: string | null;
-            riceName?: string | null;
-          };
-          return {
-            ...visionOutput,
-            seimaibuai: visionOutput.seimaibuai || searchData.seimaibuai || undefined,
-            alcoholPercent: visionOutput.alcoholPercent || searchData.alcoholPercent || undefined,
-            riceName: visionOutput.riceName || searchData.riceName || undefined,
-          };
-        }
-      } catch {
-        // 搜尋失敗不影響主流程，直接回傳圖片辨識結果
-      }
-    }
-
-    return visionOutput;
+    return output;
   }
 );
