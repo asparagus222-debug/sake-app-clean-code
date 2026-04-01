@@ -1,16 +1,17 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, setDoc } from 'firebase/firestore';
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
@@ -41,13 +42,38 @@ export default function Home() {
     return latestNotes.filter(note => followingIds.includes(note.userId));
   }, [latestNotes, followingIds]);
 
-  const rankingQuery = useMemoFirebase(() => {
+  // ── Top3 cache: 先讀 meta/top3，cache miss 才 fallback 到 rankingQuery ──
+  const top3CacheRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(50));
+    return doc(firestore, 'meta', 'top3');
   }, [firestore]);
+  const { data: top3Cache, isLoading: isTop3CacheLoading } = useDoc(top3CacheRef);
+
+  const [useFallback, setUseFallback] = useState(false);
+  const top3Written = useRef(false);
+
+  // cache miss 時才啟動 fallback query
+  useEffect(() => {
+    if (isTop3CacheLoading) return;
+    if (!top3Cache?.groups?.length) setUseFallback(true);
+  }, [isTop3CacheLoading, top3Cache]);
+
+  const rankingQuery = useMemoFirebase(() => {
+    if (!firestore || !useFallback) return null;
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(50));
+  }, [firestore, useFallback]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
+  // fallback 計算 top3，並寫入 cache 供下次使用
   const top3Groups = React.useMemo(() => {
+    // ① cache hit
+    if (top3Cache?.groups?.length) {
+      return top3Cache.groups as Array<{
+        brandName: string; brewery: string;
+        avgRating: number; noteCount: number; imageUrl?: string;
+      }>;
+    }
+    // ② fallback 計算
     if (!rankingNotes) return [];
     const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
     for (const note of rankingNotes) {
@@ -58,21 +84,52 @@ export default function Home() {
     return [...map.values()]
       .map(g => {
         const avgRating = g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length;
-        // 取愛心數最高的貼文的圖片，若無則取最新的
         const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
         const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
         const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
-        return { ...g, avgRating, imageUrl };
+        return { brandName: g.brandName, brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
       })
       .sort((a, b) => b.avgRating - a.avgRating)
       .slice(0, 3);
-  }, [rankingNotes]);
+  }, [top3Cache, rankingNotes]);
 
+  // fallback 算完後寫入 cache
+  useEffect(() => {
+    if (top3Written.current) return;
+    if (!firestore || top3Cache?.groups?.length) return;
+    if (!top3Groups.length) return;
+    top3Written.current = true;
+    setDoc(doc(firestore, 'meta', 'top3'), {
+      groups: top3Groups,
+      updatedAt: new Date().toISOString(),
+    }).catch(() => {});
+  }, [top3Groups, top3Cache, firestore]);
+
+  // ── Skeleton：只在 user / profile 還沒確定時顯示 ──
   if (isUserLoading || isProfileLoading || !user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center notebook-texture font-body">
-        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground animate-pulse font-bold tracking-widest uppercase text-xs">載入中...</p>
+      <div className="min-h-screen notebook-texture pb-32 font-body">
+        {/* nav skeleton */}
+        <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
+          <Skeleton className="h-5 w-40 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </nav>
+        <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
+          {/* top3 skeleton */}
+          <section className="space-y-4">
+            <Skeleton className="h-5 w-36 rounded-full" />
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
+              {[0, 1, 2].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />)}
+            </div>
+          </section>
+          {/* notes skeleton */}
+          <section className="space-y-4">
+            <Skeleton className="h-10 w-64 rounded-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
@@ -130,7 +187,7 @@ export default function Home() {
                       {idx + 1}
                     </div>
                     {group.imageUrl && (
-                      <img src={group.imageUrl} alt={group.brandName} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
+                      <img src={group.imageUrl} alt={group.brandName} loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-6 bg-gradient-to-t from-black via-black/60 to-transparent">
                       <p className="text-white/70 font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{group.brewery}</p>
@@ -139,7 +196,7 @@ export default function Home() {
                         <span className="text-sm sm:text-2xl font-bold">{group.avgRating.toFixed(1)}</span>
                         <span className="text-[10px] opacity-60">/ 10</span>
                       </div>
-                      <div className="text-[9px] text-white/50 mt-0.5">{group.notes.length} 篇</div>
+                      <div className="text-[9px] text-white/50 mt-0.5">{group.noteCount ?? (group as any).notes?.length ?? 0} 篇</div>
                     </div>
                   </div>
                 </Link>

@@ -14,7 +14,7 @@ import { identifySake } from '@/ai/flows/identify-sake-flow';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, deleteDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 async function resizeImage(base64: string, maxDimension: number = 1024): Promise<string> {
@@ -345,6 +345,8 @@ const handleSave = async () => {
     };
     
     await addDocumentNonBlocking(collection(firestore, 'sakeTastingNotes'), noteData);
+    // 讓 top3 cache 失效，下次首頁載入時重算
+    deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
     toast({ title: "筆記已發布" });
     router.push('/');
   } catch (err) {

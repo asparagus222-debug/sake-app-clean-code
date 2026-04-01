@@ -13,7 +13,7 @@ import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 export default function EditNotePage() {
@@ -273,6 +273,8 @@ export default function EditNotePage() {
         astringencyRating: formData.astringency,
       };
       await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), noteData);
+      // 讓 top3 cache 失效，下次首頁載入時重算
+      deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
       toast({ title: "修改已儲存" });
       router.push('/profile');
     } catch (err: any) {
