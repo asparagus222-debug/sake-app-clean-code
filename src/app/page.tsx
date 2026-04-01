@@ -6,7 +6,7 @@ import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -43,7 +43,7 @@ export default function Home() {
 
   const rankingQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(200));
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(50));
   }, [firestore]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
@@ -113,9 +113,14 @@ export default function Home() {
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
         {top3Groups.length > 0 && (
           <section className="space-y-6">
-            <div className="flex items-center gap-2 text-accent">
-              <Trophy className="w-5 h-5" />
-              <h2 className="text-base sm:text-lg font-headline font-bold uppercase tracking-widest">銘柄殿堂 Top 3</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-accent">
+                <Trophy className="w-5 h-5" />
+                <h2 className="text-base sm:text-lg font-headline font-bold uppercase tracking-widest">銘柄殿堂 Top 3</h2>
+              </div>
+              <Link href="/rankings" className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">
+                更多 <ChevronRight className="w-3 h-3" />
+              </Link>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {top3Groups.map((group, idx) => (
