@@ -190,20 +190,30 @@ export default function NewNotePage() {
       const remainingSlots = 2 - images.length;
       if (remainingSlots <= 0) return;
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
-      const isFirstUpload = images.length === 0;
-      filesToProcess.forEach((file, index) => {
+      filesToProcess.forEach((file) => {
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64 = reader.result as string;
-          // resize to 1024px for display in editor (saves memory vs raw camera photo)
           const resized = await resizeImage(base64, 1024);
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
-          // AI 辨識由使用者手動觸發（右上角按鈕），不自動執行
         };
         reader.readAsDataURL(file);
       });
     }
+  };
+
+  const handleReplaceImage = (idx: number, file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const resized = await resizeImage(base64, 1024);
+      setImages(prev => { const next = [...prev]; next[idx] = resized; return next; });
+      setOriginals(prev => { const next = [...prev]; next[idx] = resized; return next; });
+      setZooms(prev => { const next = [...prev]; next[idx] = 1; return next; });
+      setOffsets(prev => { const next = [...prev]; next[idx] = { x: 0, y: 0 }; return next; });
+    };
+    reader.readAsDataURL(file);
   };
 
   const captureCurrentView = async (idx: number): Promise<string> => {
@@ -386,15 +396,27 @@ const handleSave = async () => {
                   <>
                     <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
                       <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                      <label className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                        <Camera className="w-2.5 h-2.5" /> 重選
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(0, e.target.files[0]); e.target.value = ''; } }} />
+                      </label>
                     </div>
                     <div className="h-full w-px bg-white/20 z-10" />
                     <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
                       <img src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                      <label className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                        <Camera className="w-2.5 h-2.5" /> 重選
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(1, e.target.files[0]); e.target.value = ''; } }} />
+                      </label>
                     </div>
                   </>
                 ) : (
                   <div className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
                     <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                    <label className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                      <Camera className="w-3 h-3" /> 重選
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(0, e.target.files[0]); e.target.value = ''; } }} />
+                    </label>
                   </div>
                 )}
                 {/* AI 辨識按鈕 — 右上角 */}
@@ -525,14 +547,11 @@ const handleSave = async () => {
           <div className="flex flex-col items-center justify-center pt-2"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
         </section>
 
-{/* --- AI 雙腦品鑑筆記區塊 --- */}
+{/* --- AI 品鑑筆記區塊 --- */}
 <section className="space-y-4">
   {/* 標題與按鈕區 */}
   <div className="flex justify-between items-end px-1">
-    <div className="flex flex-col">
-      <Label className="text-[11px] font-bold text-primary uppercase tracking-widest ml-1">AI 雙腦品鑑筆記</Label>
-      <span className="text-[8px] text-muted-foreground ml-1">LEFT: 理性分析 / RIGHT: 感性想像</span>
-    </div>
+    <Label className="text-[11px] font-bold text-primary uppercase tracking-widest ml-1">AI 品鑑筆記</Label>
     <div className="flex gap-2">
       <Button 
         variant="outline" size="sm" 
@@ -543,7 +562,7 @@ const handleSave = async () => {
           formData.activeBrain === 'left' && "ring-1 ring-blue-500 ring-offset-1 ring-offset-black"
         )}
       >
-        <Sparkles className="w-2.5 h-2.5 mr-1" /> 左腦品鑒
+        <Sparkles className="w-2.5 h-2.5 mr-1" /> 理性品鑑
       </Button>
       <Button 
         variant="outline" size="sm" 
@@ -554,7 +573,7 @@ const handleSave = async () => {
           formData.activeBrain === 'right' && "ring-1 ring-rose-500 ring-offset-1 ring-offset-black"
         )}
       >
-        <Sparkles className="w-2.5 h-2.5 mr-1" /> 右腦品鑒
+        <Sparkles className="w-2.5 h-2.5 mr-1" /> 感性品鑑
       </Button>
     </div>
   </div>
@@ -594,7 +613,7 @@ const handleSave = async () => {
           formData.activeBrain === 'left' ? "text-blue-400" : "text-rose-400"
         )}>
           {formData.activeBrain === 'left' ? <BrainCircuit size={12} /> : <Palette size={12} />}
-          {formData.activeBrain === 'left' ? "AI 理性分析修飾" : formData.activeBrain === 'right' ? "AI 感性想像引導" : "等待點擊上方按鈕生成"}
+          {formData.activeBrain === 'left' ? "AI 理性品鑑" : formData.activeBrain === 'right' ? "AI 感性品鑑" : "點擊上方按鈕生成"}
         </div>
         {isGenerating && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
       </div>

@@ -8,21 +8,35 @@ export async function POST(req: NextRequest) {
     const { brandName, subBrand, ratings, tags, userDescription, mode } = await req.json();
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-    const brainContext = mode === 'left' 
-      ? "左腦品飲（分析與知識）：專注於邏輯、香氣辨識、構造與專業評分。" 
-      : "右腦品飲（感受與想像）：專注於畫面感、直覺、情感與抽象聯想。";
+    const getRatingDesc = (key: string, val: number) => {
+      const maps: Record<string, string[]> = {
+        sweetness: ['極不甜','偏不甜','中等甜度','偏甜','極甜'],
+        acidity: ['極低酸','低酸','中等酸度','高酸','极高酸'],
+        bitterness: ['無苦味','微苦','中等苦味','偏苦','極苦'],
+        umami: ['無旨味','微旨','中等旨味','旨味豐富','極豐旨味'],
+        astringency: ['無澀感','微澀','中等澀感','偏澀','極澀'],
+      };
+      return maps[key]?.[val - 1] ?? '';
+    };
+    const flavorProfile = Object.entries(ratings as Record<string, number>)
+      .map(([k, v]) => getRatingDesc(k, v)).filter(Boolean).join('、');
 
-    const prompt = `
-      你是一位專業唎酒師。請針對以下資訊，撰寫一段「${mode === 'left' ? '左腦理性' : '右腦感性'}」的品飲筆記。
-      
-      【清酒資訊】銘柄:${brandName} ${subBrand}, 五味:${JSON.stringify(ratings)}, 標籤:${tags.join(', ')}
-      【作者原始筆記】${userDescription || '（無提供，請根據規格發揮）'}
+    const prompt = mode === 'left'
+      ? `你是一位資深唎酒師，正在酒吧現場向客人介紹這款清酒。
+請根據以下感官特徵與作者筆記，用自然流暢的口吻寫一段介紹，就像真的在向客人說話。
+不可直接提及任何數字評分，將數值轉化為描述性語言。字數約 80 字，直接輸出文字，不要標題或 JSON。
 
-      【撰寫要求】
-      1. ${brainContext}
-      2. 字數約 80 字。
-      3. 請直接輸出文字內容，不要包含任何標籤或 JSON。
-    `;
+【銘柄】${brandName}
+【感官特徵】${flavorProfile}
+【風格標籤】${tags.join('、') || '無'}
+【作者筆記】${userDescription || '（無）'}`
+      : `你是一位富有文學氣質的清酒品飲師。請針對以下資訊，撰寫一段充滿畫面感的感性品飲筆記。
+可以聯想季節、風景、記憶或情境。字數約 80 字，直接輸出文字，不要標題或 JSON。
+
+【銘柄】${brandName}
+【感官特徵】${flavorProfile}
+【風格標籤】${tags.join('、') || '無'}
+【作者筆記】${userDescription || '（無）'}`;
 
     const result = await model.generateContent(prompt);
     return NextResponse.json({ text: result.response.text().trim() });
