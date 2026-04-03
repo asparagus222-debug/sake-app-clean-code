@@ -106,6 +106,7 @@ export default function NewNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
+    subBrand: '',
     brewery: '',
     origin: '',
     sweetness: 3,
