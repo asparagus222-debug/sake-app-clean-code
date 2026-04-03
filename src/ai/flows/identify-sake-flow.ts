@@ -159,8 +159,10 @@ export const identifySakeFlow = ai.defineFlow(
     if (!vision) throw new Error('無法從圖片提取資訊，請確保酒標清晰可見。');
 
     const { brandName, brewery, origin } = vision;
-    // 如果 brandName ≤2 字（可能是誤讀裝飾書法字），改以 allText 全部可見文字搜尋
-    const isSuspiciousBrand = !brandName || brandName.replace(/[（(）)]/g, '').length <= 2;
+    // 取出括號/空格前的「核心銘柄字串」做可疑判斷
+    // 例：「子 (純米大吟醸)」→ core = "子"（單字，可疑）；「まるわらい」→ core = "まるわらい"（正常）
+    const brandNameCore = brandName.split(/[\s（(]/)[0].trim();
+    const isSuspiciousBrand = !brandName || brandNameCore.length <= 1;
     const allTextJoined = (vision.allText || []).join(' ');
     const searchQuery = isSuspiciousBrand && allTextJoined
       ? `${allTextJoined} 日本酒`
