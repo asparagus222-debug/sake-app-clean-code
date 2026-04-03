@@ -660,7 +660,7 @@ const handleSave = async () => {
                     </button>
                   </div>
                 )}
-                {/* AI 辨識按鈕 — 右上角 */
+                {/* AI 辨識按鈕 — 右上角 */}
                 {!isIdentifying && originals.length > 0 && (
                   <button
                     type="button"
