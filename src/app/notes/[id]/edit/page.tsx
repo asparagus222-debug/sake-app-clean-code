@@ -10,11 +10,36 @@ import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+
+async function getImageRatio(src: string): Promise<number> {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.onload = () => resolve(img.width / img.height);
+    img.onerror = () => resolve(1);
+    img.src = src;
+  });
+}
+
+async function resizeImage(base64: string, maxDimension = 1024): Promise<string> {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.src = base64;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxDimension) { h *= maxDimension / w; w = maxDimension; } }
+      else { if (h > maxDimension) { w *= maxDimension / h; h = maxDimension; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+  });
+}
 
 export default function EditNotePage() {
   const router = useRouter();
@@ -36,6 +61,12 @@ export default function EditNotePage() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialDist, setInitialDist] = useState<number | null>(null);
   const [initialZoom, setInitialZoom] = useState<number | null>(null);
+
+  // 相機/相簿選擇器
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerIdx, setPickerIdx] = useState(0);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // img refs only needed for captureCurrentView container sizing
   const imgRef0 = useRef<HTMLImageElement>(null);
@@ -107,6 +138,34 @@ export default function EditNotePage() {
       }
     }
   }, [note]);
+
+  const handleReplaceImage = (idx: number, file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const resized = await resizeImage(base64, 1024);
+      const ratio = await getImageRatio(resized);
+      const isSingle = images.length === 1;
+      const newZoom = isSingle ? Math.min(ratio, 1 / ratio) : 1;
+      setImages(prev => { const next = [...prev]; next[idx] = resized; return next; });
+      setImgRatios(prev => { const next = [...prev]; next[idx] = ratio; return next; });
+      setZooms(prev => { const next = [...prev]; next[idx] = newZoom; return next; });
+      setOffsets(prev => { const next = [...prev]; next[idx] = { x: 0, y: 0 }; return next; });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const openPicker = (idx: number) => {
+    setPickerIdx(idx);
+    setShowPicker(true);
+  };
+
+  const handlePickerFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    setShowPicker(false);
+    if (files && files[0]) handleReplaceImage(pickerIdx, files[0]);
+    e.target.value = '';
+  };
 
   const handleBrandChange = (value: string) => {
     setFormData(prev => ({ ...prev, brandName: value }));
@@ -329,10 +388,16 @@ export default function EditNotePage() {
                 <>
                   <div id="container-0" className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
                     <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                    <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
+                      <Camera className="w-2.5 h-2.5" /> 重選
+                    </button>
                   </div>
                   <div className="h-full w-px bg-white/20 z-10" />
                   <div id="container-1" className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
                     <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                    <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(1)}>
+                      <Camera className="w-2.5 h-2.5" /> 重選
+                    </button>
                   </div>
                 </>
               ) : (
@@ -346,6 +411,9 @@ export default function EditNotePage() {
                     transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                     transformOrigin: 'center center',
                   }} alt="img1" />
+                  <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
+                    <Camera className="w-3 h-3" /> 重選
+                  </button>
                 </div>
               )}
             </div>
@@ -550,6 +618,41 @@ export default function EditNotePage() {
           {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存修改
         </Button>
       </div>
+
+      {/* 相機 / 相簿選擇底部彈窗 */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowPicker(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">選擇圖片來源</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <Camera className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">拍照</span>
+                <span className="text-[9px] text-muted-foreground">使用相機</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <Images className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">相簿</span>
+                <span className="text-[9px] text-muted-foreground">從圖片庫選取</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 隱藏 file inputs — 相機 & 相簿 */}
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePickerFile} />
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePickerFile} />
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
@@ -67,6 +67,12 @@ export default function NewNotePage() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialDist, setInitialDist] = useState<number | null>(null);
   const [initialZoom, setInitialZoom] = useState<number | null>(null);
+
+  // 相機/相簿選擇器
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<{ type: 'new' | 'replace'; idx: number }>({ type: 'new', idx: 0 });
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -224,6 +230,44 @@ export default function NewNotePage() {
     } finally {
       setIsIdentifying(false);
     }
+  };
+
+  const openPicker = (type: 'new' | 'replace', idx = 0) => {
+    setPickerTarget({ type, idx });
+    setShowPicker(true);
+  };
+
+  const handlePickerFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    setShowPicker(false);
+    if (!files || files.length === 0) { e.target.value = ''; return; }
+    if (pickerTarget.type === 'replace') {
+      handleReplaceImage(pickerTarget.idx, files[0]);
+    } else {
+      const remainingSlots = 2 - images.length;
+      if (remainingSlots <= 0) { e.target.value = ''; return; }
+      const filesToProcess = Array.from(files).slice(0, remainingSlots);
+      const startIdx = images.length;
+      if (startIdx === 1) {
+        setZooms(prev => { const next = [...prev]; next[0] = 1; return next; });
+      }
+      filesToProcess.forEach((file, slotOffset) => {
+        const slotIdx = startIdx + slotOffset;
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64 = reader.result as string;
+          const resized = await resizeImage(base64, 1024);
+          const ratio = await getImageRatio(resized);
+          const newZoom = slotIdx === 0 ? Math.min(ratio, 1 / ratio) : 1;
+          setImages(prev => [...prev, resized]);
+          setOriginals(prev => [...prev, resized]);
+          setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
+          setZooms(prev => { const next = [...prev]; next[slotIdx] = newZoom; return next; });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    e.target.value = '';
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -459,18 +503,16 @@ const handleSave = async () => {
                   <>
                     <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
                       <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
-                      <label className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                      <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
                         <Camera className="w-2.5 h-2.5" /> 重選
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(0, e.target.files[0]); e.target.value = ''; } }} />
-                      </label>
+                      </button>
                     </div>
                     <div className="h-full w-px bg-white/20 z-10" />
                     <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
                       <img src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
-                      <label className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                      <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 1)}>
                         <Camera className="w-2.5 h-2.5" /> 重選
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(1, e.target.files[0]); e.target.value = ''; } }} />
-                      </label>
+                      </button>
                     </div>
                   </>
                 ) : (
@@ -484,10 +526,9 @@ const handleSave = async () => {
                       transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                       transformOrigin: 'center center',
                     }} alt="img1" />
-                    <label className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                    <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
                       <Camera className="w-3 h-3" /> 重選
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(0, e.target.files[0]); e.target.value = ''; } }} />
-                    </label>
+                    </button>
                   </div>
                 )}
                 {/* AI 辨識按鈕 — 右上角 */}
@@ -510,11 +551,10 @@ const handleSave = async () => {
                 )}
               </div>
             ) : (
-              <label className="aspect-square rounded-xl border-2 border-dashed border-primary/30 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 transition-all group">
+              <button type="button" onClick={() => openPicker('new')} className="aspect-square rounded-xl border-2 border-dashed border-primary/30 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 transition-all group w-full">
                 <Camera className="w-8 h-8 text-primary/30 group-hover:text-primary mb-2" />
                 <div className="flex items-center gap-1.5 mb-1"><Sparkles className="w-3 h-3 text-primary animate-pulse" /><span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">點擊上傳酒標</span></div>
-                <input type="file" className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
-              </label>
+              </button>
             )}
             {images.length === 2 && <Slider value={[splitRatio]} onValueChange={v => setSplitRatio(v[0])} min={20} max={80} step={1} className="h-4" />}
           </div>
@@ -743,6 +783,55 @@ const handleSave = async () => {
           {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發布筆記
         </Button>
       </div>
+
+      {/* 相機 / 相簿選擇底部彈窗 */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowPicker(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">選擇圖片來源</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <Camera className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">拍照</span>
+                <span className="text-[9px] text-muted-foreground">使用相機</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <Images className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">相簿</span>
+                <span className="text-[9px] text-muted-foreground">從圖片庫選取</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 隱藏 file inputs — 相機 & 相簿 */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePickerFile}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple={pickerTarget.type === 'new'}
+        className="hidden"
+        onChange={handlePickerFile}
+      />
     </div>
   );
 }
