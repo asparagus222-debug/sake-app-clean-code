@@ -71,7 +71,7 @@ export default function NewNotePage() {
 
   // 相機/相簿選擇器
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<{ type: 'new' | 'replace'; idx: number }>({ type: 'new', idx: 0 });
+  const [pickerTarget, setPickerTarget] = useState<{ type: 'new' | 'replace' | 'replace-all'; idx: number }>({ type: 'new', idx: 0 });
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -242,11 +242,9 @@ export default function NewNotePage() {
       const result = await response.json();
       if (result) {
         const newInfoTags: string[] = [];
-        if (result.alcoholPercent) newInfoTags.push(result.alcoholPercent);
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
         if (result.riceName) newInfoTags.push(result.riceName);
         if (result.specialProcess) newInfoTags.push(...result.specialProcess);
-        // 標準化銘柄/酒造/產地，避免同款酒出現多種寫法
         const normalized = normalizeSakeInfo(
           result.brandName || '',
           result.brewery || '',
@@ -258,6 +256,7 @@ export default function NewNotePage() {
           brandName: normalized.brandName || prev.brandName,
           brewery: normalized.brewery || prev.brewery,
           origin: normalized.origin || prev.origin,
+          alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
           sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
         }));
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
@@ -278,7 +277,9 @@ export default function NewNotePage() {
     const files = e.target.files;
     setShowPicker(false);
     if (!files || files.length === 0) { e.target.value = ''; return; }
-    if (pickerTarget.type === 'replace') {
+    if (pickerTarget.type === 'replace-all') {
+      handleReplaceAll(files);
+    } else if (pickerTarget.type === 'replace') {
       handleReplaceImage(pickerTarget.idx, files[0]);
     } else {
       const remainingSlots = 2 - images.length;
@@ -355,6 +356,35 @@ export default function NewNotePage() {
       setOffsets(prev => { const next = [...prev]; next[idx] = { x: 0, y: 0 }; return next; });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleReplaceAll = (files: FileList) => {
+    const filesToProcess = Array.from(files).slice(0, 2);
+    const total = filesToProcess.length;
+    setLockedImgs([false, false]);
+    setSplitRatio(50);
+    Promise.all(
+      filesToProcess.map((file, slotIdx) =>
+        new Promise<{ slotIdx: number; resized: string; ratio: number; newZoom: number }>(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            const resized = await resizeImage(base64, 1024);
+            const ratio = await getImageRatio(resized);
+            const newZoom = (slotIdx === 0 && total === 1) ? Math.min(ratio, 1 / ratio) : 1;
+            resolve({ slotIdx, resized, ratio, newZoom });
+          };
+          reader.readAsDataURL(file);
+        })
+      )
+    ).then(results => {
+      const sortedResults = [...results].sort((a, b) => a.slotIdx - b.slotIdx);
+      setImages(sortedResults.map(r => r.resized));
+      setOriginals(sortedResults.map(r => r.resized));
+      const newImgRatios = [1, 1]; const newZooms = [1, 1]; const newOffsets = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+      sortedResults.forEach(r => { newImgRatios[r.slotIdx] = r.ratio; newZooms[r.slotIdx] = r.newZoom; });
+      setImgRatios(newImgRatios); setZooms(newZooms); setOffsets(newOffsets);
+    });
   };
 
   const handleSaveDraft = () => {
@@ -584,9 +614,16 @@ const handleSave = async () => {
         <section className="space-y-3">
           <div className="flex justify-between items-center px-1">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">照片聚焦編輯</Label>
-            <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2}>
-              <Repeat className="w-2.5 h-2.5 mr-1" /> 換位
-            </Button>
+            <div className="flex gap-1.5">
+              {images.length > 0 && (
+                <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')}>
+                  <Camera className="w-2.5 h-2.5 mr-1" /> 重選
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2}>
+                <Repeat className="w-2.5 h-2.5 mr-1" /> 換位
+              </Button>
+            </div>
           </div>
           <div className="dark-glass rounded-[2rem] overflow-hidden border border-primary/20 p-3 space-y-3 shadow-xl">
             {images.length > 0 ? (
@@ -598,18 +635,12 @@ const handleSave = async () => {
                       <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                         {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                       </button>
-                      <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
-                        <Camera className="w-2.5 h-2.5" /> 重選
-                      </button>
                     </div>
                     <div className="h-full w-px bg-white/20 z-10" />
                     <div className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
                       <img src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
                       <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
                         {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
-                      </button>
-                      <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 1)}>
-                        <Camera className="w-2.5 h-2.5" /> 重選
                       </button>
                     </div>
                   </>
@@ -627,16 +658,13 @@ const handleSave = async () => {
                     <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                       {lockedImgs[0] ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                     </button>
-                    <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
-                      <Camera className="w-3 h-3" /> 重選
-                    </button>
                   </div>
                 )}
-                {/* AI 辨識按鈕 — 右上角 */}
+                {/* AI 辨識按鈕 — 右上角 */
                 {!isIdentifying && originals.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => triggerAIIdentification(originals[0])}
+                    onClick={async () => { const photo = await captureCurrentView(0); triggerAIIdentification(photo || originals[0]); }}
                     className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
                   >
                     <Sparkles className="w-3 h-3" />
@@ -663,7 +691,7 @@ const handleSave = async () => {
 
         {/* 基礎資訊 */}
         <section className="space-y-3 relative" ref={suggestionRef}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 relative">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
               <div className="relative">
@@ -685,7 +713,7 @@ const handleSave = async () => {
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
               <Input placeholder="例如：高木酒造" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
             </div>
-            <div className="space-y-1 md:col-span-2">
+            <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label>
               <Input placeholder="例如：山形縣" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
             </div>
@@ -748,7 +776,7 @@ const handleSave = async () => {
         </section>
 
         {/* 感官評分 */}
-        <section className="space-y-4 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
+        <section className="space-y-4 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>
           <div className="space-y-4">
             {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
@@ -797,7 +825,7 @@ const handleSave = async () => {
 
   <div className="grid grid-cols-1 gap-4">
     {/* 上方：作者原始筆記 (琥珀金配色) */}
-    <div className="relative group overflow-hidden bg-amber-500/5 border border-amber-500/20 rounded-[1.5rem] p-4 transition-all hover:border-amber-500/40">
+    <div className="relative group overflow-hidden bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 transition-all hover:border-amber-500/40">
       <div className="flex items-center gap-2 mb-2 text-amber-500/70">
         <div className="p-1 bg-amber-500/10 rounded-md"><Info size={12} /></div>
         <span className="text-[9px] font-bold uppercase tracking-[0.2em]">作者的原始筆記</span>
@@ -812,7 +840,7 @@ const handleSave = async () => {
 
     {/* 下方：AI 生成筆記 (動態變色) */}
     <div className={cn(
-      "relative group overflow-hidden rounded-[1.5rem] p-4 transition-all duration-500 border min-h-[120px]",
+      "relative group overflow-hidden rounded-xl p-4 transition-all duration-500 border min-h-[120px]",
       formData.activeBrain === 'left' ? "bg-blue-500/10 border-blue-500/40" : 
       formData.activeBrain === 'right' ? "bg-rose-500/10 border-rose-500/40" : 
       "bg-white/5 border-white/10 opacity-50"
@@ -847,7 +875,7 @@ const handleSave = async () => {
 </section>
 
         {/* 食材搭配 */}
-        <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-emerald-500/20 shadow-xl">
+        <section className="space-y-3 dark-glass p-5 rounded-xl border border-emerald-500/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-emerald-500/10 pb-2 mb-1">
             <span className="text-base">&#127860;</span>
             <h2 className="text-[10px] font-headline text-emerald-400 uppercase tracking-widest">這樣搭好嗎？</h2>
@@ -898,7 +926,7 @@ const handleSave = async () => {
         </section>
 
         {/* 風格標籤 */}
-        <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
+        <section className="space-y-3 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-primary/10 pb-1 mb-2">
              <Tag className="w-3.5 h-3.5 text-primary" />
              <h2 className="text-[10px] font-headline text-primary uppercase tracking-widest">風格標籤</h2>
@@ -938,7 +966,7 @@ const handleSave = async () => {
         <div className="flex gap-3 mb-12">
 
           {/* 開瓶後風味追蹤提醒 */}
-          <section className={cn("w-full space-y-3 dark-glass p-4 rounded-[1.5rem] border transition-all", reminderEnabled ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20")}>
+          <section className={cn("w-full space-y-3 dark-glass p-4 rounded-xl border transition-all", reminderEnabled ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20")}>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <div
                 onClick={() => {
@@ -1035,7 +1063,7 @@ const handleSave = async () => {
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+                className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Camera className="w-8 h-8 text-primary" />
                 <span className="text-sm font-bold text-foreground">拍照</span>
@@ -1044,7 +1072,7 @@ const handleSave = async () => {
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+                className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Images className="w-8 h-8 text-primary" />
                 <span className="text-sm font-bold text-foreground">相簿</span>
@@ -1068,7 +1096,7 @@ const handleSave = async () => {
         ref={galleryInputRef}
         type="file"
         accept="image/*"
-        multiple={pickerTarget.type === 'new'}
+        multiple={pickerTarget.type !== 'replace'}
         className="hidden"
         onChange={handlePickerFile}
       />

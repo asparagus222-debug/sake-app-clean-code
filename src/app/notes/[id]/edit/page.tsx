@@ -12,8 +12,8 @@ import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -66,7 +66,6 @@ export default function EditNotePage() {
 
   // 相機/相簿選擇器
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerIdx, setPickerIdx] = useState(0);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +87,20 @@ export default function EditNotePage() {
     return doc(firestore, 'sakeTastingNotes', id);
   }, [firestore, id]);
   const { data: note, isLoading: isNoteLoading } = useDoc<SakeNote>(noteRef);
+
+  // knownBrands: 使用者自己的品馍紀錄，供 AI 辨識正規化比對
+  const myNotesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'sakeTastingNotes'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+  const { data: myNotes } = useCollection<SakeNote>(myNotesQuery);
+  const knownBrands = React.useMemo(() => {
+    if (!myNotes) return [];
+    const seen = new Set<string>();
+    return myNotes
+      .filter(n => { const k = n.brandName; if (!k || seen.has(k)) return false; seen.add(k); return true; })
+      .map(n => ({ brandName: n.brandName, brewery: n.brewery, origin: n.origin || '' }));
+  }, [myNotes]);
 
   const [formData, setFormData] = useState({
     brandName: '',
@@ -167,15 +180,42 @@ export default function EditNotePage() {
     reader.readAsDataURL(file);
   };
 
-  const openPicker = (idx: number) => {
-    setPickerIdx(idx);
+  const openPicker = () => {
     setShowPicker(true);
+  };
+
+  const handleReplaceAll = (files: FileList) => {
+    const filesToProcess = Array.from(files).slice(0, 2);
+    const total = filesToProcess.length;
+    setLockedImgs([false, false]);
+    setSplitRatio(50);
+    Promise.all(
+      filesToProcess.map((file, slotIdx) =>
+        new Promise<{ slotIdx: number; resized: string; ratio: number; newZoom: number }>(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            const resized = await resizeImage(base64, 1024);
+            const ratio = await getImageRatio(resized);
+            const newZoom = (slotIdx === 0 && total === 1) ? Math.min(ratio, 1 / ratio) : 1;
+            resolve({ slotIdx, resized, ratio, newZoom });
+          };
+          reader.readAsDataURL(file);
+        })
+      )
+    ).then(results => {
+      const sortedResults = [...results].sort((a, b) => a.slotIdx - b.slotIdx);
+      setImages(sortedResults.map(r => r.resized));
+      const newImgRatios = [1, 1]; const newZooms = [1, 1]; const newOffsets = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+      sortedResults.forEach(r => { newImgRatios[r.slotIdx] = r.ratio; newZooms[r.slotIdx] = r.newZoom; });
+      setImgRatios(newImgRatios); setZooms(newZooms); setOffsets(newOffsets);
+    });
   };
 
   const handlePickerFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     setShowPicker(false);
-    if (files && files[0]) handleReplaceImage(pickerIdx, files[0]);
+    if (files && files.length > 0) handleReplaceAll(files);
     e.target.value = '';
   };
 
@@ -247,7 +287,6 @@ export default function EditNotePage() {
       const result = await response.json();
       if (result) {
         const newInfoTags: string[] = [];
-        if (result.alcoholPercent) newInfoTags.push(result.alcoholPercent);
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
         if (result.riceName) newInfoTags.push(result.riceName);
         if (result.specialProcess) newInfoTags.push(...result.specialProcess);
@@ -255,13 +294,14 @@ export default function EditNotePage() {
           result.brandName || '',
           result.brewery || '',
           result.origin || '',
-          []
+          knownBrands
         );
         setFormData(prev => ({
           ...prev,
           brandName: normalized.brandName || prev.brandName,
           brewery: normalized.brewery || prev.brewery,
           origin: normalized.origin || prev.origin,
+          alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
           sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
         }));
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
@@ -649,9 +689,16 @@ export default function EditNotePage() {
         <section className="space-y-3">
           <div className="flex justify-between items-center px-1">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">照片聚焦編輯</Label>
-            <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2}>
-              <Repeat className="w-2.5 h-2.5 mr-1" /> 換位
-            </Button>
+            <div className="flex gap-1.5">
+              {images.length > 0 && (
+                <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker()}>
+                  <Camera className="w-2.5 h-2.5 mr-1" /> 重選
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2}>
+                <Repeat className="w-2.5 h-2.5 mr-1" /> 換位
+              </Button>
+            </div>
           </div>
 
           <div className="dark-glass rounded-[2rem] overflow-hidden border border-primary/20 p-3 space-y-3 shadow-xl">
@@ -663,20 +710,14 @@ export default function EditNotePage() {
                     <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                       {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                     </button>
-                    <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
-                      <Camera className="w-2.5 h-2.5" /> 重選
-                    </button>
-                  </div>
+                    </div>
                   <div className="h-full w-px bg-white/20 z-10" />
                   <div id="container-1" className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
                     <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
                     <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
                       {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                     </button>
-                    <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(1)}>
-                      <Camera className="w-2.5 h-2.5" /> 重選
-                    </button>
-                  </div>
+                    </div>
                 </>
               ) : (
                 <div id="container-0" className={cn("w-full h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
@@ -692,16 +733,13 @@ export default function EditNotePage() {
                   <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                     {lockedImgs[0] ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   </button>
-                  <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
-                    <Camera className="w-3 h-3" /> 重選
-                  </button>
                 </div>
               )}
               {/* AI 辨識按鈕 */}
               {!isIdentifying && images.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => triggerAIIdentification(images[0])}
+                  onClick={async () => { const photo = await captureCurrentView(0); triggerAIIdentification(photo || images[0]); }}
                   className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
                 >
                   <Sparkles className="w-3 h-3" />
@@ -720,7 +758,7 @@ export default function EditNotePage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-3 relative" ref={suggestionRef}>
+        <section className="grid grid-cols-2 gap-3 relative" ref={suggestionRef}>
           <div className="space-y-1 relative">
             <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
             <div className="relative">
@@ -796,7 +834,7 @@ export default function EditNotePage() {
 
         {/* Session label editor for extra sessions */}
         {activeSessionIdx > 0 && extraSessions[activeSessionIdx - 1] && (
-          <section className="space-y-2 dark-glass p-4 rounded-[1.5rem] border border-primary/20">
+          <section className="space-y-2 dark-glass p-4 rounded-xl border border-primary/20">
             <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 品飲時間標記</Label>
             <input
               className="bg-white/5 border border-primary/40 h-9 rounded-xl text-xs w-full px-3 text-foreground"
@@ -814,7 +852,7 @@ export default function EditNotePage() {
           </section>
         )}
 
-        <section className="space-y-4 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
+        <section className="space-y-4 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>          <div className="space-y-4">
             {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
               <div key={key} className="space-y-2">
@@ -862,7 +900,7 @@ export default function EditNotePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <div className="relative overflow-hidden bg-amber-500/5 border border-amber-500/20 rounded-[1.5rem] p-4 transition-all hover:border-amber-500/40">
+            <div className="relative overflow-hidden bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 transition-all hover:border-amber-500/40">
               <div className="flex items-center gap-2 mb-2 text-amber-500/70">
                 <div className="p-1 bg-amber-500/10 rounded-md"><Info size={12} /></div>
                 <span className="text-[9px] font-bold uppercase tracking-[0.2em]">作者的原始筆記</span>
@@ -876,7 +914,7 @@ export default function EditNotePage() {
             </div>
 
             <div className={cn(
-              "relative overflow-hidden rounded-[1.5rem] p-4 transition-all duration-500 border min-h-[120px]",
+              "relative overflow-hidden rounded-xl p-4 transition-all duration-500 border min-h-[120px]",
               formData.activeBrain === 'left' ? "bg-blue-500/10 border-blue-500/40" :
               formData.activeBrain === 'right' ? "bg-rose-500/10 border-rose-500/40" :
               "bg-white/5 border-white/10 opacity-50"
@@ -905,7 +943,7 @@ export default function EditNotePage() {
         </section>
 
         {/* 食材搭配 */}
-        <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-emerald-500/20 shadow-xl">
+        <section className="space-y-3 dark-glass p-5 rounded-xl border border-emerald-500/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-emerald-500/10 pb-2 mb-1">
             <span className="text-base">&#127860;</span>
             <h2 className="text-[10px] font-headline text-emerald-400 uppercase tracking-widest">這樣搭好嗎？</h2>
@@ -955,7 +993,7 @@ export default function EditNotePage() {
           </button>
         </section>
 
-        <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
+        <section className="space-y-3 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-primary/10 pb-1 mb-2"><Tag className="w-3.5 h-3.5 text-primary" /><h2 className="text-[10px] font-headline text-primary gold-glow uppercase tracking-widest">風格標籤</h2></div>
           <div className="space-y-3">
             {['classification', 'style', 'body'].map(group => (
@@ -1010,7 +1048,7 @@ export default function EditNotePage() {
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+                className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Camera className="w-8 h-8 text-primary" />
                 <span className="text-sm font-bold text-foreground">拍照</span>
@@ -1019,7 +1057,7 @@ export default function EditNotePage() {
               <button
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+                className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Images className="w-8 h-8 text-primary" />
                 <span className="text-sm font-bold text-foreground">相簿</span>
@@ -1032,7 +1070,7 @@ export default function EditNotePage() {
 
       {/* 隱藏 file inputs — 相機 & 相簿 */}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePickerFile} />
-      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePickerFile} />
+      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePickerFile} />
     </div>
   );
 }
