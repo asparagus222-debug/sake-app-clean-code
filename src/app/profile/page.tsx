@@ -74,7 +74,7 @@ const THEME_PRESETS = [
   { name: '幽綠', bg: '#064e3b', primary: '#10b981', mode: 'dark' },
   { name: '紫金', bg: '#1e1b4b', primary: '#a855f7', mode: 'dark' },
   { name: '酒紅', bg: '#450a0a', primary: '#f43f5e', mode: 'dark' },
-  { name: '岩石', bg: '#fafaf9', primary: '#44403c', mode: 'light' },
+  { name: '原木', bg: '#fdf8f0', primary: '#92400e', mode: 'light' },
   { name: '櫻粉', bg: '#fff1f2', primary: '#fb7185', mode: 'light' },
   { name: '青瓷', bg: '#f0fdfa', primary: '#0d9488', mode: 'light' },
   { name: '天藍', bg: '#f0f9ff', primary: '#0284c7', mode: 'light' },
