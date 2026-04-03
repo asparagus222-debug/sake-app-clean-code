@@ -23,6 +23,9 @@ import {
   Award,
   BrainCircuit,
   Palette,
+  TrendingUp,
+  Sparkles,
+  Edit3,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -40,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useUser, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, updateDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
 const RatingDots = ({ value }: { value: number }) => {
@@ -66,6 +69,8 @@ export default function NoteDetailPage() {
   const { user } = useUser();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingEvolution, setIsGeneratingEvolution] = useState(false);
+  const [evolutionNoteText, setEvolutionNoteText] = useState("");
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
@@ -94,6 +99,11 @@ export default function NoteDetailPage() {
   }, [firestore, id]);
   const { data: comments } = useCollection<SakeComment>(commentsQuery);
 
+  // Sync evolution note text when note loads
+  React.useEffect(() => {
+    if (note?.evolutionNote) setEvolutionNoteText(note.evolutionNote);
+  }, [note?.evolutionNote]);
+
   const handleAddComment = async () => {
     if (!firestore || !user || !id || !commentText.trim()) return;
     if (!profile?.username) {
@@ -117,6 +127,50 @@ export default function NoteDetailPage() {
       toast({ variant: "destructive", title: "留言失敗" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const generateEvolutionSummary = async () => {
+    if (!note || isGeneratingEvolution) return;
+    setIsGeneratingEvolution(true);
+    try {
+      const response = await fetch('/api/ai/evolution-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandName: note.brandName,
+          session0: {
+            sweetness: note.sweetnessRating,
+            acidity: note.acidityRating,
+            bitterness: note.bitternessRating,
+            umami: note.umamiRating,
+            astringency: note.astringencyRating,
+            overallRating: note.overallRating,
+            userDescription: note.userDescription || note.description || '',
+            label: '開瓶品飲',
+          },
+          sessions: note.sessions || [],
+        }),
+      });
+      const data = await response.json();
+      if (data.text) {
+        setEvolutionNoteText(data.text);
+        toast({ title: 'AI 風味演變總結已生成' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'AI 生成失敗' });
+    } finally {
+      setIsGeneratingEvolution(false);
+    }
+  };
+
+  const saveEvolutionNote = async () => {
+    if (!firestore || !note) return;
+    try {
+      await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), { evolutionNote: evolutionNoteText });
+      toast({ title: '風味演變筆記已儲存' });
+    } catch {
+      toast({ variant: 'destructive', title: '儲存失敗' });
     }
   };
 
@@ -350,6 +404,109 @@ export default function NoteDetailPage() {
     </div>
   )}
 </div>
+
+        {/* 風味演變 section — shown if there are extra sessions OR the author is viewing */}
+        {(note.sessions && note.sessions.length > 0) || user?.uid === note.userId ? (
+          <section className="mt-6 space-y-4 border-t border-primary/10 pt-6">
+            <div className="flex items-center gap-2 text-primary">
+              <TrendingUp className="w-4 h-4" />
+              <h2 className="text-sm font-headline font-bold uppercase tracking-widest gold-glow">風味演變</h2>
+            </div>
+
+            {/* Timeline of sessions */}
+            {note.sessions && note.sessions.length > 0 && (
+              <div className="space-y-3">
+                {/* Session 0 = original */}
+                <div className="flex gap-3 items-start">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1 flex-shrink-0" />
+                    <div className="w-px flex-1 bg-primary/20 mt-1" />
+                  </div>
+                  <div className="flex-1 pb-4">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-primary mb-1">開瓶品飲</p>
+                    <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                      <span>甜 {note.sweetnessRating}</span>
+                      <span>酸 {note.acidityRating}</span>
+                      <span>苦 {note.bitternessRating}</span>
+                      <span>旨 {note.umamiRating}</span>
+                      <span>澀 {note.astringencyRating}</span>
+                      <span className="text-primary font-bold">綜合 {note.overallRating}/10</span>
+                    </div>
+                    {note.userDescription && <p className="text-[10px] text-foreground/70 mt-1 line-clamp-2">{note.userDescription}</p>}
+                  </div>
+                </div>
+                {note.sessions.map((s, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500 mt-1 flex-shrink-0" />
+                      {i < (note.sessions?.length ?? 0) - 1 && <div className="w-px flex-1 bg-primary/20 mt-1" />}
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-amber-400">{s.label}</p>
+                        <span className="text-[8px] text-muted-foreground flex items-center gap-0.5"><Clock className="w-2 h-2" />{new Date(s.timestamp).toLocaleDateString('zh-TW')}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                        <span>甜 {s.sweetness}</span>
+                        <span>酸 {s.acidity}</span>
+                        <span>苦 {s.bitterness}</span>
+                        <span>旨 {s.umami}</span>
+                        <span>澀 {s.astringency}</span>
+                        <span className="text-amber-400 font-bold">綜合 {s.overallRating}/10</span>
+                      </div>
+                      {s.userDescription && <p className="text-[10px] text-foreground/70 mt-1 line-clamp-2">{s.userDescription}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Evolution note — editable by author */}
+            {user?.uid === note.userId && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                    <Edit3 className="w-3 h-3" /> 風味演變筆記
+                  </p>
+                  <div className="flex gap-2">
+                    {note.sessions && note.sessions.length > 0 && (
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={generateEvolutionSummary}
+                        disabled={isGeneratingEvolution}
+                        className="h-7 rounded-full text-[9px] font-bold border-primary/40 text-primary bg-primary/5 hover:bg-primary/20"
+                      >
+                        {isGeneratingEvolution ? <Loader2 className="w-2.5 h-2.5 animate-spin mr-1" /> : <Sparkles className="w-2.5 h-2.5 mr-1" />}
+                        AI 生成總結
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline" size="sm"
+                      onClick={saveEvolutionNote}
+                      className="h-7 rounded-full text-[9px] font-bold border-primary/40 text-primary bg-primary/5 hover:bg-primary/20"
+                    >
+                      儲存
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="記錄這款酒開瓶後的風味變化歷程..."
+                  value={evolutionNoteText}
+                  onChange={e => setEvolutionNoteText(e.target.value)}
+                  className="bg-white/5 border-primary/20 rounded-xl min-h-[80px] text-xs"
+                />
+              </div>
+            )}
+
+            {/* Show saved evolution note for non-authors */}
+            {user?.uid !== note.userId && note.evolutionNote && (
+              <div className="dark-glass rounded-[1.5rem] p-5 space-y-2">
+                <p className="text-[8px] font-bold text-primary uppercase tracking-[0.2em]">作者風味演變分析</p>
+                <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">{note.evolutionNote}</p>
+              </div>
+            )}
+          </section>
+        ) : null}
 
         <section className="mt-6 space-y-4">
           <div className="flex items-center gap-2 text-primary">

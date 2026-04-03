@@ -7,7 +7,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,6 +43,34 @@ export default function Home() {
     loadDraftMeta();
     window.addEventListener('focus', loadDraftMeta);
     return () => window.removeEventListener('focus', loadDraftMeta);
+  }, []);
+
+  // Check for overdue tasting reminders
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    try {
+      const reminders: Array<{ noteId: string; brandName: string; nextReminderAt: string; intervalHours: number }> =
+        JSON.parse(localStorage.getItem('sake_reminders') || '[]');
+      if (reminders.length === 0) return;
+      const now = Date.now();
+      const remaining = reminders.filter(r => {
+        if (new Date(r.nextReminderAt).getTime() <= now) {
+          if (Notification.permission === 'granted') {
+            const n = new Notification(`🍶 品飲提醒：${r.brandName}`, {
+              body: '是時候再次品飲並記錄風味變化了！',
+              icon: '/favicon.ico',
+            });
+            n.onclick = () => {
+              window.focus();
+              window.location.href = `/notes/${r.noteId}/edit`;
+            };
+          }
+          return false; // Remove overdue reminder
+        }
+        return true;
+      });
+      localStorage.setItem('sake_reminders', JSON.stringify(remaining));
+    } catch {}
   }, []);
 
   const formatDraftAge = (iso: string) => {

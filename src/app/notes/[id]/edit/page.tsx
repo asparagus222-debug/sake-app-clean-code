@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
+import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS, TastingSession } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -77,6 +77,10 @@ export default function EditNotePage() {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState("");
 
+  // Multi-session state
+  const [extraSessions, setExtraSessions] = useState<TastingSession[]>([]);
+  const [activeSessionIdx, setActiveSessionIdx] = useState(0); // 0 = original note
+
   const noteRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
     return doc(firestore, 'sakeTastingNotes', id);
@@ -137,6 +141,7 @@ export default function EditNotePage() {
         setZooms(note.imageTransforms.map(t => t.scale));
         setOffsets(note.imageTransforms.map(t => ({ x: t.x, y: t.y })));
       }
+      if (note.sessions) setExtraSessions(note.sessions);
     }
   }, [note]);
 
@@ -318,33 +323,153 @@ export default function EditNotePage() {
     }));
   };
 
+  // Session helper: snapshot current formData ratings/notes into the sessions array before switching
+  const snapshotCurrentSession = (sessions: TastingSession[]): TastingSession[] => {
+    if (activeSessionIdx === 0) return sessions; // slot 0 is already in formData
+    const next = [...sessions];
+    const idx = activeSessionIdx - 1;
+    if (next[idx]) {
+      next[idx] = {
+        ...next[idx],
+        sweetness: formData.sweetness,
+        acidity: formData.acidity,
+        bitterness: formData.bitterness,
+        umami: formData.umami,
+        astringency: formData.astringency,
+        overallRating: formData.overallRating,
+        userDescription: formData.userDescription,
+        aiResultNote: formData.aiResultNote || '',
+      };
+    }
+    return next;
+  };
+
+  const switchToSession = (idx: number) => {
+    if (idx === activeSessionIdx) return;
+    // Save current formData to the right slot
+    setExtraSessions(prev => snapshotCurrentSession(prev));
+    // Load target session
+    if (idx === 0) {
+      // Restore from original note
+      if (note) {
+        setFormData(prev => ({
+          ...prev,
+          sweetness: note.sweetnessRating,
+          acidity: note.acidityRating,
+          bitterness: note.bitternessRating,
+          umami: note.umamiRating,
+          astringency: note.astringencyRating,
+          overallRating: note.overallRating,
+          userDescription: note.userDescription || note.description || '',
+          aiResultNote: note.aiResultNote || '',
+          activeBrain: note.activeBrain || null,
+        }));
+      }
+    } else {
+      const session = extraSessions[idx - 1];
+      if (session) {
+        setFormData(prev => ({
+          ...prev,
+          sweetness: session.sweetness,
+          acidity: session.acidity,
+          bitterness: session.bitterness,
+          umami: session.umami,
+          astringency: session.astringency,
+          overallRating: session.overallRating,
+          userDescription: session.userDescription,
+          aiResultNote: session.aiResultNote || '',
+          activeBrain: null,
+        }));
+      }
+    }
+    setActiveSessionIdx(idx);
+  };
+
+  const addNewSession = () => {
+    // Snapshot current before adding
+    setExtraSessions(prev => {
+      const snapshotted = snapshotCurrentSession(prev);
+      const newSession: TastingSession = {
+        sessionIndex: snapshotted.length + 2,
+        timestamp: new Date().toISOString(),
+        label: `第${snapshotted.length + 2}次品飲`,
+        sweetness: 3,
+        acidity: 3,
+        bitterness: 3,
+        umami: 3,
+        astringency: 3,
+        overallRating: 7,
+        userDescription: '',
+        aiResultNote: '',
+        styleTags: [],
+      };
+      const updated = [...snapshotted, newSession];
+      // Switch form to new session
+      setActiveSessionIdx(updated.length);
+      setFormData(p => ({
+        ...p,
+        sweetness: 3,
+        acidity: 3,
+        bitterness: 3,
+        umami: 3,
+        astringency: 3,
+        overallRating: 7,
+        userDescription: '',
+        aiResultNote: '',
+        activeBrain: null,
+      }));
+      return updated;
+    });
+  };
+
   const handleSave = async () => {
     if (!firestore || !user || !note) return;
     setIsSaving(true);
     try {
+      // Snapshot current session before saving
+      const finalSessions = snapshotCurrentSession(extraSessions);
+
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
       // 儲存目前的縮放位移參數，供下次重新編輯時還原
       const transforms = images.map((_, i) => ({ x: offsets[i]?.x ?? 0, y: offsets[i]?.y ?? 0, scale: zooms[i] ?? 1 }));
-      const noteData = {
-        brandName: formData.brandName,
-        brewery: formData.brewery,
-        origin: formData.origin,
-        overallRating: formData.overallRating,
-        styleTags: formData.styleTags,
-        sakeInfoTags: formData.sakeInfoTags,
-        userDescription: formData.userDescription,
-        aiResultNote: formData.aiResultNote,
-        activeBrain: formData.activeBrain,
-        description: formData.userDescription,
-        imageUrls: finalImages,
-        imageOriginals: images,
-        imageTransforms: transforms,
-        imageSplitRatio: images.length === 2 ? splitRatio : 50,
+
+      // Build session-0 data (original)
+      const session0Data = activeSessionIdx === 0 ? {
         sweetnessRating: formData.sweetness,
         acidityRating: formData.acidity,
         bitternessRating: formData.bitterness,
         umamiRating: formData.umami,
         astringencyRating: formData.astringency,
+        overallRating: formData.overallRating,
+        userDescription: formData.userDescription,
+        aiResultNote: formData.aiResultNote,
+        activeBrain: formData.activeBrain,
+        description: formData.userDescription,
+      } : {
+        sweetnessRating: note.sweetnessRating,
+        acidityRating: note.acidityRating,
+        bitternessRating: note.bitternessRating,
+        umamiRating: note.umamiRating,
+        astringencyRating: note.astringencyRating,
+        overallRating: note.overallRating,
+        userDescription: note.userDescription || note.description || '',
+        aiResultNote: note.aiResultNote || '',
+        activeBrain: note.activeBrain || null,
+        description: note.userDescription || note.description || '',
+      };
+
+      const noteData = {
+        brandName: formData.brandName,
+        brewery: formData.brewery,
+        origin: formData.origin,
+        styleTags: formData.styleTags,
+        sakeInfoTags: formData.sakeInfoTags,
+        imageUrls: finalImages,
+        imageOriginals: images,
+        imageTransforms: transforms,
+        imageSplitRatio: images.length === 2 ? splitRatio : 50,
+        sessions: finalSessions,
+        ...session0Data,
       };
       await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), noteData);
       // 讓 top3 cache 失效，下次首頁載入時重算
@@ -372,6 +497,40 @@ export default function EditNotePage() {
       <div className="flex items-center mb-6">
         <Button variant="ghost" size="icon" onClick={() => router.push('/profile')} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
+      </div>
+
+      {/* Session Tabs */}
+      <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => switchToSession(0)}
+          className={cn(
+            "flex-shrink-0 px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all",
+            activeSessionIdx === 0 ? "bg-primary text-white border-primary shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+          )}
+        >
+          開瓶品飲
+        </button>
+        {extraSessions.map((s, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => switchToSession(i + 1)}
+            className={cn(
+              "flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all",
+              activeSessionIdx === i + 1 ? "bg-primary text-white border-primary shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+            )}
+          >
+            <Clock className="w-2.5 h-2.5" /> {s.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={addNewSession}
+          className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-primary/40 text-primary text-[9px] font-bold hover:bg-primary/10 transition-all"
+        >
+          <Plus className="w-2.5 h-2.5" /> 新增品飲
+        </button>
       </div>
 
       <div className="space-y-5">
@@ -495,9 +654,28 @@ export default function EditNotePage() {
           </div>
         </section>
 
+        {/* Session label editor for extra sessions */}
+        {activeSessionIdx > 0 && extraSessions[activeSessionIdx - 1] && (
+          <section className="space-y-2 dark-glass p-4 rounded-[1.5rem] border border-primary/20">
+            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 品飲時間標記</Label>
+            <input
+              className="bg-white/5 border border-primary/40 h-9 rounded-xl text-xs w-full px-3 text-foreground"
+              value={extraSessions[activeSessionIdx - 1].label}
+              onChange={e => setExtraSessions(prev => {
+                const next = [...prev];
+                next[activeSessionIdx - 1] = { ...next[activeSessionIdx - 1], label: e.target.value };
+                return next;
+              })}
+              placeholder="例如：開瓶第2天、24小時後..."
+            />
+            <p className="text-[9px] text-muted-foreground ml-1">
+              {new Date(extraSessions[activeSessionIdx - 1].timestamp).toLocaleString('zh-TW')}
+            </p>
+          </section>
+        )}
+
         <section className="space-y-4 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
-          <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>
-          <div className="space-y-4">
+          <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>          <div className="space-y-4">
             {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
               <div key={key} className="space-y-2">
                 <div className="flex justify-between items-center px-1">

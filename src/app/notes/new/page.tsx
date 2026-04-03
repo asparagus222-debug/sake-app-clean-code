@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { SakeNote } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -79,6 +79,11 @@ export default function NewNotePage() {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState("");
   const [isEditingDraft, setIsEditingDraft] = useState(false);
+
+  // 追蹤開瓶後風味變化提醒
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderUnit, setReminderUnit] = useState<'hours' | 'days'>('hours');
+  const [reminderValue, setReminderValue] = useState(24);
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -494,9 +499,23 @@ const handleSave = async () => {
       createdAt: new Date().toISOString()
     };
     
-    await addDocumentNonBlocking(collection(firestore, 'sakeTastingNotes'), noteData);
+    const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
     // 讓 top3 cache 失效，下次首頁載入時重算
-    deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});    try { localStorage.removeItem('sake_note_draft'); } catch {}    toast({ title: "筆記已發布" });
+    deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
+    try { localStorage.removeItem('sake_note_draft'); } catch {}
+
+    // 儲存開瓶後追蹤提醒
+    if (reminderEnabled && docRef) {
+      try {
+        const intervalHours = reminderUnit === 'days' ? reminderValue * 24 : reminderValue;
+        const nextAt = new Date(Date.now() + intervalHours * 3600 * 1000).toISOString();
+        const reminders = JSON.parse(localStorage.getItem('sake_reminders') || '[]');
+        reminders.push({ noteId: docRef.id, brandName: formData.brandName, nextReminderAt: nextAt, intervalHours });
+        localStorage.setItem('sake_reminders', JSON.stringify(reminders));
+      } catch {}
+    }
+
+    toast({ title: "筆記已發布" });
     router.push('/');
   } catch (err) {
     toast({ variant: "destructive", title: "儲存失敗" });
@@ -822,6 +841,61 @@ const handleSave = async () => {
           </div>
           <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
         </section>
+
+        <div className="flex gap-3 mb-12">
+
+          {/* 開瓶後風味追蹤提醒 */}
+          <section className={cn("w-full space-y-3 dark-glass p-4 rounded-[1.5rem] border transition-all", reminderEnabled ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20")}>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div
+                onClick={() => {
+                  const next = !reminderEnabled;
+                  setReminderEnabled(next);
+                  if (next && typeof window !== 'undefined' && 'Notification' in window) {
+                    Notification.requestPermission();
+                  }
+                }}
+                className={cn(
+                  "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                  reminderEnabled ? "bg-amber-500 border-amber-500" : "border-primary/40 bg-transparent"
+                )}
+              >
+                {reminderEnabled && <Check className="w-3 h-3 text-black" />}
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                  <Bell className="w-3 h-3 text-amber-500" /> 設定開瓶後風味追蹤提醒
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">時間到時提醒您再次品飲並記錄</p>
+              </div>
+            </label>
+
+            {reminderEnabled && (
+              <div className="pt-2 border-t border-amber-500/20 space-y-3">
+                <p className="text-[9px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> 多久後提醒？</p>
+                <div className="flex gap-2 flex-wrap">
+                  {/* 小時快速選 */}
+                  {[6, 12, 24].map(h => (
+                    <button key={h} type="button" onClick={() => { setReminderUnit('hours'); setReminderValue(h); }}
+                      className={cn("px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all", reminderUnit === 'hours' && reminderValue === h ? "bg-amber-500 text-black border-amber-500" : "bg-white/5 border-amber-500/30 text-amber-300")}>
+                      {h}小時
+                    </button>
+                  ))}
+                  {/* 天快速選 */}
+                  {[1, 2, 3, 7].map(d => (
+                    <button key={d} type="button" onClick={() => { setReminderUnit('days'); setReminderValue(d); }}
+                      className={cn("px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all", reminderUnit === 'days' && reminderValue === d ? "bg-amber-500 text-black border-amber-500" : "bg-white/5 border-amber-500/30 text-amber-300")}>
+                      {d}天後
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-amber-400/70 italic">
+                  提醒時間：{reminderUnit === 'hours' ? `${reminderValue} 小時後` : `${reminderValue} 天後`}（儲存後開始計時）
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
 
         <div className="flex gap-3 mb-12">
           <Button

@@ -1,4 +1,19 @@
 
+export interface TastingSession {
+  sessionIndex: number;   // 1-based (第1次=1, 第2次=2 …)
+  timestamp: string;      // ISO datetime when tasted
+  label: string;          // user-editable, e.g. "開瓶當天","第2天"
+  sweetness: number;
+  acidity: number;
+  bitterness: number;
+  umami: number;
+  astringency: number;
+  overallRating: number;
+  userDescription: string;
+  aiResultNote?: string;
+  styleTags?: string[];
+}
+
 export type SakeNote = {
   id: string;
   userId: string;
@@ -27,6 +42,14 @@ export type SakeNote = {
   likesCount?: number;
   likedByUserIds?: string[];
   createdAt?: string;
+  // Multi-session evolution fields
+  sessions?: TastingSession[];        // Extra tasting sessions beyond the original
+  evolutionNote?: string;             // Author's manual evolution analysis
+  followUpReminder?: {
+    enabled: boolean;
+    intervalHours: number;
+    nextReminderAt: string;           // ISO datetime
+  };
 };
 
 export type SakeComment = {
