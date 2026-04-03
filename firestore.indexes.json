@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "sakeTastingNotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "tastingDate", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
