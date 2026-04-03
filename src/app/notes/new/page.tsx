@@ -9,12 +9,13 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
+import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { identifySake } from '@/ai/flows/identify-sake-flow';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
+import { SakeNote } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -78,6 +79,25 @@ export default function NewNotePage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
   const { data: profile } = useDoc(userDocRef);
+
+  // 使用者已存的銘柄名稱列表，用於 AI 辨識後的標準化
+  const myNotesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('userId', '==', user.uid),
+      orderBy('tastingDate', 'desc'),
+      limit(100)
+    );
+  }, [firestore, user]);
+  const { data: myNotes } = useCollection<SakeNote>(myNotesQuery);
+  const knownBrands = React.useMemo(() => {
+    if (!myNotes) return [];
+    const seen = new Set<string>();
+    return myNotes
+      .filter(n => { const k = n.brandName; if (!k || seen.has(k)) return false; seen.add(k); return true; })
+      .map(n => ({ brandName: n.brandName, brewery: n.brewery, origin: n.origin || '' }));
+  }, [myNotes]);
 
   const [formData, setFormData] = useState({
     brandName: '',
@@ -178,11 +198,18 @@ export default function NewNotePage() {
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
         if (result.riceName) newInfoTags.push(result.riceName);
         if (result.specialProcess) newInfoTags.push(...result.specialProcess);
+        // 標準化銘柄/酒造/產地，避免同款酒出現多種寫法
+        const normalized = normalizeSakeInfo(
+          result.brandName || '',
+          result.brewery || '',
+          result.origin || '',
+          knownBrands
+        );
         setFormData(prev => ({
           ...prev,
-          brandName: result.brandName || prev.brandName,
-          brewery: result.brewery || prev.brewery,
-          origin: result.origin || prev.origin,
+          brandName: normalized.brandName || prev.brandName,
+          brewery: normalized.brewery || prev.brewery,
+          origin: normalized.origin || prev.origin,
           sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
         }));
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });

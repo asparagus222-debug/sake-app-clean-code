@@ -57,3 +57,46 @@ export const SAKE_DATABASE: SakeDatabaseEntry[] = [
   { brand: "阿部酒造", brewery: "阿部酒造", location: "新潟縣" },
   { brand: "屋守", brewery: "豐島屋酒造", location: "東京都" }
 ];
+
+/**
+ * AI 辨識後的銘柄標準化：對比 SAKE_DATABASE，若命中則回傳正規化名稱，
+ * 避免同一銘柄因漢字/片假名/羅馬字差異變成多筆不同紀錄。
+ *
+ * 額外傳入 knownBrands 可比對使用者已存紀錄中的銘柄，優先回傳已有的寫法。
+ */
+export function normalizeSakeInfo(
+  brandName: string,
+  brewery: string,
+  origin: string,
+  knownBrands: Array<{ brandName: string; brewery: string; origin?: string }> = []
+): { brandName: string; brewery: string; origin: string } {
+  // 正規化比對用字串：全小寫、去空白、去常見分隔符
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');
+
+  const nBrand = norm(brandName);
+  const nBrewery = norm(brewery);
+
+  // ① 先比對使用者已存的銘柄（優先使用已有的書寫方式）
+  for (const known of knownBrands) {
+    const nk = norm(known.brandName);
+    if (nk.length < 2) continue;
+    if (nBrand === nk || (nBrand.length >= 2 && (nBrand.includes(nk) || nk.includes(nBrand)))) {
+      return { brandName: known.brandName, brewery: known.brewery, origin: known.origin || origin };
+    }
+  }
+
+  // ② 比對 SAKE_DATABASE
+  for (const entry of SAKE_DATABASE) {
+    const ne = norm(entry.brand);
+    if (ne.length < 2) continue;
+    const brandMatch = nBrand === ne || (nBrand.length >= 2 && (nBrand.includes(ne) || ne.includes(nBrand)));
+    const breweryMatch = nBrewery.length >= 2 && (nBrewery.includes(norm(entry.brewery)) || norm(entry.brewery).includes(nBrewery));
+    if (brandMatch || (breweryMatch && brandMatch)) {
+      return { brandName: entry.brand, brewery: entry.brewery, origin: entry.location };
+    }
+  }
+
+  // ③ 無匹配，原樣回傳
+  return { brandName, brewery, origin };
+}
