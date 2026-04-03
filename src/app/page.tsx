@@ -145,7 +145,12 @@ export default function Home() {
       }
       return [...map.values()]
         .map(g => {
-          const avgRating = g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length;
+          // Use the highest score across all sessions (including extra tasting sessions)
+          const bestRatings = g.notes.map(n => {
+            const sessionMax = n.sessions?.length ? Math.max(...n.sessions.map(s => s.overallRating)) : 0;
+            return Math.max(n.overallRating, sessionMax);
+          });
+          const avgRating = bestRatings.reduce((s, r) => s + r, 0) / g.notes.length;
           const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
           const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
           const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];

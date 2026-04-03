@@ -422,6 +422,60 @@ export default function EditNotePage() {
     });
   };
 
+  const deleteSession = (idx: number) => {
+    // idx is 1-based (extra sessions start at 1)
+    setExtraSessions(prev => prev.filter((_, i) => i !== idx - 1));
+    // If the deleted tab was active or after active, go back to previous tab
+    if (activeSessionIdx >= idx) {
+      const fallback = activeSessionIdx === idx ? idx - 1 : activeSessionIdx - 1;
+      setActiveSessionIdx(0);
+      if (note && fallback === 0) {
+        setFormData(p => ({
+          ...p,
+          sweetness: note.sweetnessRating,
+          acidity: note.acidityRating,
+          bitterness: note.bitternessRating,
+          umami: note.umamiRating,
+          astringency: note.astringencyRating,
+          overallRating: note.overallRating,
+          userDescription: note.userDescription || note.description || '',
+          aiResultNote: note.aiResultNote || '',
+          activeBrain: note.activeBrain || null,
+        }));
+      }
+    }
+  };
+
+  const saveCurrentSession = async () => {
+    if (!firestore || !user || !note) return;
+    setIsSaving(true);
+    try {
+      const finalSessions = snapshotCurrentSession(extraSessions);
+      const session0Data = activeSessionIdx === 0 ? {
+        sweetnessRating: formData.sweetness,
+        acidityRating: formData.acidity,
+        bitternessRating: formData.bitterness,
+        umamiRating: formData.umami,
+        astringencyRating: formData.astringency,
+        overallRating: formData.overallRating,
+        userDescription: formData.userDescription,
+        aiResultNote: formData.aiResultNote,
+        activeBrain: formData.activeBrain,
+        description: formData.userDescription,
+      } : {};
+      await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), {
+        sessions: finalSessions,
+        ...session0Data,
+      });
+      deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
+      toast({ title: `「${activeSessionIdx === 0 ? '開瓶品飲' : extraSessions[activeSessionIdx - 1]?.label || `第${activeSessionIdx + 1}次`}」就儲存` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '儲存失敗', description: err?.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!firestore || !user || !note) return;
     setIsSaving(true);
@@ -512,17 +566,28 @@ export default function EditNotePage() {
           開瓶品飲
         </button>
         {extraSessions.map((s, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => switchToSession(i + 1)}
-            className={cn(
-              "flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all",
-              activeSessionIdx === i + 1 ? "bg-primary text-white border-primary shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
-            )}
-          >
-            <Clock className="w-2.5 h-2.5" /> {s.label}
-          </button>
+          <div key={i} className="flex-shrink-0 flex items-center">
+            <button
+              type="button"
+              onClick={() => switchToSession(i + 1)}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 rounded-l-full border text-[9px] font-bold transition-all",
+                activeSessionIdx === i + 1 ? "bg-primary text-white border-primary shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+              )}
+            >
+              <Clock className="w-2.5 h-2.5" /> {s.label}
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteSession(i + 1)}
+              className={cn(
+                "flex items-center justify-center w-6 py-1.5 rounded-r-full border-t border-r border-b text-[9px] font-bold transition-all hover:bg-destructive/20 hover:text-destructive",
+                activeSessionIdx === i + 1 ? "border-primary bg-primary/80 text-white" : "border-primary/30 bg-white/5 text-muted-foreground"
+              )}
+            >
+              <X className="w-2.5 h-2.5" />
+            </button>
+          </div>
         ))}
         <button
           type="button"
@@ -793,9 +858,20 @@ export default function EditNotePage() {
           <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
         </section>
 
-        <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存修改
-        </Button>
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            className="w-full h-11 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+            onClick={saveCurrentSession}
+            disabled={isSaving}
+          >
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />}
+            儲存「{activeSessionIdx === 0 ? '開瓶品飲' : extraSessions[activeSessionIdx - 1]?.label || `第${activeSessionIdx + 1}次`}」
+          </Button>
+          <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存所有修改
+          </Button>
+        </div>
       </div>
 
       {/* 相機 / 相簿選擇底部彈窗 */}
