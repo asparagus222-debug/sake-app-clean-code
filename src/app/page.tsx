@@ -7,8 +7,9 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, limit, doc, setDoc } from 'firebase/firestore';
@@ -17,6 +18,51 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [activeTab, setActiveTab] = useState("latest");
+  const router = useRouter();
+  const [showDraftPicker, setShowDraftPicker] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftMeta, setDraftMeta] = useState({ brandName: '', savedAt: '' });
+
+  useEffect(() => {
+    const loadDraftMeta = () => {
+      try {
+        const raw = localStorage.getItem('sake_note_draft');
+        if (raw) {
+          const d = JSON.parse(raw);
+          setHasDraft(true);
+          setDraftMeta({ brandName: d.brandName || '未命名草稿', savedAt: d.savedAt || '' });
+        } else {
+          setHasDraft(false);
+          setDraftMeta({ brandName: '', savedAt: '' });
+        }
+      } catch {
+        setHasDraft(false);
+        setDraftMeta({ brandName: '', savedAt: '' });
+      }
+    };
+    loadDraftMeta();
+    window.addEventListener('focus', loadDraftMeta);
+    return () => window.removeEventListener('focus', loadDraftMeta);
+  }, []);
+
+  const formatDraftAge = (iso: string) => {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return '剛剛';
+    if (mins < 60) return `${mins} 分鐘前`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} 小時前`;
+    return `${Math.floor(hrs / 24)} 天前`;
+  };
+
+  const handleNewNoteClick = () => {
+    if (hasDraft) {
+      setShowDraftPicker(true);
+    } else {
+      router.push('/notes/new');
+    }
+  };
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -245,12 +291,43 @@ export default function Home() {
       </main>
 
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
-        <Link href="/notes/new">
-          <Button size="lg" className="h-16 w-16 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)] hover:shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:scale-110 transition-all p-0">
-            <Plus className="w-8 h-8" />
-          </Button>
-        </Link>
+        <Button size="lg" onClick={handleNewNoteClick} className="h-16 w-16 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)] hover:shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:scale-110 transition-all p-0">
+          <Plus className="w-8 h-8" />
+        </Button>
       </div>
+
+      {showDraftPicker && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowDraftPicker(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-5">新增筆記</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowDraftPicker(false); router.push('/notes/new'); }}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <Plus className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">新增貼文</span>
+                <span className="text-[9px] text-muted-foreground">建立新的品飲筆記</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDraftPicker(false); router.push('/notes/new?draft=1'); }}
+                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
+              >
+                <FileText className="w-8 h-8 text-primary" />
+                <span className="text-sm font-bold text-foreground">繼續草稿</span>
+                <span className="text-[9px] text-muted-foreground text-center leading-relaxed">
+                  <span className="block truncate max-w-[110px]">{draftMeta.brandName}</span>
+                  {draftMeta.savedAt && <span className="block text-muted-foreground/50">{formatDraftAge(draftMeta.savedAt)}</span>}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

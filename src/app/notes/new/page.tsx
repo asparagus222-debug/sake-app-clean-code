@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
@@ -78,6 +78,7 @@ export default function NewNotePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState("");
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -130,6 +131,28 @@ export default function NewNotePage() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 從草稿載入（URL 包含 ?draft=1 時）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('draft')) return;
+    try {
+      const raw = localStorage.getItem('sake_note_draft');
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      setIsEditingDraft(true);
+      if (d.formData) setFormData(d.formData);
+      if (d.images?.length) setImages(d.images);
+      if (d.originals?.length) setOriginals(d.originals);
+      if (d.zooms) setZooms(d.zooms);
+      if (d.offsets) setOffsets(d.offsets);
+      if (d.splitRatio !== undefined) setSplitRatio(d.splitRatio);
+      if (d.imgRatios) setImgRatios(d.imgRatios);
+      toast({ title: '草稿已載入', description: `繼續編輯「${d.brandName || '未命名草稿'}」` });
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBrandChange = (value: string) => {
@@ -319,6 +342,27 @@ export default function NewNotePage() {
     reader.readAsDataURL(file);
   };
 
+  const handleSaveDraft = () => {
+    try {
+      const draft = {
+        brandName: formData.brandName || '未命名草稿',
+        formData,
+        images,
+        originals,
+        zooms,
+        offsets,
+        splitRatio,
+        imgRatios,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('sake_note_draft', JSON.stringify(draft));
+      setIsEditingDraft(true);
+      toast({ title: '草稿已儲存', description: '下次點擊新增時可繼續編輯' });
+    } catch {
+      toast({ variant: 'destructive', title: '儲存草稿失敗', description: '裝置儲存空間可能不足' });
+    }
+  };
+
   const captureCurrentView = async (idx: number): Promise<string> => {
     if (!images[idx]) return "";
     const img = new window.Image();
@@ -452,8 +496,7 @@ const handleSave = async () => {
     
     await addDocumentNonBlocking(collection(firestore, 'sakeTastingNotes'), noteData);
     // 讓 top3 cache 失效，下次首頁載入時重算
-    deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
-    toast({ title: "筆記已發布" });
+    deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});    try { localStorage.removeItem('sake_note_draft'); } catch {}    toast({ title: "筆記已發布" });
     router.push('/');
   } catch (err) {
     toast({ variant: "destructive", title: "儲存失敗" });
@@ -780,9 +823,23 @@ const handleSave = async () => {
           <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
         </section>
 
-        <Button className="w-full h-12 text-xs rounded-full mb-12 shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving || isIdentifying || images.length === 0}>
-          {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發布筆記
-        </Button>
+        <div className="flex gap-3 mb-12">
+          <Button
+            variant="outline"
+            className="flex-none h-12 px-5 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+            onClick={handleSaveDraft}
+            disabled={isSaving}
+          >
+            <BookMarked className="w-3 h-3 mr-2" /> 儲存草稿
+          </Button>
+          <Button
+            className="flex-1 h-12 text-xs rounded-full font-bold uppercase tracking-widest bg-primary shadow-2xl"
+            onClick={handleSave}
+            disabled={isSaving || isIdentifying || images.length === 0}
+          >
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發佈筆記
+          </Button>
+        </div>
       </div>
 
       {/* 相機 / 相簿選擇底部彈窗 */}
