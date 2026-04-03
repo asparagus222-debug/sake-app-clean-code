@@ -79,6 +79,7 @@ export default function NewNotePage() {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState("");
   const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   // 追蹤開瓶後風味變化提醒
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -138,24 +139,28 @@ export default function NewNotePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 從草稿載入（URL 包含 ?draft=1 時）
+  // 從草稿載入（URL 包含 ?draft=<id> 時）
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.has('draft')) return;
+    const draftParam = params.get('draft');
+    if (!draftParam) return;
     try {
-      const raw = localStorage.getItem('sake_note_draft');
+      const raw = localStorage.getItem('sake_note_drafts');
       if (!raw) return;
-      const d = JSON.parse(raw);
+      const arr = JSON.parse(raw);
+      const d = arr.find((item: Record<string, unknown>) => item.id === draftParam);
+      if (!d) return;
+      setDraftId(d.id as string);
       setIsEditingDraft(true);
-      if (d.formData) setFormData(d.formData);
-      if (d.images?.length) setImages(d.images);
-      if (d.originals?.length) setOriginals(d.originals);
-      if (d.zooms) setZooms(d.zooms);
-      if (d.offsets) setOffsets(d.offsets);
-      if (d.splitRatio !== undefined) setSplitRatio(d.splitRatio);
-      if (d.imgRatios) setImgRatios(d.imgRatios);
-      toast({ title: '草稿已載入', description: `繼續編輯「${d.brandName || '未命名草稿'}」` });
+      if (d.formData) setFormData(d.formData as typeof formData);
+      if ((d.images as string[])?.length) setImages(d.images as string[]);
+      if ((d.originals as string[])?.length) setOriginals(d.originals as string[]);
+      if (d.zooms) setZooms(d.zooms as number[]);
+      if (d.offsets) setOffsets(d.offsets as {x:number;y:number}[]);
+      if (d.splitRatio !== undefined) setSplitRatio(d.splitRatio as number);
+      if (d.imgRatios) setImgRatios(d.imgRatios as number[]);
+      toast({ title: '草稿已載入', description: `繼續編輯「${(d.brandName as string) || '未命名草稿'}」` });
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -349,7 +354,9 @@ export default function NewNotePage() {
 
   const handleSaveDraft = () => {
     try {
+      const id = draftId || Date.now().toString();
       const draft = {
+        id,
         brandName: formData.brandName || '未命名草稿',
         formData,
         images,
@@ -360,9 +367,14 @@ export default function NewNotePage() {
         imgRatios,
         savedAt: new Date().toISOString(),
       };
-      localStorage.setItem('sake_note_draft', JSON.stringify(draft));
+      const raw = localStorage.getItem('sake_note_drafts');
+      const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+      const idx = arr.findIndex(d => d.id === id);
+      if (idx >= 0) { arr[idx] = draft; } else { arr.push(draft); }
+      localStorage.setItem('sake_note_drafts', JSON.stringify(arr));
+      setDraftId(id);
       setIsEditingDraft(true);
-      toast({ title: '草稿已儲存', description: '下次點擊新增時可繼續編輯' });
+      toast({ title: '草稿已儲存', description: '可從首頁草稿列表繼續編輯' });
     } catch {
       toast({ variant: 'destructive', title: '儲存草稿失敗', description: '裝置儲存空間可能不足' });
     }
@@ -502,7 +514,13 @@ const handleSave = async () => {
     const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
     // 讓 top3 cache 失效，下次首頁載入時重算
     deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
-    try { localStorage.removeItem('sake_note_draft'); } catch {}
+    try {
+      if (draftId) {
+        const raw = localStorage.getItem('sake_note_drafts');
+        const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+        localStorage.setItem('sake_note_drafts', JSON.stringify(arr.filter(d => d.id !== draftId)));
+      }
+    } catch {}
 
     // 儲存開瓶後追蹤提醒
     if (reminderEnabled && docRef) {

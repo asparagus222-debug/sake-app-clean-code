@@ -7,7 +7,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText, Bell } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText, Bell, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,30 +20,50 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("latest");
   const router = useRouter();
   const [showDraftPicker, setShowDraftPicker] = useState(false);
-  const [hasDraft, setHasDraft] = useState(false);
-  const [draftMeta, setDraftMeta] = useState({ brandName: '', savedAt: '' });
+  const [drafts, setDrafts] = useState<Array<{id: string; brandName: string; savedAt: string}>>([]);
+
+  const loadDrafts = React.useCallback(() => {
+    try {
+      // Migration: move old single-draft key to new array format
+      const oldRaw = localStorage.getItem('sake_note_draft');
+      if (oldRaw) {
+        const old = JSON.parse(oldRaw);
+        const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem('sake_note_drafts') || '[]');
+        existing.unshift({ ...old, id: old.id || Date.now().toString() });
+        localStorage.setItem('sake_note_drafts', JSON.stringify(existing));
+        localStorage.removeItem('sake_note_draft');
+      }
+      const raw = localStorage.getItem('sake_note_drafts');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        setDrafts(arr.map((d: Record<string, unknown>) => ({ id: d.id as string, brandName: (d.brandName as string) || '未命名草稿', savedAt: (d.savedAt as string) || '' })));
+      } else {
+        setDrafts([]);
+      }
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadDraftMeta = () => {
-      try {
-        const raw = localStorage.getItem('sake_note_draft');
-        if (raw) {
-          const d = JSON.parse(raw);
-          setHasDraft(true);
-          setDraftMeta({ brandName: d.brandName || '未命名草稿', savedAt: d.savedAt || '' });
-        } else {
-          setHasDraft(false);
-          setDraftMeta({ brandName: '', savedAt: '' });
-        }
-      } catch {
-        setHasDraft(false);
-        setDraftMeta({ brandName: '', savedAt: '' });
-      }
-    };
-    loadDraftMeta();
-    window.addEventListener('focus', loadDraftMeta);
-    return () => window.removeEventListener('focus', loadDraftMeta);
-  }, []);
+    loadDrafts();
+    window.addEventListener('focus', loadDrafts);
+    return () => window.removeEventListener('focus', loadDrafts);
+  }, [loadDrafts]);
+
+  const deleteDraft = (id: string) => {
+    try {
+      const raw = localStorage.getItem('sake_note_drafts');
+      const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+      const updated = arr.filter(d => d.id !== id);
+      localStorage.setItem('sake_note_drafts', JSON.stringify(updated));
+      setDrafts(prev => {
+        const next = prev.filter(d => d.id !== id);
+        if (next.length === 0) setShowDraftPicker(false);
+        return next;
+      });
+    } catch {}
+  };
 
   // Check for overdue tasting reminders
   useEffect(() => {
@@ -85,7 +105,7 @@ export default function Home() {
   };
 
   const handleNewNoteClick = () => {
-    if (hasDraft) {
+    if (drafts.length > 0) {
       setShowDraftPicker(true);
     } else {
       router.push('/notes/new');
@@ -334,30 +354,51 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-5">新增筆記</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => { setShowDraftPicker(false); router.push('/notes/new'); }}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
-              >
-                <Plus className="w-8 h-8 text-primary" />
-                <span className="text-sm font-bold text-foreground">新增貼文</span>
-                <span className="text-[9px] text-muted-foreground">建立新的品飲筆記</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowDraftPicker(false); router.push('/notes/new?draft=1'); }}
-                className="flex flex-col items-center gap-3 p-6 rounded-[1.5rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
-              >
-                <FileText className="w-8 h-8 text-primary" />
-                <span className="text-sm font-bold text-foreground">繼續草稿</span>
-                <span className="text-[9px] text-muted-foreground text-center leading-relaxed">
-                  <span className="block truncate max-w-[110px]">{draftMeta.brandName}</span>
-                  {draftMeta.savedAt && <span className="block text-muted-foreground/50">{formatDraftAge(draftMeta.savedAt)}</span>}
-                </span>
-              </button>
-            </div>
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">新增筆記</p>
+            <button
+              type="button"
+              onClick={() => { setShowDraftPicker(false); router.push('/notes/new'); }}
+              className="w-full flex items-center gap-3 p-4 rounded-[1.2rem] bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all mb-4"
+            >
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Plus className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-foreground">新增空白筆記</div>
+                <div className="text-[9px] text-muted-foreground">建立新的品飲筆記</div>
+              </div>
+            </button>
+            {drafts.length > 0 && (
+              <>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-2 ml-1">草稿列表 ({drafts.length})</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {drafts.map(d => (
+                    <div key={d.id} className="flex items-center gap-2 p-3 rounded-[1rem] bg-white/5 border border-white/10 hover:border-primary/30 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => { setShowDraftPicker(false); router.push(`/notes/new?draft=${d.id}`); }}
+                        className="flex-1 flex items-center gap-3 text-left min-w-0"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                          <FileText className="w-3.5 h-3.5 text-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-foreground truncate">{d.brandName}</div>
+                          <div className="text-[9px] text-muted-foreground/60">{formatDraftAge(d.savedAt)}</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteDraft(d.id)}
+                        className="p-1.5 rounded-full text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
