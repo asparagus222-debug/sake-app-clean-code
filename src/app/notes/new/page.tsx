@@ -116,6 +116,7 @@ export default function NewNotePage() {
     subBrand: '',
     brewery: '',
     origin: '',
+    alcoholPercent: '',
     sweetness: 3,
     acidity: 3,
     bitterness: 3,
@@ -123,7 +124,8 @@ export default function NewNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
-    sakeInfoTags: [] as string[],  // 酒精濃度、精米步合、酒米、特殊製程
+    sakeInfoTags: [] as string[],
+    foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
     userDescription: '',
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
@@ -503,6 +505,8 @@ const handleSave = async () => {
       aiResultNote: formData.aiResultNote,
       activeBrain: formData.activeBrain,
       sakeInfoTags: formData.sakeInfoTags,
+      alcoholPercent: formData.alcoholPercent,
+      foodPairings: formData.foodPairings,
       
       imageUrls: finalImages,
       imageOriginals: originals,
@@ -673,6 +677,10 @@ const handleSave = async () => {
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label>
               <Input placeholder="例如：山形縣" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
             </div>
+            <div className="space-y-1">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒精濃度 (%)</Label>
+              <Input placeholder="例如：16" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.alcoholPercent} onChange={e => setFormData(p => ({ ...p, alcoholPercent: e.target.value }))} />
+            </div>
           </div>
 
           {/* 酒鑑資訊標籤 — AI 自動填入，可手動補充/刪除 */}
@@ -826,7 +834,58 @@ const handleSave = async () => {
   </div>
 </section>
 
-        {/* 風格標籤 */}
+        {/* 食材搭配 */}
+        <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-emerald-500/20 shadow-xl">
+          <div className="flex items-center gap-1.5 border-b border-emerald-500/10 pb-2 mb-1">
+            <span className="text-base">&#127860;</span>
+            <h2 className="text-[10px] font-headline text-emerald-400 uppercase tracking-widest">這樣搭好嗎？</h2>
+          </div>
+          <div className="space-y-2">
+            {formData.foodPairings.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <Input
+                  placeholder="料理名稱"
+                  value={item.food}
+                  onChange={e => setFormData(p => { const fp = [...p.foodPairings]; fp[idx] = { ...fp[idx], food: e.target.value }; return { ...p, foodPairings: fp }; })}
+                  className="bg-white/5 border-emerald-500/20 h-8 text-[10px] rounded-xl w-24 shrink-0"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => { const fp = [...p.foodPairings]; fp[idx] = { ...fp[idx], pairing: fp[idx].pairing === 'yes' ? 'no' : 'yes' }; return { ...p, foodPairings: fp }; })}
+                  className={cn(
+                    "h-8 px-3 rounded-xl text-[9px] font-bold shrink-0 border transition-all",
+                    item.pairing === 'yes'
+                      ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
+                      : "bg-red-500/20 border-red-500/50 text-red-300"
+                  )}
+                >
+                  {item.pairing === 'yes' ? '搭配' : '不搭'}
+                </button>
+                <Input
+                  placeholder="為什麼？"
+                  value={item.reason}
+                  onChange={e => setFormData(p => { const fp = [...p.foodPairings]; fp[idx] = { ...fp[idx], reason: e.target.value }; return { ...p, foodPairings: fp }; })}
+                  className="bg-white/5 border-emerald-500/20 h-8 text-[10px] rounded-xl flex-1"
+                />
+                <button type="button" onClick={() => setFormData(p => ({ ...p, foodPairings: p.foodPairings.filter((_, i) => i !== idx) }))} className="p-1.5 rounded-full text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {formData.foodPairings.length === 0 && (
+              <p className="text-[9px] text-muted-foreground/40 italic ml-1">還未新增搭配建議，點擊下方 + 開始新增...</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData(p => ({ ...p, foodPairings: [...p.foodPairings, { food: '', pairing: 'yes', reason: '' }] }))}
+            className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors mt-1"
+          >
+            <Plus className="w-3 h-3" /> 新增欄位
+          </button>
+        </section>
+
+        {/* 風格標籤 */}}
         <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-primary/10 pb-1 mb-2">
              <Tag className="w-3.5 h-3.5 text-primary" />
