@@ -60,6 +60,7 @@ import {
 } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { signOut, getIdToken } from 'firebase/auth';
+import { cleanSakeName } from '@/lib/sake-data';
 
 // 管理員名單
 const ADMIN_EMAILS = ["asparagus222@gmail.com", "admin@example.com"];
@@ -72,6 +73,8 @@ export default function AdminPage() {
   const { user, isUserLoading } = useUser();
   const [activeTab, setActiveTab] = useState("notes");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleanResult, setCleanResult] = useState<string | null>(null);
 
   // 權限檢查
   const isAdmin = user && user.email && ADMIN_EMAILS.includes(user.email);
@@ -148,6 +151,46 @@ export default function AdminPage() {
     toast({ title: "回報紀錄已清除" });
   };
 
+  // 批次清理酒標名稱（去除括號翻譯）
+  const handleCleanNames = async () => {
+    if (!firestore || !notes) return;
+    setIsCleaning(true);
+    setCleanResult(null);
+    let fixed = 0;
+    try {
+      const { writeBatch } = await import('firebase/firestore');
+      const batch = writeBatch(firestore);
+      for (const note of notes as any[]) {
+        const cleanBrand = cleanSakeName(note.brandName || '');
+        const cleanBrewery = cleanSakeName(note.brewery || '');
+        const cleanOrigin = cleanSakeName(note.origin || '');
+        if (
+          cleanBrand !== (note.brandName || '') ||
+          cleanBrewery !== (note.brewery || '') ||
+          cleanOrigin !== (note.origin || '')
+        ) {
+          batch.update(doc(firestore, 'sakeTastingNotes', note.id), {
+            brandName: cleanBrand,
+            brewery: cleanBrewery,
+            origin: cleanOrigin,
+          });
+          fixed++;
+        }
+      }
+      if (fixed > 0) await batch.commit();
+      // 同時清除 top3 cache 以便重算
+      const { deleteDoc: dd } = await import('firebase/firestore');
+      await dd(doc(firestore, 'meta', 'top3')).catch(() => {});
+      setCleanResult(`共更新 ${fixed} 筆紀錄，括號翻譯已全數移除。`);
+      toast({ title: `清理完成：${fixed} 筆紀錄已更新` });
+    } catch (err: any) {
+      setCleanResult(`錯誤：${err.message}`);
+      toast({ variant: 'destructive', title: '清理失敗', description: err.message });
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
@@ -212,6 +255,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="reports" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
               <LifeBuoy className="w-3 h-3 mr-1.5" /> 問題回報
+            </TabsTrigger>
+            <TabsTrigger value="cleanup" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+              <RefreshCw className="w-3 h-3 mr-1.5" /> 資料清理
             </TabsTrigger>
           </TabsList>
 
@@ -405,6 +451,47 @@ export default function AdminPage() {
                 </Table>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="cleanup" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl">
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">酒標名稱清理</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  括號內的翻譯對照將會被移除，例如「李の森酒造 (suginomori brewery)」→「李の森酒造」。
+                </p>
+              </div>
+              <div className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold">Step 1：準備清理 {notes?.length || 0} 筆紀錄</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">將所有紀錄的 brandName、brewery、origin 去除括號翻譯，並重算 top3 cache</p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button className="rounded-full text-[10px] font-bold uppercase" disabled={isCleaning || isNotesLoading}>
+                        {isCleaning ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />清理中...</> : <><RefreshCw className="w-3 h-3 mr-1.5" />開始清理</>}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-primary uppercase tracking-widest font-bold">確認清理名稱？</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs leading-relaxed">
+                          將所有酒標紀錄中括號翻譯對照移除。此操作不可復原，請確認。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCleanNames} className="rounded-full text-[10px] font-bold uppercase">確認清理</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+                {cleanResult && (
+                  <div className="text-[10px] font-bold text-green-400 bg-green-400/10 rounded-xl px-3 py-2">{cleanResult}</div>
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

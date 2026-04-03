@@ -59,6 +59,19 @@ export const SAKE_DATABASE: SakeDatabaseEntry[] = [
 ];
 
 /**
+ * 去除 AI 或搜尋引擎附加在名稱後面的括號翻譯，例如：
+ *   "杉の森酒造 (suginomori brewery)" → "杉の森酒造"
+ *   "narai passage (ナライ パッセージ)" → "narai passage"
+ *   "十四代 (Juyondai)" → "十四代"
+ */
+export function cleanSakeName(name: string): string {
+  if (!name) return name;
+  return name
+    .replace(/\s*[\(（][^\)）]{1,80}[\)）]\s*$/, '') // 去除結尾括號翻譯
+    .trim();
+}
+
+/**
  * AI 辨識後的銘柄標準化：對比 SAKE_DATABASE，若命中則回傳正規化名稱，
  * 避免同一銘柄因漢字/片假名/羅馬字差異變成多筆不同紀錄。
  *
@@ -70,6 +83,11 @@ export function normalizeSakeInfo(
   origin: string,
   knownBrands: Array<{ brandName: string; brewery: string; origin?: string }> = []
 ): { brandName: string; brewery: string; origin: string } {
+  // 先清除括號翻譯（e.g. "杉の森酒造 (suginomori brewery)" → "杉の森酒造"）
+  brandName = cleanSakeName(brandName);
+  brewery = cleanSakeName(brewery);
+  origin = cleanSakeName(origin);
+
   // 正規化比對用字串：全小寫、去空白、去常見分隔符
   const norm = (s: string) =>
     s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');

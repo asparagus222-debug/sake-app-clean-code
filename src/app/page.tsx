@@ -42,68 +42,64 @@ export default function Home() {
     return latestNotes.filter(note => followingIds.includes(note.userId));
   }, [latestNotes, followingIds]);
 
-  // ── Top3 cache: 先讀 meta/top3，cache miss 才 fallback 到 rankingQuery ──
+  // ── Top3：直接讀 rankingQuery，同時讀 meta/top3 cache（有 cache 則先顯示，背景刷新）──
   const top3CacheRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, 'meta', 'top3');
   }, [firestore]);
-  const { data: top3Cache, isLoading: isTop3CacheLoading } = useDoc(top3CacheRef);
+  const { data: top3Cache } = useDoc(top3CacheRef);
 
-  const [useFallback, setUseFallback] = useState(false);
   const top3Written = useRef(false);
 
-  // cache miss 時才啟動 fallback query
-  useEffect(() => {
-    if (isTop3CacheLoading) return;
-    if (!top3Cache?.groups?.length) setUseFallback(true);
-  }, [isTop3CacheLoading, top3Cache]);
-
+  // 排名 query 永遠執行（不再依賴 useFallback），避免 cache 失效時 Top3 消失
   const rankingQuery = useMemoFirebase(() => {
-    if (!firestore || !useFallback) return null;
+    if (!firestore) return null;
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(50));
-  }, [firestore, useFallback]);
+  }, [firestore]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
-  // fallback 計算 top3，並寫入 cache 供下次使用
+  // 以 rankingNotes 計算 top3（live data）；rankingNotes 尚未到位時先顯示 cache
   const top3Groups = React.useMemo(() => {
-    // ① cache hit
+    // ① live data 優先（始終計算，不依賴 cache state）
+    if (rankingNotes) {
+      const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
+      for (const note of rankingNotes) {
+        if (!note.brandName) continue;
+        const key = `${note.brandName}|||${note.brewery}`;
+        if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
+        map.get(key)!.notes.push(note);
+      }
+      return [...map.values()]
+        .map(g => {
+          const avgRating = g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length;
+          const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+          const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
+          const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
+          return { brandName: g.brandName, brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
+        })
+        .sort((a, b) => b.avgRating - a.avgRating)
+        .slice(0, 3);
+    }
+    // ② live data 未就緒時顯示 cache（避免閃爍空白）
     if (top3Cache?.groups?.length) {
       return top3Cache.groups as Array<{
         brandName: string; brewery: string;
         avgRating: number; noteCount: number; imageUrl?: string;
       }>;
     }
-    // ② fallback 計算
-    if (!rankingNotes) return [];
-    const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
-    for (const note of rankingNotes) {
-      const key = `${note.brandName}|||${note.brewery}`;
-      if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
-      map.get(key)!.notes.push(note);
-    }
-    return [...map.values()]
-      .map(g => {
-        const avgRating = g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length;
-        const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
-        const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
-        const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
-        return { brandName: g.brandName, brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
-      })
-      .sort((a, b) => b.avgRating - a.avgRating)
-      .slice(0, 3);
-  }, [top3Cache, rankingNotes]);
+    return [];
+  }, [rankingNotes, top3Cache]);
 
-  // fallback 算完後寫入 cache
+  // live data 算完後寫入 cache（供下次快取使用）
   useEffect(() => {
     if (top3Written.current) return;
-    if (!firestore || top3Cache?.groups?.length) return;
-    if (!top3Groups.length) return;
+    if (!firestore || !rankingNotes || !top3Groups.length) return;
     top3Written.current = true;
     setDoc(doc(firestore, 'meta', 'top3'), {
       groups: top3Groups,
       updatedAt: new Date().toISOString(),
     }).catch(() => {});
-  }, [top3Groups, top3Cache, firestore]);
+  }, [top3Groups, rankingNotes, firestore]);
 
   // ── Skeleton：只在 user / profile 還沒確定時顯示 ──
   if (isUserLoading || isProfileLoading || !user) {
