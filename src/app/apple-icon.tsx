@@ -3,7 +3,6 @@ import { ImageResponse } from 'next/og';
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
 
-// iOS applies its own corner rounding — do NOT pre-round the container
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -11,7 +10,7 @@ export default function AppleIcon() {
         style={{
           width: '100%',
           height: '100%',
-          background: '#130800',
+          background: 'radial-gradient(circle at 42% 38%, #2c2c2c, #111 55%, #040404)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -20,32 +19,55 @@ export default function AppleIcon() {
         <div
           style={{
             position: 'absolute',
-            width: '84%',
-            height: '84%',
+            width: '86%',
+            height: '86%',
             borderRadius: '50%',
-            border: '4px solid rgba(249,115,22,0.25)',
+            border: '1px solid rgba(212,175,55,0.18)',
           }}
         />
         <div
           style={{
-            width: '64%',
-            height: '64%',
+            position: 'absolute',
+            width: '72%',
+            height: '72%',
             borderRadius: '50%',
-            border: '13px solid #f97316',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            border: '13px solid #c9a227',
+            boxShadow:
+              '0 0 12px rgba(201,162,39,0.55), inset 0 0 6px rgba(201,162,39,0.12)',
           }}
-        >
-          <div
-            style={{
-              width: '38%',
-              height: '38%',
-              borderRadius: '50%',
-              background: '#f97316',
-            }}
-          />
-        </div>
+        />
+        <div
+          style={{
+            position: 'absolute',
+            width: '72%',
+            height: '72%',
+            borderRadius: '50%',
+            border: '3px solid rgba(255,220,80,0.22)',
+            transform: 'rotate(-40deg)',
+            borderRightColor: 'transparent',
+            borderBottomColor: 'transparent',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            width: '43%',
+            height: '43%',
+            borderRadius: '50%',
+            border: '11px solid #c9a227',
+            boxShadow:
+              '0 0 9px rgba(201,162,39,0.50), inset 0 0 5px rgba(201,162,39,0.10)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            width: '14%',
+            height: '14%',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, #1a1a1a, #050505)',
+          }}
+        />
       </div>
     ),
     { ...size }

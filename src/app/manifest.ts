@@ -2,14 +2,14 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '品飲筆記',
-    short_name: '品飲帖',
+    name: '酒跡 - Sake Notes',
+    short_name: '酒跡',
     description: '記錄每一款清酒的獨特風味與回憶',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#130800',
-    theme_color: '#130800',
+    background_color: '#080808',
+    theme_color: '#080808',
     icons: [
       {
         src: '/icon',

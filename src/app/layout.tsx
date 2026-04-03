@@ -7,17 +7,17 @@ import {ThemeProvider} from '@/components/ThemeProvider';
 import {TooltipProvider} from '@/components/ui/tooltip';
 
 export const viewport: Viewport = {
-  themeColor: '#130800',
+  themeColor: '#080808',
 };
 
 export const metadata: Metadata = {
-  title: '品飲帖',
+  title: '酒跡 - Sake Notes',
   description: '記錄每一款清酒的獨特風味與回憶',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: '品飲帖',
+    title: '酒跡',
   },
 };
 
