@@ -7,6 +7,7 @@
 
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { anthropic } from 'genkitx-anthropic';
 import { z } from 'genkit';
 
 const IdentifySakeInputSchema = z.object({
@@ -53,8 +54,9 @@ export const identifySakeFlow = ai.defineFlow(
     // ── Step 1: 純視覺 OCR ──
     // 模型只專注讀取圖片，完全不進行外部搜尋。
     // 銘柄、酒造名稱的識別準確度等同 OCR（不受其他雜訊干擾）。
+    // Claude Sonnet 的多語言 OCR 能力強，特別適合日文酒標辨識。
     const { output: vision } = await ai.generate({
-      model: googleAI.model('gemini-flash-latest'),
+      model: anthropic('claude-sonnet-4-5'),
       output: { schema: VisionExtractionSchema },
       prompt: [
         {

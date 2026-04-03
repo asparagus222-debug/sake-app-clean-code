@@ -13,3 +13,5 @@ env:
     secret: GEMINI_API_KEY
   - variable: GOOGLE_API_KEY
     secret: GOOGLE_API_KEY
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
