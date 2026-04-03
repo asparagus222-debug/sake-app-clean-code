@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@genkit-ai/google-genai": "^1.28.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^4.1.3",
