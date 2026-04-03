@@ -58,7 +58,7 @@ export default function MyNotesPage() {
     });
   }, [rawNotes]);
 
-  const EDIT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 小時
+  const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 小時
 
   const isEditable = (createdAtStr?: string) => {
     if (!createdAtStr) return false;

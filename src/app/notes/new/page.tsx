@@ -500,6 +500,7 @@ const handleSave = async () => {
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                     <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
                     <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
+                    <p className="text-white/50 text-[9px] font-bold mt-3 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                   </div>
                 )}
               </div>
