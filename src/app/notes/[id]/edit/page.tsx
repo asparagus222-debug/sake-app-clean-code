@@ -31,6 +31,7 @@ export default function EditNotePage() {
   const [splitRatio, setSplitRatio] = useState<number>(50);
   const [zooms, setZooms] = useState<number[]>([1, 1]);
   const [offsets, setOffsets] = useState<{ x: number; y: number }[]>([{ x: 0, y: 0 }, { x: 0, y: 0 }]);
+  const [imgRatios, setImgRatios] = useState<number[]>([1, 1]); // width/height per image slot
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialDist, setInitialDist] = useState<number | null>(null);
@@ -87,7 +88,18 @@ export default function EditNotePage() {
         aiResultNote: note.aiResultNote || '',
         activeBrain: note.activeBrain || null,
       });
-      if (note.imageUrls) setImages(note.imageOriginals || note.imageUrls);
+      if (note.imageUrls) {
+        const imgs = note.imageOriginals || note.imageUrls;
+        setImages(imgs);
+        // 偵測圖片比例，供單圖模式的手動 cover CSS 使用
+        imgs.forEach((src: string, idx: number) => {
+          const img = new window.Image();
+          img.onload = () => {
+            setImgRatios(prev => { const next = [...prev]; next[idx] = img.width / img.height; return next; });
+          };
+          img.src = src;
+        });
+      }
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
       if (note.imageTransforms) {
         setZooms(note.imageTransforms.map(t => t.scale));
@@ -171,9 +183,11 @@ export default function EditNotePage() {
       });
     } else if (e.touches.length === 2 && initialDist && initialZoom) {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
+      const r = imgRatios[draggingIdx] || 1;
+      const minZoom = images.length === 1 ? Math.min(r, 1 / r) : 1;
       setZooms(prev => {
         const next = [...prev];
-        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, 1), 5);
+        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, minZoom), 5);
         return next;
       });
     }
@@ -323,7 +337,15 @@ export default function EditNotePage() {
                 </>
               ) : (
                 <div id="container-0" className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
-                  <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                  {/* 單圖模式：手動 cover 定位，配合 captureCurrentView 數學 */}
+                  <img ref={imgRef0} src={images[0]} className="absolute pointer-events-none" style={{
+                    width: imgRatios[0] >= 1 ? `${imgRatios[0] * 100}%` : '100%',
+                    height: imgRatios[0] < 1 ? `${(1 / imgRatios[0]) * 100}%` : '100%',
+                    left: imgRatios[0] >= 1 ? `${(1 - imgRatios[0]) * 50}%` : '0%',
+                    top: imgRatios[0] < 1 ? `${(1 - 1 / imgRatios[0]) * 50}%` : '0%',
+                    transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                    transformOrigin: 'center center',
+                  }} alt="img1" />
                 </div>
               )}
             </div>

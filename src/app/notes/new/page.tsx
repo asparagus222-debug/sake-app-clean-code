@@ -17,6 +17,15 @@ import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase 
 import { collection, doc, deleteDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
+async function getImageRatio(src: string): Promise<number> {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.onload = () => resolve(img.width / img.height);
+    img.onerror = () => resolve(1);
+    img.src = src;
+  });
+}
+
 async function resizeImage(base64: string, maxDimension: number = 1024): Promise<string> {
   return new Promise((resolve) => {
     const img = new window.Image();
@@ -51,6 +60,7 @@ export default function NewNotePage() {
   const [originals, setOriginals] = useState<string[]>([]); // resized originals for re-editing
   const [zooms, setZooms] = useState<number[]>([1, 1]);
   const [offsets, setOffsets] = useState<{ x: number; y: number }[]>([{ x: 0, y: 0 }, { x: 0, y: 0 }]);
+  const [imgRatios, setImgRatios] = useState<number[]>([1, 1]); // width/height per image slot
   const [splitRatio, setSplitRatio] = useState<number>(50);
   
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
@@ -190,13 +200,25 @@ export default function NewNotePage() {
       const remainingSlots = 2 - images.length;
       if (remainingSlots <= 0) return;
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
-      filesToProcess.forEach((file) => {
+      const startIdx = images.length;
+      // 切到雙圖模式時，第一張 zoom 重置為 1（配合 object-cover）
+      if (startIdx === 1) {
+        setZooms(prev => { const next = [...prev]; next[0] = 1; return next; });
+      }
+      filesToProcess.forEach((file, slotOffset) => {
+        const slotIdx = startIdx + slotOffset;
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64 = reader.result as string;
           const resized = await resizeImage(base64, 1024);
+          const ratio = await getImageRatio(resized);
+          // 單圖模式：初始 zoom 設為 containZoom（顯示完整圖片）
+          // 雙圖模式：初始 zoom = 1（配合 object-cover 填滿半格）
+          const newZoom = slotIdx === 0 ? Math.min(ratio, 1 / ratio) : 1;
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
+          setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
+          setZooms(prev => { const next = [...prev]; next[slotIdx] = newZoom; return next; });
         };
         reader.readAsDataURL(file);
       });
@@ -208,9 +230,13 @@ export default function NewNotePage() {
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       const resized = await resizeImage(base64, 1024);
+      const ratio = await getImageRatio(resized);
+      const isSingleMode = images.length === 1;
+      const newZoom = isSingleMode ? Math.min(ratio, 1 / ratio) : 1;
       setImages(prev => { const next = [...prev]; next[idx] = resized; return next; });
       setOriginals(prev => { const next = [...prev]; next[idx] = resized; return next; });
-      setZooms(prev => { const next = [...prev]; next[idx] = 1; return next; });
+      setImgRatios(prev => { const next = [...prev]; next[idx] = ratio; return next; });
+      setZooms(prev => { const next = [...prev]; next[idx] = newZoom; return next; });
       setOffsets(prev => { const next = [...prev]; next[idx] = { x: 0, y: 0 }; return next; });
     };
     reader.readAsDataURL(file);
@@ -286,9 +312,12 @@ export default function NewNotePage() {
       });
     } else if (e.touches.length === 2 && initialDist && initialZoom) {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
+      const r = imgRatios[draggingIdx] || 1;
+      // 單圖模式允許縮小到 containZoom（顯示完整圖片）；雙圖模式最小 1
+      const minZoom = images.length === 1 ? Math.min(r, 1 / r) : 1;
       setZooms(prev => {
         const next = [...prev];
-        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, 1), 5);
+        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, minZoom), 5);
         return next;
       });
     }
@@ -414,7 +443,15 @@ const handleSave = async () => {
                   </>
                 ) : (
                   <div className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
-                    <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                    {/* 單圖模式：手動 cover 定位，初始顯示完整圖片；transform-origin 恰好在容器中心 */}
+                    <img src={images[0]} className="absolute pointer-events-none" style={{
+                      width: imgRatios[0] >= 1 ? `${imgRatios[0] * 100}%` : '100%',
+                      height: imgRatios[0] < 1 ? `${(1 / imgRatios[0]) * 100}%` : '100%',
+                      left: imgRatios[0] >= 1 ? `${(1 - imgRatios[0]) * 50}%` : '0%',
+                      top: imgRatios[0] < 1 ? `${(1 - 1 / imgRatios[0]) * 50}%` : '0%',
+                      transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                      transformOrigin: 'center center',
+                    }} alt="img1" />
                     <label className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
                       <Camera className="w-3 h-3" /> 重選
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) { handleReplaceImage(0, e.target.files[0]); e.target.value = ''; } }} />
