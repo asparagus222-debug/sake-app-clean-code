@@ -82,7 +82,7 @@ export default function NewNotePage() {
 
   // 追蹤開瓶後風味變化提醒
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [reminderUnit, setReminderUnit] = useState<'hours' | 'days'>('hours');
+  const [reminderUnit, setReminderUnit] = useState<'hours' | 'days' | 'months' | 'years'>('hours');
   const [reminderValue, setReminderValue] = useState(24);
 
   const userDocRef = useMemoFirebase(() => {
@@ -507,7 +507,11 @@ const handleSave = async () => {
     // 儲存開瓶後追蹤提醒
     if (reminderEnabled && docRef) {
       try {
-        const intervalHours = reminderUnit === 'days' ? reminderValue * 24 : reminderValue;
+        const intervalHours =
+          reminderUnit === 'years' ? reminderValue * 24 * 365 :
+          reminderUnit === 'months' ? reminderValue * 24 * 30 :
+          reminderUnit === 'days' ? reminderValue * 24 :
+          reminderValue;
         const nextAt = new Date(Date.now() + intervalHours * 3600 * 1000).toISOString();
         const reminders = JSON.parse(localStorage.getItem('sake_reminders') || '[]');
         reminders.push({ noteId: docRef.id, brandName: formData.brandName, nextReminderAt: nextAt, intervalHours });
@@ -873,24 +877,39 @@ const handleSave = async () => {
             {reminderEnabled && (
               <div className="pt-2 border-t border-amber-500/20 space-y-3">
                 <p className="text-[9px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> 多久後提醒？</p>
-                <div className="flex gap-2 flex-wrap">
-                  {/* 小時快速選 */}
-                  {[6, 12, 24].map(h => (
-                    <button key={h} type="button" onClick={() => { setReminderUnit('hours'); setReminderValue(h); }}
-                      className={cn("px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all", reminderUnit === 'hours' && reminderValue === h ? "bg-amber-500 text-black border-amber-500" : "bg-white/5 border-amber-500/30 text-amber-300")}>
-                      {h}小時
-                    </button>
-                  ))}
-                  {/* 天快速選 */}
-                  {[1, 2, 3, 7].map(d => (
-                    <button key={d} type="button" onClick={() => { setReminderUnit('days'); setReminderValue(d); }}
-                      className={cn("px-3 py-1.5 rounded-full border text-[9px] font-bold transition-all", reminderUnit === 'days' && reminderValue === d ? "bg-amber-500 text-black border-amber-500" : "bg-white/5 border-amber-500/30 text-amber-300")}>
-                      {d}天後
-                    </button>
-                  ))}
+                <div className="flex gap-2">
+                  {/* 數值下拉 */}
+                  <select
+                    value={reminderValue}
+                    onChange={e => setReminderValue(Number(e.target.value))}
+                    className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
+                  >
+                    {(() => {
+                      const max = reminderUnit === 'hours' ? 23 : reminderUnit === 'days' ? 31 : reminderUnit === 'months' ? 12 : 20;
+                      return Array.from({ length: max }, (_, i) => i + 1).map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ));
+                    })()}
+                  </select>
+                  {/* 單位下拉 */}
+                  <select
+                    value={reminderUnit}
+                    onChange={e => {
+                      const u = e.target.value as 'hours' | 'days' | 'months' | 'years';
+                      setReminderUnit(u);
+                      const maxVal = u === 'hours' ? 23 : u === 'days' ? 31 : u === 'months' ? 12 : 20;
+                      setReminderValue(v => Math.min(v, maxVal));
+                    }}
+                    className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="hours">小時後</option>
+                    <option value="days">日後</option>
+                    <option value="months">個月後</option>
+                    <option value="years">年後</option>
+                  </select>
                 </div>
                 <p className="text-[9px] text-amber-400/70 italic">
-                  提醒時間：{reminderUnit === 'hours' ? `${reminderValue} 小時後` : `${reminderValue} 天後`}（儲存後開始計時）
+                  提醒時間：{reminderValue} {reminderUnit === 'hours' ? '小時' : reminderUnit === 'days' ? '日' : reminderUnit === 'months' ? '個月' : '年'}後（儲存後開始計時）
                 </p>
               </div>
             )}
