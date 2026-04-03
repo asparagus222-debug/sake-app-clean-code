@@ -885,7 +885,7 @@ const handleSave = async () => {
           </button>
         </section>
 
-        {/* 風格標籤 */}}
+        {/* 風格標籤 */}
         <section className="space-y-3 dark-glass p-5 rounded-[1.5rem] border border-primary/20 shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-primary/10 pb-1 mb-2">
              <Tag className="w-3.5 h-3.5 text-primary" />
