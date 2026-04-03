@@ -9,8 +9,8 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS, TastingSession } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock } from 'lucide-react';
+import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -51,6 +51,8 @@ export default function EditNotePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
+  const [lockedImgs, setLockedImgs] = useState([false, false]);
   
   const [images, setImages] = useState<string[]>([]);
   const [splitRatio, setSplitRatio] = useState<number>(50);
@@ -229,6 +231,45 @@ export default function EditNotePage() {
       toast({ variant: "destructive", title: "AI 連線失敗" });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const triggerAIIdentification = async (photoDataUri: string) => {
+    setIsIdentifying(true);
+    try {
+      const optimizedPhoto = await resizeImage(photoDataUri, 1024);
+      const response = await fetch('/api/ai/identify-sake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoDataUri: optimizedPhoto }),
+      });
+      if (!response.ok) throw new Error('API error');
+      const result = await response.json();
+      if (result) {
+        const newInfoTags: string[] = [];
+        if (result.alcoholPercent) newInfoTags.push(result.alcoholPercent);
+        if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
+        if (result.riceName) newInfoTags.push(result.riceName);
+        if (result.specialProcess) newInfoTags.push(...result.specialProcess);
+        const normalized = normalizeSakeInfo(
+          result.brandName || '',
+          result.brewery || '',
+          result.origin || '',
+          []
+        );
+        setFormData(prev => ({
+          ...prev,
+          brandName: normalized.brandName || prev.brandName,
+          brewery: normalized.brewery || prev.brewery,
+          origin: normalized.origin || prev.origin,
+          sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
+        }));
+        toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "AI 辨識失敗" });
+    } finally {
+      setIsIdentifying(false);
     }
   };
 
@@ -617,22 +658,28 @@ export default function EditNotePage() {
             <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
               {images.length === 2 ? (
                 <>
-                  <div id="container-0" className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                  <div id="container-0" className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
                     <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                    <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
+                      {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                    </button>
                     <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
                       <Camera className="w-2.5 h-2.5" /> 重選
                     </button>
                   </div>
                   <div className="h-full w-px bg-white/20 z-10" />
-                  <div id="container-1" className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
+                  <div id="container-1" className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
                     <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                    <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
+                      {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                    </button>
                     <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(1)}>
                       <Camera className="w-2.5 h-2.5" /> 重選
                     </button>
                   </div>
                 </>
               ) : (
-                <div id="container-0" className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                <div id="container-0" className={cn("w-full h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
                   {/* 單圖模式：手動 cover 定位，配合 captureCurrentView 數學 */}
                   <img ref={imgRef0} src={images[0]} className="absolute pointer-events-none" style={{
                     width: imgRatios[0] >= 1 ? `${imgRatios[0] * 100}%` : '100%',
@@ -642,9 +689,30 @@ export default function EditNotePage() {
                     transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                     transformOrigin: 'center center',
                   }} alt="img1" />
+                  <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
+                    {lockedImgs[0] ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                  </button>
                   <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker(0)}>
                     <Camera className="w-3 h-3" /> 重選
                   </button>
+                </div>
+              )}
+              {/* AI 辨識按鈕 */}
+              {!isIdentifying && images.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => triggerAIIdentification(images[0])}
+                  className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  AI 辨識
+                </button>
+              )}
+              {isIdentifying && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
+                  <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
+                  <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
+                  <p className="text-white/50 text-[9px] font-bold mt-3 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                 </div>
               )}
             </div>

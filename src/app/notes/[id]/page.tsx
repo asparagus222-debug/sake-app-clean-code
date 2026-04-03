@@ -211,6 +211,11 @@ export default function NoteDetailPage() {
               <Share2 className="w-5 h-5" />
             </Button>
             {user?.uid === note.userId && (
+              <Link href={`/notes/${note.id}/edit`}>
+                <Button type="button" variant="ghost" size="icon" className="hover:bg-primary/10 text-primary"><Edit3 className="w-5 h-5" /></Button>
+              </Link>
+            )}
+            {user?.uid === note.userId && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="w-5 h-5" /></Button>
@@ -405,8 +410,8 @@ export default function NoteDetailPage() {
   )}
 </div>
 
-        {/* 風味演變 section — shown if there are extra sessions OR the author is viewing */}
-        {(note.sessions && note.sessions.length > 0) || user?.uid === note.userId ? (
+        {/* 風味演變 section — only shown if there are extra sessions */}
+        {note.sessions && note.sessions.length > 0 ? (
           <section className="mt-6 space-y-4 border-t border-primary/10 pt-6">
             <div className="flex items-center gap-2 text-primary">
               <TrendingUp className="w-4 h-4" />

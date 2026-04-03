@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
@@ -55,6 +55,7 @@ export default function NewNotePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [lockedImgs, setLockedImgs] = useState([false, false]);
   
   const [images, setImages] = useState<string[]>([]);
   const [originals, setOriginals] = useState<string[]>([]); // resized originals for re-editing
@@ -284,6 +285,7 @@ export default function NewNotePage() {
       if (remainingSlots <= 0) { e.target.value = ''; return; }
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
       const startIdx = images.length;
+      const totalAfter = startIdx + filesToProcess.length;
       if (startIdx === 1) {
         setZooms(prev => { const next = [...prev]; next[0] = 1; return next; });
       }
@@ -294,7 +296,7 @@ export default function NewNotePage() {
           const base64 = reader.result as string;
           const resized = await resizeImage(base64, 1024);
           const ratio = await getImageRatio(resized);
-          const newZoom = slotIdx === 0 ? Math.min(ratio, 1 / ratio) : 1;
+          const newZoom = (slotIdx === 0 && totalAfter === 1) ? Math.min(ratio, 1 / ratio) : 1;
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
           setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
@@ -313,6 +315,7 @@ export default function NewNotePage() {
       if (remainingSlots <= 0) return;
       const filesToProcess = Array.from(files).slice(0, remainingSlots);
       const startIdx = images.length;
+      const totalAfter = startIdx + filesToProcess.length;
       // 切到雙圖模式時，第一張 zoom 重置為 1（配合 object-cover）
       if (startIdx === 1) {
         setZooms(prev => { const next = [...prev]; next[0] = 1; return next; });
@@ -326,7 +329,7 @@ export default function NewNotePage() {
           const ratio = await getImageRatio(resized);
           // 單圖模式：初始 zoom 設為 containZoom（顯示完整圖片）
           // 雙圖模式：初始 zoom = 1（配合 object-cover 填滿半格）
-          const newZoom = slotIdx === 0 ? Math.min(ratio, 1 / ratio) : 1;
+          const newZoom = (slotIdx === 0 && totalAfter === 1) ? Math.min(ratio, 1 / ratio) : 1;
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
           setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
@@ -590,22 +593,28 @@ const handleSave = async () => {
               <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
                 {images.length === 2 ? (
                   <>
-                    <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                    <div className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
                       <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                      <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
+                        {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                      </button>
                       <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
                         <Camera className="w-2.5 h-2.5" /> 重選
                       </button>
                     </div>
                     <div className="h-full w-px bg-white/20 z-10" />
-                    <div className="h-full relative overflow-hidden cursor-move" style={{ width: `${100 - splitRatio}%` }} onTouchStart={(e) => onTouchStart(e, 1)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 1)}>
+                    <div className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
                       <img src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                      <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
+                        {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                      </button>
                       <button type="button" className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 1)}>
                         <Camera className="w-2.5 h-2.5" /> 重選
                       </button>
                     </div>
                   </>
                 ) : (
-                  <div className="w-full h-full relative overflow-hidden cursor-move" onTouchStart={(e) => onTouchStart(e, 0)} onTouchMove={onTouchMove} onTouchEnd={() => setDraggingIdx(null)} onMouseDown={(e) => onMouseDown(e, 0)}>
+                  <div className={cn("w-full h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
                     {/* 單圖模式：手動 cover 定位，初始顯示完整圖片；transform-origin 恰好在容器中心 */}
                     <img src={images[0]} className="absolute pointer-events-none" style={{
                       width: imgRatios[0] >= 1 ? `${imgRatios[0] * 100}%` : '100%',
@@ -615,6 +624,9 @@ const handleSave = async () => {
                       transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                       transformOrigin: 'center center',
                     }} alt="img1" />
+                    <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
+                      {lockedImgs[0] ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                    </button>
                     <button type="button" className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/60 hover:bg-white/20 border border-white/20 text-white/60 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => openPicker('replace', 0)}>
                       <Camera className="w-3 h-3" /> 重選
                     </button>
