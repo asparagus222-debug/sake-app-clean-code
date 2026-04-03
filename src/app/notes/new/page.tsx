@@ -212,7 +212,7 @@ export default function NewNotePage() {
     if (data.text) {
       // 將 AI 生成的內容填入下方的卡片
       setFormData(prev => ({ ...prev, aiResultNote: data.text }));
-      toast({ title: `${mode === 'left' ? '左腦理性' : '右腦感性'}筆記生成成功` });
+      toast({ title: `${mode === 'left' ? '理性' : '感性'}品鑑筆記生成成功` });
     }
   } catch (err) {
     toast({ variant: "destructive", title: "AI 連線失敗" });

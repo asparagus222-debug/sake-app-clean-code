@@ -219,7 +219,7 @@ export default function EditNotePage() {
       const data = await response.json();
       if (data.text) {
         setFormData(prev => ({ ...prev, aiResultNote: data.text }));
-        toast({ title: `${mode === 'left' ? '左腦理性' : '右腦感性'}筆記生成成功` });
+        toast({ title: `${mode === 'left' ? '理性' : '感性'}品鑑筆記生成成功` });
       }
     } catch (err) {
       toast({ variant: "destructive", title: "AI 連線失敗" });
@@ -754,12 +754,11 @@ export default function EditNotePage() {
           <div className="flex flex-col items-center justify-center pt-2"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
         </section>
 
-        {/* AI 雙腦品鑑筆記區塊 */}
+        {/* AI 品鑑筆記區塊 */}
         <section className="space-y-4">
           <div className="flex justify-between items-end px-1">
             <div className="flex flex-col">
-              <Label className="text-[11px] font-bold text-primary uppercase tracking-widest ml-1">AI 雙腦品鑑筆記</Label>
-              <span className="text-[8px] text-muted-foreground ml-1">LEFT: 理性分析 / RIGHT: 感性想像</span>
+              <Label className="text-[11px] font-bold text-primary uppercase tracking-widest ml-1">AI 品鑑筆記</Label>
             </div>
             <div className="flex gap-2">
               <Button
@@ -771,7 +770,7 @@ export default function EditNotePage() {
                   formData.activeBrain === 'left' && "ring-1 ring-blue-500 ring-offset-1 ring-offset-black"
                 )}
               >
-                <Sparkles className="w-2.5 h-2.5 mr-1" /> 左腦品鑑
+                <Sparkles className="w-2.5 h-2.5 mr-1" /> 理性品鑑
               </Button>
               <Button
                 variant="outline" size="sm"
@@ -782,7 +781,7 @@ export default function EditNotePage() {
                   formData.activeBrain === 'right' && "ring-1 ring-rose-500 ring-offset-1 ring-offset-black"
                 )}
               >
-                <Sparkles className="w-2.5 h-2.5 mr-1" /> 右腦品鑑
+                <Sparkles className="w-2.5 h-2.5 mr-1" /> 感性品鑑
               </Button>
             </div>
           </div>
@@ -815,7 +814,7 @@ export default function EditNotePage() {
                   formData.activeBrain === 'left' ? "text-blue-400" : "text-rose-400"
                 )}>
                   {formData.activeBrain === 'left' ? <BrainCircuit size={12} /> : <Palette size={12} />}
-                  {formData.activeBrain === 'left' ? "AI 理性分析修飾" : formData.activeBrain === 'right' ? "AI 感性想像引導" : "等待點擊上方按鈕生成"}
+                  {formData.activeBrain === 'left' ? "AI 理性品鑑" : formData.activeBrain === 'right' ? "AI 感性品鑑" : "點擊上方按鈕生成"}
                 </div>
                 {isGenerating && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
               </div>
