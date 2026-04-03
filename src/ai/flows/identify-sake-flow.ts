@@ -54,7 +54,7 @@ export const identifySakeFlow = ai.defineFlow(
     // 模型只專注讀取圖片，完全不進行外部搜尋。
     // 銘柄、酒造名稱的識別準確度等同 OCR（不受其他雜訊干擾）。
     const { output: vision } = await ai.generate({
-      model: googleAI.model('gemini-2.0-flash'),
+      model: googleAI.model('gemini-flash-latest'),
       output: { schema: VisionExtractionSchema },
       prompt: [
         {
@@ -99,7 +99,7 @@ export const identifySakeFlow = ai.defineFlow(
     const query = searchQuery || `${brandName} ${brewery} 日本酒`;
 
     const { output: enriched } = await ai.generate({
-      model: googleAI.model('gemini-2.0-flash'),
+      model: googleAI.model('gemini-flash-latest'),
       config: { googleSearchRetrieval: true },
       output: { schema: IdentifySakeOutputSchema },
       prompt: [
