@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { identifySake } from '@/ai/flows/identify-sake-flow';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -191,7 +190,13 @@ export default function NewNotePage() {
     setIsIdentifying(true);
     try {
       const optimizedPhoto = await resizeImage(photoDataUri, 1024);
-      const result = await identifySake({ photoDataUri: optimizedPhoto });
+      const response = await fetch('/api/ai/identify-sake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoDataUri: optimizedPhoto }),
+      });
+      if (!response.ok) throw new Error('API error');
+      const result = await response.json();
       if (result) {
         const newInfoTags: string[] = [];
         if (result.alcoholPercent) newInfoTags.push(result.alcoholPercent);
