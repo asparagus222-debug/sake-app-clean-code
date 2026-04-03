@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -27,6 +28,9 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function SakeRadarChart({ data }: SakeRadarChartProps) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const chartData = [
     { subject: "甘", value: data.sweetness },
     { subject: "酸", value: data.acidity },
@@ -34,6 +38,8 @@ export function SakeRadarChart({ data }: SakeRadarChartProps) {
     { subject: "旨", value: data.umami },
     { subject: "澀", value: data.astringency },
   ]
+
+  if (!mounted) return <div className="w-full aspect-square max-w-[400px] mx-auto" />
 
   return (
     <div className="w-full aspect-square max-w-[400px] mx-auto flex items-center justify-center">
