@@ -56,7 +56,7 @@ export const identifySakeFlow = ai.defineFlow(
     // 銘柄、酒造名稱的識別準確度等同 OCR（不受其他雜訊干擾）。
     // Claude Sonnet 的多語言 OCR 能力強，特別適合日文酒標辨識。
     const { output: vision } = await ai.generate({
-      model: anthropic('claude-sonnet-4-5'),
+      model: anthropic('claude-4-5-sonnet'),
       output: { schema: VisionExtractionSchema },
       prompt: [
         {
