@@ -5,9 +5,9 @@
  * Step 2: 精準 Google Search — 用 Step 1 提取到的正確日文名稱搜尋官方規格，補齊細節。
  */
 
+import Anthropic from '@anthropic-ai/sdk';
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import { anthropic } from 'genkitx-anthropic';
 import { z } from 'genkit';
 
 const IdentifySakeInputSchema = z.object({
@@ -51,35 +51,63 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
-    // ── Step 1: 純視覺 OCR ──
-    // 模型只專注讀取圖片，完全不進行外部搜尋。
-    // 銘柄、酒造名稱的識別準確度等同 OCR（不受其他雜訊干擾）。
-    // Claude Sonnet 的多語言 OCR 能力強，特別適合日文酒標辨識。
-    const { output: vision } = await ai.generate({
-      model: anthropic('claude-4-5-sonnet'),
-      output: { schema: VisionExtractionSchema },
-      prompt: [
-        {
-          text: `你是日文清酒酒標的 OCR 專家。請仔細觀察這張酒標圖片，精確提取所有可見的文字資訊。
+    // ── Step 1: Claude 純視覺 OCR ──
+    // 使用 @anthropic-ai/sdk 官方 SDK 直接呼叫，不受 genkit plugin model 清單限制
+    // 使用 claude-sonnet-4-6（最新版）
+    let vision: z.infer<typeof VisionExtractionSchema> | null = null;
+
+    try {
+      const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const matches = input.photoDataUri.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) throw new Error('Invalid photoDataUri format');
+      const mediaType = matches[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+      const base64Data = matches[2];
+
+      const response = await anthropicClient.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+            { type: 'text', text: `你是日文清酒酒標的 OCR 專家。請仔細觀察這張酒標圖片，精確提取所有可見的文字資訊。
 
 規則：
 1. 只報告圖片中「實際可見」的文字，絕對不要猜測或編造
 2. 所有輸出必須是日文原文（漢字/假名），不要翻譯
 3. brandName = 酒標上最大、最醒目的品牌名稱（通常是平假名或漢字，例如まるわらい）
 4. brewery = 製造商名稱，通常在瓶底或背標（例如名城酒造株式会社）
-5. 背標上通常有最完整的規格（アルコール分、精米歩合、原料米等），請仔細讀取
+5. 背標上有最完整的規格（アルコール分、精米歩合、原料米等），請仔細讀取
 6. specialProcess 包含酒類種別（如純米大吟醸）和特殊製法（如生原酒、無濾過）
 7. searchQuery 填入最適合 Google 搜尋這款酒的日文關鍵字
 
-請仔細掃描圖片中所有文字後輸出結果。`,
-        },
-        { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
-      ],
-    });
+請以純 JSON 格式回傳（不要加 markdown code block）：
+{"brandName":"...","brewery":"...","origin":"...","alcoholPercent":"...","seimaibuai":"...","riceName":"...","specialProcess":["..."],"searchQuery":"..."}` },
+          ],
+        }],
+      });
 
-    if (!vision) {
-      throw new Error('無法從圖片提取資訊，請確保酒標清晰可見。');
+      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) vision = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      console.error('Claude Step 1 failed, falling back to Gemini:', err);
     }
+
+    // Claude 失敗時降級到 Gemini 視覺辨識
+    if (!vision) {
+      const { output: geminiVision } = await ai.generate({
+        model: googleAI.model('gemini-flash-latest'),
+        output: { schema: VisionExtractionSchema },
+        prompt: [
+          { text: '你是日文清酒酒標 OCR 專家。請提取所有可見文字，以 JSON 格式回傳：brandName、brewery、origin、alcoholPercent、seimaibuai、riceName、specialProcess(陣列)、searchQuery。保持日文原文。' },
+          { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
+        ],
+      });
+      vision = geminiVision ?? { brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
+    }
+
+    if (!vision) throw new Error('無法從圖片提取資訊，請確保酒標清晰可見。');
 
     const { brandName, brewery, origin, searchQuery } = vision;
 
