@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     ItemName:          ITEM_NAMES[amount as ValidAmount],
     ReturnURL:         `${baseUrl}/api/sponsor/notify`,
     OrderResultURL:    `${baseUrl}/profile`,
-    ChoosePayment:     'Credit',
+    ChoosePayment:     'ALL',
     EncryptType:       '1',
     CustomField1:      uid,
   };
