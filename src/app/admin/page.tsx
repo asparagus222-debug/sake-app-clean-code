@@ -62,6 +62,11 @@ import {
 import { collection, doc, updateDoc, deleteField, increment } from 'firebase/firestore';
 import { signOut, getIdToken } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
+import {
+  JanomeCupIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS,
+  SakeBottleIcon, YONGO_VARIANTS,
+  KodaruIcon, KODARU_GOLD_COLORS,
+} from '@/components/SponsorIcons';
 
 // 管理員名單
 const ADMIN_EMAILS = ["asparagus222@gmail.com", "admin@example.com"];
@@ -542,25 +547,25 @@ export default function AdminPage() {
                   <div className="text-[8px] opacity-60">累積計算</div>
                 </div>
                 <div className="bg-blue-400/10 rounded-2xl border border-blue-400/30 p-2.5 space-y-1 text-blue-300">
-                  <div className="flex justify-center"><span className="text-xl">🔵</span></div>
+                  <div className="flex justify-center"><JanomeCupIcon size={24} /></div>
                   <div>蛇目杯</div>
                   <div>累積 $200</div>
                   <div className="text-[8px] opacity-70">解鎖蛇目杯</div>
                 </div>
                 <div className="bg-amber-400/10 rounded-2xl border border-amber-400/30 p-2.5 space-y-1 text-amber-400">
-                  <div className="text-xl">🏵️</div>
+                  <div className="flex justify-center"><TokkuriIcon size={20} colors={TOKKURI_CLASSIC_COLORS} /></div>
                   <div>德利</div>
                   <div>累積 $500</div>
                   <div className="text-[8px] opacity-70">解鎖德利</div>
                 </div>
                 <div className="bg-amber-500/12 rounded-2xl border border-amber-500/40 p-2.5 space-y-1 text-amber-300">
-                  <div className="text-xl">🍾</div>
+                  <div className="flex justify-center"><SakeBottleIcon size={20} colors={YONGO_VARIANTS[4].colors} /></div>
                   <div>四合瓶</div>
                   <div>累積 $1000</div>
                   <div className="text-[8px] opacity-70">解鎖四合瓶</div>
                 </div>
                 <div className="bg-stone-400/10 rounded-2xl border border-stone-400/30 p-2.5 space-y-1 text-stone-300">
-                  <div className="text-xl">🪵</div>
+                  <div className="flex justify-center"><KodaruIcon size={20} colors={KODARU_GOLD_COLORS} /></div>
                   <div>菰樽</div>
                   <div>累積 $3000</div>
                   <div className="text-[8px] opacity-70">隱藏線級</div>
@@ -629,7 +634,15 @@ export default function AdminPage() {
                       .sort((a: any, b: any) => (b.sponsorTotal || 0) - (a.sponsorTotal || 0))
                       .map((u: any) => {
                         const total: number = u.sponsorTotal || 0;
-                        const badge = total >= 1000 ? '🍶✨' : total >= 500 ? '🍶' : total >= 200 ? '🔵' : '☕';
+                        const BadgeIcon = total >= 3000
+                          ? <KodaruIcon size={16} colors={KODARU_GOLD_COLORS} />
+                          : total >= 1000
+                          ? <SakeBottleIcon size={14} colors={YONGO_VARIANTS.find(v => v.id === 'cedar')!.colors} />
+                          : total >= 500
+                          ? <TokkuriIcon size={14} colors={TOKKURI_CLASSIC_COLORS} />
+                          : total >= 200
+                          ? <JanomeCupIcon size={14} />
+                          : <span className="text-sm">☕</span>;
                         return (
                           <div key={u.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
                             <div>
@@ -638,7 +651,7 @@ export default function AdminPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-[9px] font-black text-amber-400">NT${total}</span>
-                              <span className="text-sm">{badge}</span>
+                              <span className="leading-none inline-flex items-center">{BadgeIcon}</span>
                             </div>
                           </div>
                         );
