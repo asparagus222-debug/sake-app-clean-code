@@ -31,6 +31,7 @@ export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 // Claude/Gemini 共用視覺提取 Schema
 const VisionExtractionSchema = z.object({
   allText: z.array(z.string()).optional().describe('圖片上所有可見文字列表（用於備用搜尋）'),
+  visualDescription: z.string().optional().describe('酒標構圖特徵：瓶身/標籤顏色、主要圖案（如山水、花、動物、幾何）、有無印章或特殊標記、筆觸風格（細緻/粗獷）'),
   brandName: z.string(),
   brewery: z.string(),
   origin: z.string(),
@@ -74,18 +75,19 @@ export const identifySakeFlow = ai.defineFlow(
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
             { type: 'text', text: `你是日文清酒酒標的完整文字辨識專家。
 
-【第一步】請列出這張圖片上「所有」你能看到的文字字串，無論大小、無論印刷或書法。
-【第二步】從列表中判斷銘柄、酒造等欄位。
+【第一步】列出圖片上「所有」可見文字（無論大小、印刷或書法）。
+【第二步】描述酒標的「視覺構圖特徵」：瓶身/標籤主色調、主要圖案（山水/花/動物/幾何/書道）、有無紅色印章或特殊標記、筆觸是細緻還是粗獷。
+【第三步】從文字和視覺特徵共同判斷銘柄等欄位，並產生 searchQuery。
 
-⚠️ 重要注意：
-- 酒標上常有「大型藝術書道」的單個漢字（如毛筆大字的裝飾），這是視覺元素，不是銘柄
-- 真正的銘柄通常是裝飾字旁邊「較小的清晰印刷」文字，特別是平假名（如まるわらい）
-- 例：大型書道字「笑」旁邊可能有小字「まるわらい」——後者才是銘柄
-- 只報告圖片中「實際可見」的文字，絕對不要猜測或編造
-- 所有輸出必須是日文原文，不要翻譯
+⚠️ 重要：
+- 酒標大型書道裝飾字（如笑、夢、粋）是美術設計，不是銘柄
+- 真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名
+- searchQuery 要同時包含「文字線索」+「視覺特徵」，例如：「まるわらい 黒瓶 白標 墨絵 だるま 純米大吟醸」
+- 若幾乎看不到文字，searchQuery 改以視覺描述為主，例如：「日本酒 青い牡丹 白地 細筆 純米酒」
+- 只報告實際可見的文字，不要猜測
 
 請回傳 JSON（不加 markdown code block）：
-{"allText":["圖片上所有可見文字"],"brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"最佳日文搜尋詞"}` },
+{"allText":["圖片上所有可見文字"],"visualDescription":"酒標視覺特徵描述","brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"文字+視覺特徵的最佳日文搜尋詞"}` },
           ],
         }],
       }, { timeout: 12000 }); // 12s timeout — fallback 到 Gemini 避免整體超過 20s
@@ -110,13 +112,14 @@ export const identifySakeFlow = ai.defineFlow(
           {
             text: `你是日文清酒酒標的完整文字辨識專家。
 
-【第一步】請列出這張圖片上「所有」你能看到的文字字串，無論大小、無論印刷或書法。
-【第二步】從列表中判斷銘柄、酒造等欄位。
+【第一步】列出圖片上「所有」可見文字。
+【第二步】描述酒標視覺構圖：主色調、主要圖案（山水/花/動物/書道大字等）、有無印章或特殊標記、筆觸風格。
+【第三步】從文字和視覺共同判斷銘柄，並產生涵蓋文字+視覺的 searchQuery。
 
-⚠️ 重要：酒標上大型書道裝飾字（如笑、夢）是美術設計，不是銘柄；真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名。
+⚠️ 重要：大型書道裝飾字不是銘柄；若文字不清楚，searchQuery 改以視覺描述為主，例如「日本酒 黒瓶 白標 墨絵 純米大吟醸」。
 
 請回傳 JSON（不加 markdown）：
-{"allText":["所有可見文字"],"brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"日文搜尋詞"}`,
+{"allText":["所有可見文字"],"visualDescription":"視覺特徵","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"文字+視覺特徵搜尋詞"}`,
           },
           { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
         ],
@@ -133,8 +136,9 @@ export const identifySakeFlow = ai.defineFlow(
     const brandNameCore = brandName.split(/[\s（(]/)[0].trim();
     const isSuspiciousBrand = !brandName || brandNameCore.length <= 1;
     const allTextJoined = (vision.allText || []).join(' ');
-    const searchQuery = isSuspiciousBrand && allTextJoined
-      ? `${allTextJoined} 日本酒`
+    // isSuspiciousBrand 時：文字線索 + 視覺特徵一起搜尋，對「無字/藝術酒標」特別有效
+    const searchQuery = isSuspiciousBrand
+      ? [allTextJoined, vision.visualDescription, '日本酒'].filter(Boolean).join(' ')
       : (vision.searchQuery || `${brandName} ${brewery} 日本酒`);
 
     if (isSuspiciousBrand) {
