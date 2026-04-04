@@ -7,7 +7,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase
 import { collection, doc, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { JanomeCupIcon, SakeBottleIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS, KodaruIcon, KODARU_GOLD_COLORS } from '@/components/SponsorIcons';
+import { JanomeCupIcon, SakeBottleIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS, KodaruIcon, KODARU_GOLD_COLORS, YONGO_VARIANTS } from '@/components/SponsorIcons';
 
 interface UserBadgeProps {
   userId: string;
@@ -55,9 +55,10 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
     badgeData = { icon: Medal, color: "text-[#cd7f32]", label: "銅牌品飲家 (10+)", glow: false, sparkle: false };
   }
 
-  if (!badgeData && !sponsorBadge) return null;
-
+  // 必須在所有早期 return 之前呼叫 Hooks
   const [openTooltip, setOpenTooltip] = useState<string | null>(null);
+
+  if (!badgeData && !sponsorBadge) return null;
 
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
@@ -107,7 +108,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
               >
                 {sponsorBadge === 'cup'    && <JanomeCupIcon size={14} />}
                 {sponsorBadge === 'sake'   && <TokkuriIcon size={14} colors={TOKKURI_CLASSIC_COLORS} />}
-                {sponsorBadge === 'bottle' && <SakeBottleIcon size={14} />}
+                {sponsorBadge === 'bottle' && <SakeBottleIcon size={14} colors={YONGO_VARIANTS.find(v => v.id === 'cedar')!.colors} />}
                 {sponsorBadge === 'kodaru' && <KodaruIcon size={16} colors={KODARU_GOLD_COLORS} />}
               </span>
             </TooltipTrigger>
