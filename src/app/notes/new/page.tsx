@@ -237,10 +237,7 @@ export default function NewNotePage() {
     setIsIdentifying(true);
     setIdentifyCountdown(20);
     const countdownInterval = setInterval(() => {
-      setIdentifyCountdown(prev => {
-        if (prev <= 1) { clearInterval(countdownInterval); abortController.abort(); return 0; }
-        return prev - 1;
-      });
+      setIdentifyCountdown(prev => prev - 1);
     }, 1000);
     try {
       const [optimizedPhoto, optimizedBack] = await Promise.all([
@@ -697,8 +694,10 @@ const handleSave = async () => {
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                     <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
                     <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
-                    {identifyCountdown > 0 && (
+                    {identifyCountdown > 0 ? (
                       <p className="text-primary text-lg font-bold mt-2 tabular-nums">{identifyCountdown}<span className="text-[10px] text-white/50 ml-1">s</span></p>
+                    ) : (
+                      <p className="text-white/60 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">不好意思，剛去扶老奶奶過馬路，延遲了一下，感謝您耐心等候🙇</p>
                     )}
                     <p className="text-white/40 text-[9px] font-bold mt-1 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                     <button
