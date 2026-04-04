@@ -1094,8 +1094,8 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="ghost" className="h-11 rounded-full border border-border bg-muted/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted">
-                    <LifeBuoy className="w-3.5 h-3.5 mr-2" /> 問題回報
+                  <Button type="button" variant="outline" className="w-full h-11 rounded-2xl border-primary/30 bg-primary/5 hover:bg-primary/10 shadow-lg p-2 text-[9px] font-bold uppercase tracking-widest text-primary flex items-center justify-center gap-1.5">
+                    <LifeBuoy className="w-3.5 h-3.5 text-primary" /> 問題回報
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-8 max-sm">
@@ -1107,8 +1107,8 @@ export default function ProfilePage() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="ghost" className="h-11 rounded-full border border-border bg-muted/50 text-[10px] font-bold uppercase tracking-widest text-destructive/80 hover:text-destructive hover:bg-muted">
-                    <Trash2 className="w-3.5 h-3.5 mr-2" /> 刪除帳戶
+                  <Button type="button" variant="outline" className="w-full h-11 rounded-2xl border-primary/30 bg-primary/5 hover:bg-primary/10 shadow-lg p-2 text-[9px] font-bold uppercase tracking-widest text-primary flex items-center justify-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5 text-primary" /> 刪除帳戶
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-8 shadow-2xl">
