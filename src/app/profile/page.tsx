@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { UserBadge } from '@/components/UserBadge';
-import { JanomeCupIcon as JanomeCupSponsor, SakeBottleIcon as SakeBottleSponsor } from '@/components/SponsorIcons';
 import { NumericKeypad } from '@/components/NumericKeypad';
 import { UserProfile, QUALIFICATION_OPTIONS, ThemeSettings } from '@/lib/types';
 import { 
@@ -130,6 +129,7 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSponsorLoading, setIsSponsorLoading] = useState(false);
+  const [customAmount, setCustomAmount] = useState('');
 
   // 頭像編輯器
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -146,7 +146,7 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
 
-  const handleSponsor = async (amount: 50 | 200 | 500 | 1000 | 3000) => {
+  const handleSponsor = async (amount: number) => {
     if (!auth?.currentUser) {
       toast({ variant: 'destructive', title: '請先登入' });
       return;
@@ -1159,28 +1159,44 @@ export default function ProfilePage() {
 
             <div className="space-y-2">
               <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">贊助我喝一杯</p>
-              <div className="grid grid-cols-5 gap-1">
-                {([
-                  { amount: 50   as const, icon: <span className="text-base leading-none">☕</span>,          label: '咖啡',   sub: '$50',   cls: 'border-amber-400/25 bg-amber-400/6 hover:bg-amber-400/12 text-amber-500' },
-                  { amount: 200  as const, icon: <JanomeCupSponsor size={18} />,                        label: '蛇目杯', sub: '$200',  cls: 'border-blue-400/30 bg-blue-400/6 hover:bg-blue-400/12 text-blue-300' },
-                  { amount: 500  as const, icon: <SakeBottleSponsor size={18} />,                       label: '德利',   sub: '$500',  cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
-                  { amount: 1000 as const, icon: <span className="text-base leading-none">🍾</span>,          label: '四合瓶', sub: '$1000', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
-                  { amount: 3000 as const, icon: <span className="text-base leading-none">🪵</span>,          label: '菰樽',   sub: '$3000', cls: 'border-stone-400/40 bg-stone-400/8 hover:bg-stone-400/15 text-stone-300' },
-                ]).map(({ amount, icon, label, sub, cls }) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    disabled={isSponsorLoading}
-                    onClick={() => handleSponsor(amount)}
-                    className={`flex flex-col items-center justify-center gap-0.5 h-16 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
-                  >
-                    <span className="leading-none flex items-center justify-center h-5">
-                      {isSponsorLoading ? <span className="text-[9px]">...</span> : icon}
-                    </span>
-                    <span className="text-[7px] font-bold uppercase tracking-wider">{label}</span>
-                    <span className="text-[8px] font-black">NT{sub}</span>
-                  </button>
-                ))}
+              {/* 固定 $50 咖啡按鈕 */}
+              <button
+                type="button"
+                disabled={isSponsorLoading}
+                onClick={() => handleSponsor(50)}
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSponsorLoading
+                  ? <span className="text-xs">處理中...</span>
+                  : <>
+                      <span className="text-lg leading-none">☕</span>
+                      <span className="text-xs font-bold">贊助我一杯咖啡</span>
+                      <span className="text-[10px] font-black opacity-60">NT$50</span>
+                    </>
+                }
+              </button>
+              {/* 隨意小額贊助 */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">NT$</span>
+                  <input
+                    type="number"
+                    min="50"
+                    step="1"
+                    value={customAmount}
+                    onChange={e => setCustomAmount(e.target.value)}
+                    placeholder="輸入金額"
+                    className="w-full pl-9 pr-3 h-10 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/30"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={isSponsorLoading || !customAmount || Number(customAmount) < 50}
+                  onClick={() => handleSponsor(Math.round(Number(customAmount)))}
+                  className="h-10 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-muted-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  隨意小額贊助
+                </button>
               </div>
             </div>
             

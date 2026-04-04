@@ -1,13 +1,13 @@
 
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Medal, Trophy, Star } from 'lucide-react';
 import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { JanomeCupIcon, SakeBottleIcon, KodaruIcon, KODARU_VARIANTS } from '@/components/SponsorIcons';
+import { JanomeCupIcon, SakeBottleIcon, KodaruIcon, KODARU_GOLD_COLORS } from '@/components/SponsorIcons';
 
 interface UserBadgeProps {
   userId: string;
@@ -38,7 +38,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
   const sponsorBadge =
     sponsorTotal >= 3000 ? 'kodaru' :
     sponsorTotal >= 1000 ? 'bottle' :
-    sponsorTotal >= 500  ? 'emoji-bottle' :
+    sponsorTotal >= 500  ? 'sake' :
     sponsorTotal >= 200  ? 'cup' : null;
 
   let badgeData: { icon: typeof Medal; color: string; label: string; glow: boolean; sparkle: boolean } | null = null;
@@ -57,14 +57,21 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
 
   if (!badgeData && !sponsorBadge) return null;
 
+  const [openTooltip, setOpenTooltip] = useState<string | null>(null);
+
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
       {badgeData && (() => {
         const Icon = badgeData.icon;
         return (
-          <Tooltip>
+          <Tooltip open={openTooltip === 'activity'}>
             <TooltipTrigger asChild>
-              <span className="inline-flex items-center gap-1 cursor-default">
+              <span
+                className="inline-flex items-center gap-1 cursor-pointer select-none"
+                onPointerDown={() => setOpenTooltip('activity')}
+                onPointerUp={() => setOpenTooltip(null)}
+                onPointerLeave={() => setOpenTooltip(null)}
+              >
                 <Icon
                   className={cn(
                     "w-3.5 h-3.5",
@@ -84,19 +91,24 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
       })()}
       {sponsorBadge && (() => {
         const labels: Record<string, string> = {
-          cup:            `蛇目杯贊助者 (NT$${sponsorTotal})`,
-          'emoji-bottle': `德利贊助者 (NT$${sponsorTotal})`,
-          bottle:         `四合瓶頂級贊助者 (NT$${sponsorTotal})`,
-          kodaru:         `菰樽贊助者 (NT$${sponsorTotal})`,
+          cup:    `蛇目杯贊助者 — 累積贊助 NT$200`,
+          sake:   `德利贊助者 — 累積贊助 NT$500`,
+          bottle: `四合瓶贊助者 — 累積贊助 NT$1000`,
+          kodaru: `菰樽贊助者 — 累積贊助 NT$3000，隐藏成就`,
         };
         return (
-          <Tooltip>
+          <Tooltip open={openTooltip === 'sponsor'}>
             <TooltipTrigger asChild>
-              <span className="cursor-default leading-none inline-flex items-center">
-                {sponsorBadge === 'cup'          && <JanomeCupIcon size={14} />}
-                {sponsorBadge === 'emoji-bottle' && <SakeBottleIcon size={14} />}
-                {sponsorBadge === 'bottle'       && <span className="text-[13px]">🍾</span>}
-                {sponsorBadge === 'kodaru'       && <KodaruIcon size={16} colors={KODARU_VARIANTS[0].colors} />}
+              <span
+                className="cursor-pointer select-none leading-none inline-flex items-center"
+                onPointerDown={() => setOpenTooltip('sponsor')}
+                onPointerUp={() => setOpenTooltip(null)}
+                onPointerLeave={() => setOpenTooltip(null)}
+              >
+                {sponsorBadge === 'cup'    && <JanomeCupIcon size={14} />}
+                {sponsorBadge === 'sake'   && <span className="text-[13px]">🍶</span>}
+                {sponsorBadge === 'bottle' && <SakeBottleIcon size={14} />}
+                {sponsorBadge === 'kodaru' && <KodaruIcon size={16} colors={KODARU_GOLD_COLORS} />}
               </span>
             </TooltipTrigger>
             <TooltipContent className="dark-glass border-white/10 text-[9px] font-bold uppercase py-1 px-2">

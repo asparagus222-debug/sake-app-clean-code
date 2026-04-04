@@ -57,6 +57,13 @@ export interface KodaruColors {
   textAccent: string;
 }
 
+export const KODARU_GOLD_COLORS: KodaruColors = {
+  ropeLight: '#f0dfa0', ropeDark: '#7a5a10',
+  barrelTop: '#fffae8', barrelMid: '#f5e8b0', barrelLow: '#e0cc80',
+  labelBg: '#fffdf5', labelBorder: '#a07820',
+  textTop: '#a07820', textMain: '#3a2800', textAccent: '#c89a00',
+};
+
 export const KODARU_VARIANTS: { id: string; name: string; colors: KodaruColors }[] = [
   {
     id: 'classic',
