@@ -93,7 +93,6 @@ export const identifySakeFlow = ai.defineFlow(
 
     // ── Step 1: Gemini 純視覺 OCR ──
     // 若有背標，優先以背標作為主要辨識圖片（背標通常有清晰印刷文字）
-    const hasBackLabel = !!input.backPhotoDataUri;
     const primaryImage = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
     const secondaryImage = hasBackLabel ? input.photoDataUri : null;
 
