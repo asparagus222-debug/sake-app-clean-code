@@ -76,18 +76,22 @@ export const identifySakeFlow = ai.defineFlow(
             { type: 'text', text: `你是日文清酒酒標的完整文字辨識專家。
 
 【第一步】列出圖片上「所有」可見文字（無論大小、印刷或書法）。
-【第二步】描述酒標的「視覺構圖特徵」：瓶身/標籤主色調、主要圖案（山水/花/動物/幾何/書道）、有無紅色印章或特殊標記、筆觸是細緻還是粗獷。
+【第二步】描述酒標的「視覺構圖特徵」：
+  - 瓶身/標籤主色調（例：黒瓶・白和紙ラベル）
+  - 大型書道文字：它是什麼字？（請直接寫出「笑」「夢」「粋」「縁」「楽」「宇」等）——這對搜尋很重要
+  - 有無紅色印章或特殊標記
+  - 整體筆觸風格（細緻/粗獷）
 【第三步】從文字和視覺特徵共同判斷銘柄等欄位，並產生 searchQuery。
 
 ⚠️ 重要：
 - 酒標大型書道裝飾字（如笑、夢、粋）是美術設計，不是銘柄
 - 真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名
-- searchQuery 要同時包含「文字線索」+「視覺特徵」，例如：「まるわらい 黒瓶 白標 墨絵 だるま 純米大吟醸」
-- 若幾乎看不到文字，searchQuery 改以視覺描述為主，例如：「日本酒 青い牡丹 白地 細筆 純米酒」
+- searchQuery 要包含「正確識別的書道大字本身」+「文字線索」，例如：「笑 伝承乃技 純米大吟醸 日本酒」
+- 若幾乎看不到文字，searchQuery 改以視覺描述為主
 - 只報告實際可見的文字，不要猜測
 
 請回傳 JSON（不加 markdown code block）：
-{"allText":["圖片上所有可見文字"],"visualDescription":"酒標視覺特徵描述","brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"文字+視覺特徵的最佳日文搜尋詞"}` },
+{"allText":["圖片上所有可見文字"],"visualDescription":"酒標視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"書道大字+文字線索的日文搜尋詞"}` },
           ],
         }],
       }, { timeout: 12000 }); // 12s timeout — fallback 到 Gemini 避免整體超過 20s
@@ -113,13 +117,13 @@ export const identifySakeFlow = ai.defineFlow(
             text: `你是日文清酒酒標的完整文字辨識專家。
 
 【第一步】列出圖片上「所有」可見文字。
-【第二步】描述酒標視覺構圖：主色調、主要圖案（山水/花/動物/書道大字等）、有無印章或特殊標記、筆觸風格。
-【第三步】從文字和視覺共同判斷銘柄，並產生涵蓋文字+視覺的 searchQuery。
+【第二步】描述酒標視覺構圖：主色調、大型書道文字（直接寫出是哪個字，如「笑」「夢」「粋」）、有無印章、筆觸風格。
+【第三步】從文字和視覺共同判斷銘柄，並產生包含「書道大字本身」+「其他關鍵詞」的 searchQuery（例如：「笑 伝承乃技 純米大吟醸 日本酒」）。
 
-⚠️ 重要：大型書道裝飾字不是銘柄；若文字不清楚，searchQuery 改以視覺描述為主，例如「日本酒 黒瓶 白標 墨絵 純米大吟醸」。
+⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。
 
 請回傳 JSON（不加 markdown）：
-{"allText":["所有可見文字"],"visualDescription":"視覺特徵","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"文字+視覺特徵搜尋詞"}`,
+{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"書道大字+其他搜尋詞"}`,
           },
           { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
         ],
@@ -133,12 +137,17 @@ export const identifySakeFlow = ai.defineFlow(
     const { brandName, brewery, origin } = vision;
     // 取出括號/空格前的「核心銘柄字串」做可疑判斷
     // 例：「子 (純米大吟醸)」→ core = "子"（單字，可疑）；「まるわらい」→ core = "まるわらい"（正常）
+    // 常見裝飾漢字（書道大字）一律視為可疑，不論長短
+    const DECORATIVE_KANJI = new Set(['笑', '夢', '粋', '縁', '楽', '誠', '心', '愛', '龍', '鶴', '宇', '字', '子', '幸', '福']);
     const brandNameCore = brandName.split(/[\s（(]/)[0].trim();
-    const isSuspiciousBrand = !brandName || brandNameCore.length <= 1;
+    const isSuspiciousBrand = !brandName
+      || brandNameCore.length <= 1
+      || DECORATIVE_KANJI.has(brandNameCore);
     const allTextJoined = (vision.allText || []).join(' ');
-    // isSuspiciousBrand 時：文字線索 + 視覺特徵一起搜尋，對「無字/藝術酒標」特別有效
+    // isSuspiciousBrand 時：vision.searchQuery（含 Step 1 推斷的視覺關鍵詞）+ visualDescription（含書道大字名稱如「笑」）
+    // 這樣能確保「笑 伝承乃技 純米大吟醸」進入 Google Search，找到 まるわらい 等用書道字命名的酒
     const searchQuery = isSuspiciousBrand
-      ? [allTextJoined, vision.visualDescription, '日本酒'].filter(Boolean).join(' ')
+      ? [`${vision.searchQuery || ''}`, `${vision.visualDescription || ''}`, '日本酒'].filter(Boolean).join(' ').trim()
       : (vision.searchQuery || `${brandName} ${brewery} 日本酒`);
 
     if (isSuspiciousBrand) {
@@ -168,7 +177,25 @@ export const identifySakeFlow = ai.defineFlow(
       output: { schema: IdentifySakeOutputSchema },
       prompt: [
         {
-          text: `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
+          text: isSuspiciousBrand
+        ? `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
+
+⚠️ 注意：這款酒的銘柄從圖片「無法確定」（圖片上只識別到書道裝飾字，非真正銘柄）。請「完全依據搜尋結果」判斷真正的銘柄和酒造。
+
+圖片視覺描述：${vision.visualDescription || '未知'}
+（提示：例如書道大字「笑（=わらい）」→ 銘柄「まるわらい（丸笑）」；「夢」一字 → 可搜尋「夢 純米大吟醸 日本酒」）
+
+從圖片確認的參考資訊：
+- 酒精濃度：${vision.alcoholPercent || '未知'}
+- 精米步合：${vision.seimaibuai || '未知'}
+- 使用米：${vision.riceName || '未知'}
+- 特殊製程：${JSON.stringify(vision.specialProcess || [])}
+
+請用 Google Search 查詢。回傳規則：
+1. brandName 和 brewery 必須從搜尋結果確定，不可使用圖片疑似的書道字
+2. 若搜尋結果不確定，brandName 填入空字串
+3. 所有文字保持日文原文，不要翻譯`
+        : `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
 
 從酒標圖片已確認的資訊（這些不需要搜尋，直接使用）：
 - 銘柄：${brandName}
