@@ -146,7 +146,7 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
 
-  const handleSponsor = async (amount: 50 | 200 | 500 | 1000) => {
+  const handleSponsor = async (amount: 50 | 200 | 500 | 1000 | 3000) => {
     if (!auth?.currentUser) {
       toast({ variant: 'destructive', title: '請先登入' });
       return;
@@ -1158,13 +1158,14 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">支持本計畫</p>
-              <div className="grid grid-cols-4 gap-1.5">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">贊助我喝一杯</p>
+              <div className="grid grid-cols-5 gap-1">
                 {([
                   { amount: 50   as const, icon: <span className="text-base leading-none">☕</span>,          label: '咖啡',   sub: '$50',   cls: 'border-amber-400/25 bg-amber-400/6 hover:bg-amber-400/12 text-amber-500' },
                   { amount: 200  as const, icon: <JanomeCupSponsor size={18} />,                        label: '蛇目杯', sub: '$200',  cls: 'border-blue-400/30 bg-blue-400/6 hover:bg-blue-400/12 text-blue-300' },
-                  { amount: 500  as const, icon: <span className="text-base leading-none">🍶</span>,          label: '一瓶酒', sub: '$500',  cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
-                  { amount: 1000 as const, icon: <SakeBottleSponsor size={18} />,                       label: '頂級酒瓶', sub: '$1000', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
+                  { amount: 500  as const, icon: <SakeBottleSponsor size={18} />,                       label: '德利',   sub: '$500',  cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
+                  { amount: 1000 as const, icon: <span className="text-base leading-none">🍾</span>,          label: '四合瓶', sub: '$1000', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
+                  { amount: 3000 as const, icon: <span className="text-base leading-none">🪵</span>,          label: '菰樽',   sub: '$3000', cls: 'border-stone-400/40 bg-stone-400/8 hover:bg-stone-400/15 text-stone-300' },
                 ]).map(({ amount, icon, label, sub, cls }) => (
                   <button
                     key={amount}
@@ -1181,7 +1182,6 @@ export default function ProfilePage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">累積 $200→蛇目杯 ・ $500→🍶 ・ $1000→頂級酒瓶</p>
             </div>
             
             {user && (

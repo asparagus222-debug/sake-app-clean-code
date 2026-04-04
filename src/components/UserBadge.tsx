@@ -7,7 +7,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase
 import { collection, doc, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { JanomeCupIcon, SakeBottleIcon } from '@/components/SponsorIcons';
+import { JanomeCupIcon, SakeBottleIcon, KodaruIcon, KODARU_VARIANTS } from '@/components/SponsorIcons';
 
 interface UserBadgeProps {
   userId: string;
@@ -36,6 +36,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
   const { data: userProfile } = useDoc(userDocRef);
   const sponsorTotal: number = (userProfile?.sponsorTotal as number) || 0;
   const sponsorBadge =
+    sponsorTotal >= 3000 ? 'kodaru' :
     sponsorTotal >= 1000 ? 'bottle' :
     sponsorTotal >= 500  ? 'emoji-bottle' :
     sponsorTotal >= 200  ? 'cup' : null;
@@ -83,17 +84,19 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
       })()}
       {sponsorBadge && (() => {
         const labels: Record<string, string> = {
-          cup:          `蛇目杯贊助者 (NT$${sponsorTotal})`,
-          'emoji-bottle': `日本酒瓶贊助者 (NT$${sponsorTotal})`,
-          bottle:       `日本酒瓶頂級贊助者 (NT$${sponsorTotal})`,
+          cup:            `蛇目杯贊助者 (NT$${sponsorTotal})`,
+          'emoji-bottle': `德利贊助者 (NT$${sponsorTotal})`,
+          bottle:         `四合瓶頂級贊助者 (NT$${sponsorTotal})`,
+          kodaru:         `菰樽贊助者 (NT$${sponsorTotal})`,
         };
         return (
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="cursor-default leading-none inline-flex items-center">
                 {sponsorBadge === 'cup'          && <JanomeCupIcon size={14} />}
-                {sponsorBadge === 'emoji-bottle' && <span className="text-[13px]">🍶</span>}
-                {sponsorBadge === 'bottle'       && <SakeBottleIcon size={14} />}
+                {sponsorBadge === 'emoji-bottle' && <SakeBottleIcon size={14} />}
+                {sponsorBadge === 'bottle'       && <span className="text-[13px]">🍾</span>}
+                {sponsorBadge === 'kodaru'       && <KodaruIcon size={16} colors={KODARU_VARIANTS[0].colors} />}
               </span>
             </TooltipTrigger>
             <TooltipContent className="dark-glass border-white/10 text-[9px] font-bold uppercase py-1 px-2">

@@ -3,14 +3,15 @@ import crypto from 'crypto';
 import { getAdminApp } from '@/lib/firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 
-const VALID_AMOUNTS = [50, 200, 500, 1000] as const;
+const VALID_AMOUNTS = [50, 200, 500, 1000, 3000] as const;
 type ValidAmount = typeof VALID_AMOUNTS[number];
 
 const ITEM_NAMES: Record<ValidAmount, string> = {
   50:   '贊助一杯咖啡',
   200:  '贊助一杯酒（蛇目杯）',
-  500:  '贊助一瓶酒',
-  1000: '贊助頂級日本酒瓶',
+  500:  '贊助德利一瓶酒',
+  1000: '贊助四合瓶頂級日本酒',
+  3000: '贊助菰樽（隱藏級）',
 };
 
 /**

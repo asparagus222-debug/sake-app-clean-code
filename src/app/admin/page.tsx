@@ -530,11 +530,11 @@ export default function AdminPage() {
               <div>
                 <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">累積贊助金額管理</h2>
                 <p className="text-[10px] text-muted-foreground">
-                  每次確認付款後，輸入 UID 並加入對應金額，系統累加計算。累積 $200→蛇目杯，$500→🍶，$1000→頂級酒瓶。
+                  每次確認付款後，輸入 UID 並加入對應金額，系統累加計算。累積 $200→蛇目杯，$500→德利，$1000→四合瓶，$3000→菰樽。
                 </p>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold uppercase">
+              <div className="grid grid-cols-5 gap-2 text-center text-[10px] font-bold uppercase">
                 <div className="bg-white/5 rounded-2xl border border-white/10 p-2.5 space-y-1">
                   <div className="text-xl">☕</div>
                   <div>咖啡</div>
@@ -548,16 +548,22 @@ export default function AdminPage() {
                   <div className="text-[8px] opacity-70">解鎖蛇目杯</div>
                 </div>
                 <div className="bg-amber-400/10 rounded-2xl border border-amber-400/30 p-2.5 space-y-1 text-amber-400">
-                  <div className="text-xl">🍶</div>
-                  <div>一瓶酒</div>
+                  <div className="text-xl">🏵️</div>
+                  <div>德利</div>
                   <div>累積 $500</div>
-                  <div className="text-[8px] opacity-70">解鎖 🍶</div>
+                  <div className="text-[8px] opacity-70">解鎖德利</div>
                 </div>
                 <div className="bg-amber-500/12 rounded-2xl border border-amber-500/40 p-2.5 space-y-1 text-amber-300">
-                  <div className="text-xl">🍶✨</div>
-                  <div>頂級酒瓶</div>
+                  <div className="text-xl">🍾</div>
+                  <div>四合瓶</div>
                   <div>累積 $1000</div>
-                  <div className="text-[8px] opacity-70">解鎖頂級</div>
+                  <div className="text-[8px] opacity-70">解鎖四合瓶</div>
+                </div>
+                <div className="bg-stone-400/10 rounded-2xl border border-stone-400/30 p-2.5 space-y-1 text-stone-300">
+                  <div className="text-xl">🪵</div>
+                  <div>菰樽</div>
+                  <div>累積 $3000</div>
+                  <div className="text-[8px] opacity-70">隱藏線級</div>
                 </div>
               </div>
 
@@ -583,8 +589,8 @@ export default function AdminPage() {
                       className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/40"
                     />
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {([50, 200, 500, 1000, 0] as const).map(v => (
+                  <div className="grid grid-cols-6 gap-2">
+                    {([50, 200, 500, 1000, 3000, 0] as const).map(v => (
                       <button
                         key={v}
                         type="button"
