@@ -14,6 +14,9 @@ const IdentifySakeInputSchema = z.object({
   photoDataUri: z.string().describe(
     "A photo of a sake label, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
   ),
+  backPhotoDataUri: z.string().optional().describe(
+    "Optional back label photo, same format. When provided, both front and back labels will be analyzed together."
+  ),
 });
 export type IdentifySakeInput = z.infer<typeof IdentifySakeInputSchema>;
 
@@ -65,6 +68,21 @@ export const identifySakeFlow = ai.defineFlow(
       const mediaType = matches[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
       const base64Data = matches[2];
 
+      // 若有背標圖，解析它的 base64
+      const backMatches = input.backPhotoDataUri?.match(/^data:([^;]+);base64,(.+)$/);
+      const backMediaType = backMatches?.[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | undefined;
+      const backBase64Data = backMatches?.[2];
+
+      // 組合 Claude content：正標必傳，背標選傳
+      const claudeImages: Anthropic.ImageBlockParam[] = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+        ...(backBase64Data && backMediaType
+          ? [{ type: 'image' as const, source: { type: 'base64' as const, media_type: backMediaType, data: backBase64Data } }]
+          : []),
+      ];
+
+      const hasBackLabel = !!backBase64Data;
+
       const response = await anthropicClient.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
@@ -72,8 +90,8 @@ export const identifySakeFlow = ai.defineFlow(
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-            { type: 'text', text: `你是日文清酒酒標的完整文字辨識專家。
+            ...claudeImages,
+            { type: 'text', text: `你是日文清酒酒標的完整文字辨識專家。${hasBackLabel ? '我提供了第一張（正標）和第二張（背標）兩張圖片，請同時分析兩張，優先採用背標的清晰印刷文字。' : ''}
 
 【第一步】列出圖片上「所有」可見文字（無論大小、印刷或書法）。
 【第二步】描述酒標的「視覺構圖特徵」：
@@ -85,7 +103,7 @@ export const identifySakeFlow = ai.defineFlow(
 
 ⚠️ 重要：
 - 酒標大型書道裝飾字（如笑、夢、粋）是美術設計，不是銘柄
-- 真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名
+- 真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名${hasBackLabel ? '\n- 背標通常有完整的印刷銘柄文字，請優先從背標讀取' : ''}
 - searchQuery 要包含「正確識別的書道大字本身」+「文字線索」，例如：「笑 伝承乃技 純米大吟醸 日本酒」
 - 若幾乎看不到文字，searchQuery 改以視覺描述為主
 - 只報告實際可見的文字，不要猜測
@@ -114,18 +132,19 @@ export const identifySakeFlow = ai.defineFlow(
         output: { schema: VisionExtractionSchema },
         prompt: [
           {
-            text: `你是日文清酒酒標的完整文字辨識專家。
+            text: `你是日文清酒酒標的完整文字辨識專家。${input.backPhotoDataUri ? '我提供了正標和背標兩張圖片，請同時分析，優先採用背標的清晰印刷文字。' : ''}
 
 【第一步】列出圖片上「所有」可見文字。
 【第二步】描述酒標視覺構圖：主色調、大型書道文字（直接寫出是哪個字，如「笑」「夢」「粋」）、有無印章、筆觸風格。
 【第三步】從文字和視覺共同判斷銘柄，並產生包含「書道大字本身」+「其他關鍵詞」的 searchQuery（例如：「笑 伝承乃技 純米大吟醸 日本酒」）。
 
-⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。
+⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。${input.backPhotoDataUri ? '\n- 背標通常有完整的印刷銘柄文字，請優先從背標讀取' : ''}
 
 請回傳 JSON（不加 markdown）：
 {"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"書道大字+其他搜尋詞"}`,
           },
           { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
+          ...(input.backPhotoDataUri ? [{ media: { url: input.backPhotoDataUri, contentType: 'image/jpeg' } }] : []),
         ],
       }).catch(() => ({ output: null }));
 

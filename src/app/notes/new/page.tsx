@@ -229,14 +229,15 @@ export default function NewNotePage() {
   }
 };
 
-  const triggerAIIdentification = async (photoDataUri: string) => {
+  const triggerAIIdentification = async (photoDataUri: string, backPhotoDataUri?: string) => {
     setIsIdentifying(true);
     try {
       const optimizedPhoto = await resizeImage(photoDataUri, 1024);
+      const optimizedBack = backPhotoDataUri ? await resizeImage(backPhotoDataUri, 1024) : undefined;
       const response = await fetch('/api/ai/identify-sake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoDataUri: optimizedPhoto }),
+        body: JSON.stringify({ photoDataUri: optimizedPhoto, ...(optimizedBack ? { backPhotoDataUri: optimizedBack } : {}) }),
       });
       if (!response.ok) throw new Error('API error');
       const result = await response.json();
@@ -664,7 +665,7 @@ const handleSave = async () => {
                 {!isIdentifying && originals.length > 0 && (
                   <button
                     type="button"
-                    onClick={async () => { const photo = await captureCurrentView(0); triggerAIIdentification(photo || originals[0]); }}
+                    onClick={async () => { const photo = await captureCurrentView(0); triggerAIIdentification(photo || originals[0], originals[1]); }}
                     className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
                   >
                     <Sparkles className="w-3 h-3" />
