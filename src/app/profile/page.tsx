@@ -31,7 +31,8 @@ import {
   Lock,
   Camera,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Heart
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -1093,7 +1094,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="ghost" className="h-11 rounded-full border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-widest text-white">
+                  <Button type="button" variant="outline" className="h-11 rounded-full border border-primary/30 bg-primary/5 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10">
                     <LifeBuoy className="w-3.5 h-3.5 mr-2" /> 問題回報
                   </Button>
                 </DialogTrigger>
@@ -1119,6 +1120,15 @@ export default function ProfilePage() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+
+            <a
+              href="https://p.ecpay.com.tw/XXXXXXX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-11 rounded-full border border-amber-400/40 bg-amber-400/10 text-[10px] font-bold uppercase tracking-widest text-amber-500 hover:bg-amber-400/20 transition-all"
+            >
+              <Heart className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> 贊助我喝一杯 ☕
+            </a>
             
             {user && (
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60 text-center pt-2">
