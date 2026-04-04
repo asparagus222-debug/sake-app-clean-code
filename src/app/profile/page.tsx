@@ -65,7 +65,7 @@ import {
   updateDocumentNonBlocking
 } from '@/firebase';
 import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
-import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -128,6 +128,7 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSponsorLoading, setIsSponsorLoading] = useState(false);
 
   // 頭像編輯器
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -143,6 +144,40 @@ export default function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
+
+  const handleSponsor = async (amount: 50 | 200 | 1000) => {
+    if (!auth?.currentUser) {
+      toast({ variant: 'destructive', title: '請先登入' });
+      return;
+    }
+    setIsSponsorLoading(true);
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const res = await fetch('/api/sponsor/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ amount }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || '建立訂單失敗');
+      const { actionUrl, fields } = await res.json();
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = actionUrl;
+      Object.entries(fields).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = v as string;
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      // page navigates away — no need to reset loading state
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '無法發起付款', description: err.message });
+      setIsSponsorLoading(false);
+    }
+  };
   const dragStartRef = useRef({ x: 0, y: 0 });
   const pinchDistRef = useRef(0);
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -1124,36 +1159,23 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">支持本計畫</p>
               <div className="grid grid-cols-3 gap-2">
-                <a
-                  href="https://p.ecpay.com.tw/XXXXXXX"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 transition-all text-amber-500"
-                >
-                  <span className="text-lg leading-none">☕</span>
-                  <span className="text-[8px] font-bold uppercase tracking-wider">咖啡</span>
-                  <span className="text-[9px] font-black">NT$50</span>
-                </a>
-                <a
-                  href="https://p.ecpay.com.tw/XXXXXXX"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 transition-all text-amber-500"
-                >
-                  <span className="text-lg leading-none">🍵</span>
-                  <span className="text-[8px] font-bold uppercase tracking-wider">一杯酒</span>
-                  <span className="text-[9px] font-black">NT$200</span>
-                </a>
-                <a
-                  href="https://p.ecpay.com.tw/XXXXXXX"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 transition-all text-amber-400"
-                >
-                  <span className="text-lg leading-none">🍶</span>
-                  <span className="text-[8px] font-bold uppercase tracking-wider">一瓶酒</span>
-                  <span className="text-[9px] font-black">NT$1000</span>
-                </a>
+                {([
+                  { amount: 50   as const, emoji: '☕', label: '咖啡',   cls: 'border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500' },
+                  { amount: 200  as const, emoji: '🍵', label: '一杯酒', cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
+                  { amount: 1000 as const, emoji: '🍶', label: '一瓶酒', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
+                ]).map(({ amount, emoji, label, cls }) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    disabled={isSponsorLoading}
+                    onClick={() => handleSponsor(amount)}
+                    className={`flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
+                  >
+                    <span className="text-lg leading-none">{isSponsorLoading ? <span className="text-[10px]">...</span> : emoji}</span>
+                    <span className="text-[8px] font-bold uppercase tracking-wider">{label}</span>
+                    <span className="text-[9px] font-black">NT${amount}</span>
+                  </button>
+                ))}
               </div>
               <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">累積 NT$200 解鎖 🍵・累積 NT$1000 解鎖 🍶</p>
             </div>

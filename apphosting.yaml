@@ -15,3 +15,16 @@ env:
     secret: GOOGLE_API_KEY
   - variable: ANTHROPIC_API_KEY
     secret: ANTHROPIC_API_KEY
+  # ECPay AIO 全方位金流 — 在 Firebase Secret Manager 中建立這三個 secret
+  - variable: ECPAY_MERCHANT_ID
+    secret: ECPAY_MERCHANT_ID
+  - variable: ECPAY_HASH_KEY
+    secret: ECPAY_HASH_KEY
+  - variable: ECPAY_HASH_IV
+    secret: ECPAY_HASH_IV
+  # 設定為 'false' 切換至正式環境；'true' 使用測試環境
+  - variable: ECPAY_IS_TEST
+    value: 'true'
+  # 替換為你的正式域名，例如 https://drinking-notes.web.app
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: 'https://your-domain.web.app'
