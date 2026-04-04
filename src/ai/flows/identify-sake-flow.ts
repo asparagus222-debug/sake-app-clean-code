@@ -28,13 +28,6 @@ const IdentifySakeOutputSchema = z.object({
 });
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
-// Gemini 降級用 — F1: 純粗掃 OCR，只畫出圖片上所有可見文字，不做銘柄判斷
-const RawLabelTextSchema = z.object({
-  allVisibleText: z.array(z.string()).describe('圖片上所有可讀到的日文文字，每一個文字片段為一項，不用判斷哪個是銘柄，全部列出。保持日文原文。'),
-  bottleDescription: z.string().describe('瓶子外觀摒述（顏色、形狀、酒標風格），用於輔助搜尋。'),
-  searchQuery: z.string().describe('根據圖片上的可見文字，組合成最合適 Google 搜尋清酒資料的日文關鍵字。'),
-});
-
 // Claude/Gemini 共用視覺提取 Schema
 const VisionExtractionSchema = z.object({
   allText: z.array(z.string()).optional().describe('圖片上所有可見文字列表（用於備用搜尋）'),
@@ -74,6 +67,7 @@ export const identifySakeFlow = ai.defineFlow(
       const response = await anthropicClient.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
+        // 超過 12s 視為超時，直接 fallback 到 Gemini，避免整體超過 20s
         messages: [{
           role: 'user',
           content: [
@@ -94,7 +88,7 @@ export const identifySakeFlow = ai.defineFlow(
 {"allText":["圖片上所有可見文字"],"brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"最佳日文搜尋詞"}` },
           ],
         }],
-      });
+      }, { timeout: 12000 }); // 12s timeout — fallback 到 Gemini 避免整體超過 20s
 
       const text = response.content[0].type === 'text' ? response.content[0].text : '';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -106,54 +100,29 @@ export const identifySakeFlow = ai.defineFlow(
       console.error('[AI辨識] Claude Step 1 failed, falling back to Gemini:', err);
     }
 
-    // Claude 失敗時降級到 Gemini 两段式辨識
-    // Gemini F1: 純粗掃 OCR — 列出圖片上所有文字，不做銘柄判斷，避免把標語當銘柄
+    // Claude 失敗/超時時降級到 Gemini 單步辨識（圖片直接輸入，省去 F1+F2 兩步）
     if (!vision) {
-      console.log('[AI辨識] Step 1 使用: Gemini fallback (兩段式)');
-      const { output: rawText } = await ai.generate({
+      console.log('[AI辨識] Step 1 使用: Gemini fallback');
+      const { output: geminiVision } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
-        output: { schema: RawLabelTextSchema },
+        output: { schema: VisionExtractionSchema },
         prompt: [
           {
-            text: `你是图点文字提取工具。請仔細掃描這張酒標圖片，列出所有能讀到的日文文字片段。
+            text: `你是日文清酒酒標的完整文字辨識專家。
 
-重要：
-- allVisibleText 要包含圖片上「全部」可見文字，不用判斷哪個是銘柄、哪個是標語，將所有文字都列出
-- bottleDescription 描述瓶子外觀（顏色、酒標風格等）
-- searchQuery 用圖片中可見的文字組合成挀尋日本酒的搜尋關鍵字
+【第一步】請列出這張圖片上「所有」你能看到的文字字串，無論大小、無論印刷或書法。
+【第二步】從列表中判斷銘柄、酒造等欄位。
 
-保持日文原文，不要翻譯。`,
+⚠️ 重要：酒標上大型書道裝飾字（如笑、夢）是美術設計，不是銘柄；真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名。
+
+請回傳 JSON（不加 markdown）：
+{"allText":["所有可見文字"],"brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"日文搜尋詞"}`,
           },
           { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
         ],
-      });
+      }).catch(() => ({ output: null }));
 
-      // Gemini F2: Google Search 以 F1 的文字收尋，由搜尋結果確認銘柄
-      if (rawText) {
-        const allText = rawText.allVisibleText.join(' ');
-        const searchQ = rawText.searchQuery || `${allText} 日本酒 酒造`;
-
-        const { output: searchResult } = await ai.generate({
-          model: googleAI.model('gemini-flash-latest'),
-          config: { googleSearchRetrieval: true },
-          output: { schema: VisionExtractionSchema },
-          prompt: [{
-            text: `你是清酒專家。以下是從一張清酒酒標圖片上讀到的全部可見文字：
-[ ${allText} ]
-瓶子外觀：${rawText.bottleDescription}
-
-請用 Google Search 搜尋「${searchQ}」，找出這是哪一款日本酒。
-
-門諊：上列文字中，有些可能是酒造的廣告標語、酒類名稱、戏語技術，而非銘柄。請以搜尋結果為依據，確認這款酒的正確銘柄名稱。
-
-回傳檔位：brandName(銘柄)、brewery(酒造)、origin(產地)、alcoholPercent(酒精濃度)、seimaibuai(精米步合)、riceName(使用米)、specialProcess(特殊製程陣列)、searchQuery(部署搜尋用)。全部日文原文。`,
-          }],
-        }).catch(() => ({ output: null }));
-
-        vision = searchResult ?? { brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: rawText.searchQuery };
-      } else {
-        vision = { brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
-      }
+      vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
     }
 
     if (!vision) throw new Error('無法從圖片提取資訊，請確保酒標清晰可見。');
