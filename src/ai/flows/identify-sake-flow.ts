@@ -54,6 +54,43 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
+    const hasBackLabel = !!input.backPhotoDataUri;
+
+    // ── 快速路徑：有背標時，用背標圖片直接做一步視覺+搜尋（類似原 Step1+Step2，但只用一次 API）
+    if (hasBackLabel) {
+      console.log('[AI辨識] 快速路徑：背標圖片 + Google Search 單步完成');
+      const { output: fastResult } = await ai.generate({
+        model: googleAI.model('gemini-flash-latest'),
+        config: { googleSearchRetrieval: true },
+        output: { schema: IdentifySakeOutputSchema },
+        prompt: [
+          {
+            text: `你是清酒資料庫專家。請閱讀這張清酒背標圖片，直接從圖片讀取所有可見文字，並用 Google Search 搜尋補齊完整規格。
+
+背標通常包含：銘柄（品牌名）、酒造名、産地、酒精濃度、精米步合、使用米、種別（純米大吟醸等）
+
+請從圖片文字中直接讀取所有欄位，並用 Google Search 搜尋補充圖片未顯示的資訊。
+所有文字保持日文原文，不要翻譯。`,
+          },
+          { media: { url: input.backPhotoDataUri!, contentType: 'image/jpeg' } },
+        ],
+      }).catch(() => ({ output: null }));
+
+      if (fastResult?.brandName && fastResult?.brewery) {
+        console.log('[AI辨識] 快速路徑成功:', fastResult.brandName);
+        return {
+          brandName: fastResult.brandName,
+          brewery: fastResult.brewery,
+          origin: fastResult.origin || '',
+          alcoholPercent: fastResult.alcoholPercent || '',
+          seimaibuai: fastResult.seimaibuai || '',
+          riceName: fastResult.riceName || '',
+          specialProcess: fastResult.specialProcess || [],
+        };
+      }
+      console.log('[AI辨識] 快速路徑未取得完整資訊，回退至完整流程');
+    }
+
     // ── Step 1: Gemini 純視覺 OCR ──
     // 若有背標，優先以背標作為主要辨識圖片（背標通常有清晰印刷文字）
     const hasBackLabel = !!input.backPhotoDataUri;

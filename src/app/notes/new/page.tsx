@@ -717,6 +717,11 @@ const handleSave = async () => {
               </button>
             )}
             {images.length === 2 && <Slider value={[splitRatio]} onValueChange={v => setSplitRatio(v[0])} min={20} max={80} step={1} className="h-4" />}
+            {images.length === 1 && (
+              <p className="text-[9px] text-primary/50 text-center font-medium flex items-center justify-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" />加入背標可大幅加速 AI 辨識
+              </p>
+            )}
           </div>
         </section>
 
