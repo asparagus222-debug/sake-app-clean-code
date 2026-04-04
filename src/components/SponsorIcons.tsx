@@ -13,10 +13,100 @@ export function JanomeCupIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+/** 德利（Tokkuri）— $500 贊助成就，參考傳統陶瓷瓶樣式 */
+export interface TokkuriColors {
+  body:      string; // 瓶身主色
+  bodyDark:  string; // 陰影 / 輪廓
+  band:      string; // 橫紋主色
+  bandLight: string; // 橫紋光澤
+  rim:       string; // 瓶口
+}
+
+export const TOKKURI_CLASSIC_COLORS: TokkuriColors = {
+  body: '#e4e2da', bodyDark: '#a8a59a',
+  band: '#1e3a7a', bandLight: '#4a6aaa',
+  rim:  '#ccc9bf',
+};
+
+export const TOKKURI_VARIANTS: { id: string; name: string; colors: TokkuriColors }[] = [
+  {
+    id: 'classic',
+    name: '白藍（傳統）',
+    colors: { body: '#e4e2da', bodyDark: '#a8a59a', band: '#1e3a7a', bandLight: '#4a6aaa', rim: '#ccc9bf' },
+  },
+  {
+    id: 'celadon',
+    name: '青瓷',
+    colors: { body: '#b8cebe', bodyDark: '#6a9070', band: '#1e4030', bandLight: '#3a7055', rim: '#98b8a0' },
+  },
+  {
+    id: 'black-gold',
+    name: '黑金',
+    colors: { body: '#282828', bodyDark: '#0e0e0e', band: '#c89a00', bandLight: '#e8c840', rim: '#3a3830' },
+  },
+  {
+    id: 'red-clay',
+    name: '朱泥',
+    colors: { body: '#c06840', bodyDark: '#7a3818', band: '#2e1008', bandLight: '#5a2810', rim: '#d07850' },
+  },
+  {
+    id: 'ink-navy',
+    name: '墨藍',
+    colors: { body: '#1e2c48', bodyDark: '#0c1420', band: '#c0b898', bandLight: '#e0d8b0', rim: '#2a3a5a' },
+  },
+  {
+    id: 'silver',
+    name: '灰銀',
+    colors: { body: '#d0d0c8', bodyDark: '#959590', band: '#686860', bandLight: '#a8a8a0', rim: '#b8b8b0' },
+  },
+];
+
 /**
- * 德利（一合瓶）— 細長瓶身、白標籤、直排「日本酒」
- * viewBox 20×28 讓瓶身比例更高更瘦
+ * 德利 SVG — 圓肚瓶身＋橫紋條帶，參考傳統日式德利造型
+ * viewBox 20×30，讓瓶身比例接近參考圖
  */
+export function TokkuriIcon({ size = 14, colors = TOKKURI_CLASSIC_COLORS }: { size?: number; colors?: TokkuriColors }) {
+  const h = Math.round(size * 1.5);
+  return (
+    <svg width={size} height={h} viewBox="0 0 20 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Bottle body — wide ovoid belly with narrow neck */}
+      <path
+        d="M8.5,1.5 L11.5,1.5 L11.5,7.5 C14,8.5 15,10.5 15,14 C15,21 14.5,24 13.5,26 C12.5,27.8 11.5,28.5 10,28.5 C8.5,28.5 7.5,27.8 6.5,26 C5.5,24 5,21 5,14 C5,10.5 6,8.5 8.5,7.5 Z"
+        fill={colors.body} stroke={colors.bodyDark} strokeWidth="0.6"
+      />
+      {/* Right-side depth shadow */}
+      <path
+        d="M11.5,7.5 C14,8.5 15,10.5 15,14 C15,21 14.5,24 13.5,26 C12.5,27.8 11.5,28.5 10,28.5"
+        stroke={colors.bodyDark} strokeWidth="3.5" strokeLinecap="round" fill="none" opacity="0.18"
+      />
+      {/* Left highlight */}
+      <path
+        d="M8.8,9.5 C7.5,11 7,14 7.2,18"
+        stroke="white" strokeWidth="0.9" strokeLinecap="round" opacity="0.45" fill="none"
+      />
+      {/* Upper stripe */}
+      <path
+        d="M5.3,19 C7.5,18.3 12.5,18.3 14.7,19"
+        stroke={colors.band} strokeWidth="2.2" fill="none" strokeLinecap="round"
+      />
+      {/* Lower stripe */}
+      <path
+        d="M5.4,21.5 C7.5,20.8 12.5,20.8 14.6,21.5"
+        stroke={colors.band} strokeWidth="2.2" fill="none" strokeLinecap="round"
+      />
+      {/* Stripe sheen */}
+      <path
+        d="M5.3,19 C6.5,18.5 9,18.3 10.8,18.45"
+        stroke={colors.bandLight} strokeWidth="0.8" fill="none" strokeLinecap="round" opacity="0.65"
+      />
+      {/* Mouth / lip */}
+      <ellipse cx="10" cy="1.5" rx="2" ry="0.9" fill={colors.rim} stroke={colors.bodyDark} strokeWidth="0.5"/>
+      <ellipse cx="10" cy="1.3" rx="1" ry="0.45" fill={colors.bodyDark} opacity="0.35"/>
+    </svg>
+  );
+}
+
+/** 四合瓶（Yongo）— $1000 贊助成就，深褐瓶身＋直排「日本酒」標籤 */
 export function SakeBottleIcon({ size = 14 }: { size?: number }) {
   const w = size;
   const h = Math.round(size * 1.4);

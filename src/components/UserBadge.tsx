@@ -7,7 +7,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase
 import { collection, doc, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { JanomeCupIcon, SakeBottleIcon, KodaruIcon, KODARU_GOLD_COLORS } from '@/components/SponsorIcons';
+import { JanomeCupIcon, SakeBottleIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS, KodaruIcon, KODARU_GOLD_COLORS } from '@/components/SponsorIcons';
 
 interface UserBadgeProps {
   userId: string;
@@ -106,7 +106,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
                 onPointerLeave={() => setOpenTooltip(null)}
               >
                 {sponsorBadge === 'cup'    && <JanomeCupIcon size={14} />}
-                {sponsorBadge === 'sake'   && <span className="text-[13px]">🍶</span>}
+                {sponsorBadge === 'sake'   && <TokkuriIcon size={14} colors={TOKKURI_CLASSIC_COLORS} />}
                 {sponsorBadge === 'bottle' && <SakeBottleIcon size={14} />}
                 {sponsorBadge === 'kodaru' && <KodaruIcon size={16} colors={KODARU_GOLD_COLORS} />}
               </span>
