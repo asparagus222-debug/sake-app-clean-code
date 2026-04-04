@@ -1185,8 +1185,8 @@ export default function ProfilePage() {
                   onClick={() => setShowCustomInput(v => !v)}
                   className={`flex items-center justify-center h-11 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${
                     showCustomInput
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-white/15 bg-white/5 hover:bg-white/10 text-muted-foreground'
+                      ? 'border-amber-400/50 bg-amber-400/20 text-amber-400'
+                      : 'border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500'
                   }`}
                 >
                   隨意小額贊助

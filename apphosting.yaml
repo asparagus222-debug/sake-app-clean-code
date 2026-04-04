@@ -24,7 +24,7 @@ env:
     secret: ECPAY_HASH_IV
   # 設定為 'false' 切換至正式環境；'true' 使用測試環境
   - variable: ECPAY_IS_TEST
-    value: 'true'
+    value: 'false'
   # App Hosting 正式 URL
   - variable: NEXT_PUBLIC_BASE_URL
     value: 'https://studio--drinking-notes.us-central1.hosted.app'
