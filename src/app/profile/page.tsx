@@ -1121,14 +1121,42 @@ export default function ProfilePage() {
               </AlertDialog>
             </div>
 
-            <a
-              href="https://p.ecpay.com.tw/XXXXXXX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full h-11 rounded-full border border-amber-400/40 bg-amber-400/10 text-[10px] font-bold uppercase tracking-widest text-amber-500 hover:bg-amber-400/20 transition-all"
-            >
-              贊助我喝一杯
-            </a>
+            <div className="space-y-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">支持本計畫</p>
+              <div className="grid grid-cols-3 gap-2">
+                <a
+                  href="https://p.ecpay.com.tw/XXXXXXX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 transition-all text-amber-500"
+                >
+                  <span className="text-lg leading-none">☕</span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider">咖啡</span>
+                  <span className="text-[9px] font-black">NT$50</span>
+                </a>
+                <a
+                  href="https://p.ecpay.com.tw/XXXXXXX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 transition-all text-amber-500"
+                >
+                  <span className="text-lg leading-none">🍵</span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider">一杯酒</span>
+                  <span className="text-[9px] font-black">NT$200</span>
+                </a>
+                <a
+                  href="https://p.ecpay.com.tw/XXXXXXX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 transition-all text-amber-400"
+                >
+                  <span className="text-lg leading-none">🍶</span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider">一瓶酒</span>
+                  <span className="text-[9px] font-black">NT$1000</span>
+                </a>
+              </div>
+              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">NT$200 解鎖蛇目杯 🍵・NT$1000 解鎖日本酒瓶 🍶</p>
+            </div>
             
             {user && (
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60 text-center pt-2">
