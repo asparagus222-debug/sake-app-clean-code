@@ -84,7 +84,7 @@ export type UserProfile = {
   isAccountDeleted?: boolean;
   deletedAt?: string;
   themeSettings?: ThemeSettings;
-  sponsorTier?: 'coffee' | 'cup' | 'bottle';
+  sponsorTotal?: number;
 };
 
 export const RATING_LABELS = {

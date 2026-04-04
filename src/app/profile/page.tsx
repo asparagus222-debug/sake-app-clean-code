@@ -1155,7 +1155,7 @@ export default function ProfilePage() {
                   <span className="text-[9px] font-black">NT$1000</span>
                 </a>
               </div>
-              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">NT$200 解鎖蛇目杯 🍵・NT$1000 解鎖日本酒瓶 🍶</p>
+              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">累積 NT$200 解鎖 🍵・累積 NT$1000 解鎖 🍶</p>
             </div>
             
             {user && (

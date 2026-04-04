@@ -14,11 +14,6 @@ interface UserBadgeProps {
   showText?: boolean;
 }
 
-const SPONSOR_BADGES = {
-  cup:    { emoji: '🍵', label: '蛇目杯贊助者' },
-  bottle: { emoji: '🍶', label: '日本酒瓶贊助者' },
-} as const;
-
 export function UserBadge({ userId, className, showText = false }: UserBadgeProps) {
   const firestore = useFirestore();
 
@@ -31,16 +26,15 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
   const { data: notes } = useCollection(notesQuery);
   const count = notes?.length || 0;
 
-  // 獲取贊助者等級
+  // 獲取贊助累積金額
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !userId) return null;
     return doc(firestore, 'users', userId);
   }, [firestore, userId]);
 
   const { data: userProfile } = useDoc(userDocRef);
-  const sponsorTier = userProfile?.sponsorTier as keyof typeof SPONSOR_BADGES | undefined;
-
-  const hasSponsorBadge = sponsorTier === 'cup' || sponsorTier === 'bottle';
+  const sponsorTotal: number = (userProfile?.sponsorTotal as number) || 0;
+  const sponsorBadge = sponsorTotal >= 1000 ? 'bottle' : sponsorTotal >= 200 ? 'cup' : null;
 
   let badgeData: { icon: typeof Medal; color: string; label: string; glow: boolean; sparkle: boolean } | null = null;
 
@@ -56,7 +50,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
     badgeData = { icon: Medal, color: "text-[#cd7f32]", label: "銅牌品飲家 (10+)", glow: false, sparkle: false };
   }
 
-  if (!badgeData && !hasSponsorBadge) return null;
+  if (!badgeData && !sponsorBadge) return null;
 
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
@@ -83,15 +77,16 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
           </Tooltip>
         );
       })()}
-      {hasSponsorBadge && (() => {
-        const sponsor = SPONSOR_BADGES[sponsorTier!];
+      {sponsorBadge && (() => {
+        const emoji = sponsorBadge === 'bottle' ? '🍶' : '🍵';
+        const label = sponsorBadge === 'bottle' ? `日本酒瓶贊助者 (NT$${sponsorTotal})` : `蛇目杯贊助者 (NT$${sponsorTotal})`;
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="cursor-default leading-none text-[13px]">{sponsor.emoji}</span>
+              <span className="cursor-default leading-none text-[13px]">{emoji}</span>
             </TooltipTrigger>
             <TooltipContent className="dark-glass border-white/10 text-[9px] font-bold uppercase py-1 px-2">
-              {sponsor.label}
+              {label}
             </TooltipContent>
           </Tooltip>
         );

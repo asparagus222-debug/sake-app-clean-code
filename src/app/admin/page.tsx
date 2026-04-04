@@ -59,7 +59,7 @@ import {
   deleteDocumentNonBlocking,
   initiateGoogleSignIn
 } from '@/firebase';
-import { collection, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteField, increment } from 'firebase/firestore';
 import { signOut, getIdToken } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
 
@@ -77,7 +77,7 @@ export default function AdminPage() {
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanResult, setCleanResult] = useState<string | null>(null);
   const [sponsorUserId, setSponsorUserId] = useState('');
-  const [sponsorTierInput, setSponsorTierInput] = useState<'coffee' | 'cup' | 'bottle' | ''>('');
+  const [sponsorAmount, setSponsorAmount] = useState('');
   const [isSponsorSaving, setIsSponsorSaving] = useState(false);
 
   // 權限檢查
@@ -155,21 +155,23 @@ export default function AdminPage() {
     toast({ title: "回報紀錄已清除" });
   };
 
-  const handleGrantSponsorTier = async () => {
+  const handleAddSponsorAmount = async () => {
     if (!firestore || !sponsorUserId.trim()) return;
+    const amount = Number(sponsorAmount);
+    if (isNaN(amount)) return;
     setIsSponsorSaving(true);
     try {
       const userRef = doc(firestore, 'users', sponsorUserId.trim());
-      if (sponsorTierInput) {
-        await updateDoc(userRef, { sponsorTier: sponsorTierInput });
-        const tierLabel = { coffee: '咖啡 ☕', cup: '蛇目杯 🍵', bottle: '日本酒瓶 🍶' }[sponsorTierInput];
-        toast({ title: `已授予贊助徽章：${tierLabel}` });
+      if (amount === 0) {
+        await updateDoc(userRef, { sponsorTotal: deleteField() });
+        toast({ title: "已清除累積贊助紀錄" });
       } else {
-        await updateDoc(userRef, { sponsorTier: deleteField() });
-        toast({ title: "已移除贊助徽章" });
+        await updateDoc(userRef, { sponsorTotal: increment(amount) });
+        const sign = amount > 0 ? '+' : '';
+        toast({ title: `累積金額 ${sign}NT$${amount}，已套用` });
       }
       setSponsorUserId('');
-      setSponsorTierInput('');
+      setSponsorAmount('');
     } catch (err: any) {
       toast({ variant: "destructive", title: "更新失敗", description: err.message });
     } finally {
@@ -526,9 +528,9 @@ export default function AdminPage() {
           <TabsContent value="sponsor" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl">
             <div className="space-y-6">
               <div>
-                <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">手動授予贊助徽章</h2>
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">累積贊助金額管理</h2>
                 <p className="text-[10px] text-muted-foreground">
-                  確認贊助付款後，在此輸入使用者 UID 並選擇等級以授予對應徽章。留空等級可移除現有徽章。
+                  每次確認付款後，輸入 UID 並加入對應金額，系統累加計算。累積 NT$200 解鎖 🍵，累積 NT$1000 解鎖 🍶。
                 </p>
               </div>
 
@@ -536,19 +538,19 @@ export default function AdminPage() {
                 <div className="bg-white/5 rounded-2xl border border-white/10 p-3 space-y-1">
                   <div className="text-2xl">☕</div>
                   <div>咖啡</div>
-                  <div className="text-muted-foreground">NT$50</div>
-                  <div className="text-[8px] text-muted-foreground opacity-60">無徽章</div>
+                  <div className="text-muted-foreground">+NT$50</div>
+                  <div className="text-[8px] text-muted-foreground opacity-60">累積計算</div>
                 </div>
                 <div className="bg-amber-400/10 rounded-2xl border border-amber-400/30 p-3 space-y-1 text-amber-400">
                   <div className="text-2xl">🍵</div>
                   <div>蛇目杯</div>
-                  <div>NT$200</div>
+                  <div>累積 $200</div>
                   <div className="text-[8px] opacity-70">解鎖 🍵 徽章</div>
                 </div>
                 <div className="bg-amber-500/12 rounded-2xl border border-amber-500/40 p-3 space-y-1 text-amber-300">
                   <div className="text-2xl">🍶</div>
                   <div>日本酒瓶</div>
-                  <div>NT$1000</div>
+                  <div>累積 $1000</div>
                   <div className="text-[8px] opacity-70">解鎖 🍶 徽章</div>
                 </div>
               </div>
@@ -565,55 +567,73 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">贊助等級</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">本次金額（負數可扣除，0 清零）</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={sponsorAmount}
+                      onChange={e => setSponsorAmount(e.target.value)}
+                      placeholder="輸入金額（例：50）"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/40"
+                    />
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
-                    {([['', '移除'], ['coffee', '☕ 咖啡'], ['cup', '🍵 蛇目杯'], ['bottle', '🍶 日本酒瓶']] as const).map(([val, label]) => (
+                    {([50, 200, 1000, 0] as const).map(v => (
                       <button
-                        key={val}
+                        key={v}
                         type="button"
-                        onClick={() => setSponsorTierInput(val as typeof sponsorTierInput)}
+                        onClick={() => setSponsorAmount(String(v))}
                         className={`rounded-xl border px-2 py-2 text-[9px] font-bold uppercase transition-all ${
-                          sponsorTierInput === val
+                          sponsorAmount === String(v)
                             ? 'bg-primary border-primary text-white'
                             : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10'
                         }`}
                       >
-                        {label}
+                        {v === 0 ? '清零' : `+$${v}`}
                       </button>
                     ))}
                   </div>
                 </div>
                 <Button
-                  onClick={handleGrantSponsorTier}
-                  disabled={!sponsorUserId.trim() || isSponsorSaving}
+                  onClick={handleAddSponsorAmount}
+                  disabled={!sponsorUserId.trim() || sponsorAmount === '' || isSponsorSaving}
                   className="w-full rounded-xl text-[10px] font-bold uppercase"
                 >
                   {isSponsorSaving
                     ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />更新中...</>
-                    : <><Gift className="w-3 h-3 mr-1.5" />{sponsorTierInput ? '授予徽章' : '移除徽章'}</>
+                    : <><Gift className="w-3 h-3 mr-1.5" />{Number(sponsorAmount) === 0 ? '清除紀錄' : '加入累積金額'}</>
                   }
                 </Button>
               </div>
 
               <div className="bg-white/5 rounded-2xl border border-white/10 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">參考：現有贊助者</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">累積贊助者列表</p>
                 {isUsersLoading ? (
                   <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
                 ) : (
                   <div className="space-y-1">
-                    {(users as any[])?.filter((u: any) => u.sponsorTier && u.sponsorTier !== 'coffee').map((u: any) => (
-                      <div key={u.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                        <div>
-                          <span className="text-xs font-bold text-primary">@{u.username}</span>
-                          <span className="text-[8px] font-mono text-muted-foreground ml-2">...{u.id.slice(-8)}</span>
-                        </div>
-                        <span className="text-sm">
-                          {u.sponsorTier === 'bottle' ? '🍶' : '🍵'}
-                        </span>
-                      </div>
-                    ))}
-                    {(users as any[])?.filter((u: any) => u.sponsorTier && u.sponsorTier !== 'coffee').length === 0 && (
-                      <p className="text-[10px] text-muted-foreground opacity-50 text-center py-2">尚無贊助者</p>
+                    {[...(users as any[] || [])]
+                      .filter((u: any) => u.sponsorTotal > 0)
+                      .sort((a: any, b: any) => (b.sponsorTotal || 0) - (a.sponsorTotal || 0))
+                      .map((u: any) => {
+                        const total: number = u.sponsorTotal || 0;
+                        const badge = total >= 1000 ? '🍶' : total >= 200 ? '🍵' : '☕';
+                        return (
+                          <div key={u.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                            <div>
+                              <span className="text-xs font-bold text-primary">@{u.username}</span>
+                              <span className="text-[8px] font-mono text-muted-foreground ml-2">...{u.id.slice(-8)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-black text-amber-400">NT${total}</span>
+                              <span className="text-sm">{badge}</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    }
+                    {(users as any[])?.filter((u: any) => u.sponsorTotal > 0).length === 0 && (
+                      <p className="text-[10px] text-muted-foreground opacity-50 text-center py-2">尚無贊助紀錄</p>
                     )}
                   </div>
                 )}
