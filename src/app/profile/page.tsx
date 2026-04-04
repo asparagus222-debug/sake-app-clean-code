@@ -130,6 +130,7 @@ export default function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSponsorLoading, setIsSponsorLoading] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   // 頭像編輯器
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -1158,46 +1159,67 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">贊助我喝一杯</p>
-              {/* 固定 $50 咖啡按鈕 */}
-              <button
-                type="button"
-                disabled={isSponsorLoading}
-                onClick={() => handleSponsor(50)}
-                className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSponsorLoading
-                  ? <span className="text-xs">處理中...</span>
-                  : <>
-                      <span className="text-lg leading-none">☕</span>
-                      <span className="text-xs font-bold">贊助我一杯咖啡</span>
-                      <span className="text-[10px] font-black opacity-60">NT$50</span>
-                    </>
-                }
-              </button>
-              {/* 隨意小額贊助 */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">NT$</span>
-                  <input
-                    type="number"
-                    min="50"
-                    step="1"
-                    value={customAmount}
-                    onChange={e => setCustomAmount(e.target.value)}
-                    placeholder="輸入金額"
-                    className="w-full pl-9 pr-3 h-10 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/30"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 贊助我一杯咖啡 */}
                 <button
                   type="button"
-                  disabled={isSponsorLoading || !customAmount || Number(customAmount) < 50}
-                  onClick={() => handleSponsor(Math.round(Number(customAmount)))}
-                  className="h-10 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-muted-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  disabled={isSponsorLoading}
+                  onClick={() => handleSponsor(50)}
+                  className="flex items-center justify-center gap-1.5 h-11 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSponsorLoading
+                    ? <span className="text-xs">處理中...</span>
+                    : <>
+                        <span className="text-base leading-none">☕</span>
+                        <div className="text-left leading-tight">
+                          <div className="text-[10px] font-bold">贊助我一杯咖啡</div>
+                          <div className="text-[9px] font-black opacity-60">NT$50</div>
+                        </div>
+                      </>
+                  }
+                </button>
+                {/* 隨意小額—按下才展開 */}
+                <button
+                  type="button"
+                  disabled={isSponsorLoading}
+                  onClick={() => setShowCustomInput(v => !v)}
+                  className={`flex items-center justify-center h-11 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${
+                    showCustomInput
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-white/15 bg-white/5 hover:bg-white/10 text-muted-foreground'
+                  }`}
                 >
                   隨意小額贊助
                 </button>
               </div>
+              {showCustomInput && (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">NT$</span>
+                    <input
+                      type="number"
+                      min="50"
+                      step="1"
+                      value={customAmount}
+                      onChange={e => setCustomAmount(e.target.value)}
+                      placeholder="輸入金額"
+                      autoFocus
+                      className="w-full pl-9 pr-3 h-10 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/30"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSponsorLoading || !customAmount || Number(customAmount) < 50}
+                    onClick={() => {
+                      handleSponsor(Math.round(Number(customAmount)));
+                      setShowCustomInput(false);
+                    }}
+                    className="h-10 px-4 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-[10px] font-bold text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    前往付款
+                  </button>
+                </div>
+              )}
             </div>
             
             {user && (

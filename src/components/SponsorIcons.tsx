@@ -106,29 +106,82 @@ export function TokkuriIcon({ size = 14, colors = TOKKURI_CLASSIC_COLORS }: { si
   );
 }
 
-/** 四合瓶（Yongo）— $1000 贊助成就，深褐瓶身＋直排「日本酒」標籤 */
-export function SakeBottleIcon({ size = 14 }: { size?: number }) {
+/** 四合瓶（Yongo）— $1000 贊助成就，參數化配色 */
+export interface YongoColors {
+  body:      string; // 瓶身主色
+  shadow:    string; // 右側陰影
+  highlight: string; // 左側高光
+  cap:       string; // 瓶蓋
+  capSheen:  string; // 瓶蓋光澤
+  label:     string; // 標籤底色
+  labelEdge: string; // 標籤邊框
+  text:      string; // 標籤文字
+}
+
+export const YONGO_CLASSIC_COLORS: YongoColors = {
+  body: '#8B4010', shadow: '#5a2a08', highlight: '#c27a40',
+  cap: '#b0b8c8', capSheen: '#d0d8e8',
+  label: '#faf6ee', labelEdge: '#d8ccb0', text: '#1a1a1a',
+};
+
+export const YONGO_VARIANTS: { id: string; name: string; colors: YongoColors }[] = [
+  {
+    id: 'classic',
+    name: '傳統褐',
+    colors: { body: '#8B4010', shadow: '#5a2a08', highlight: '#c27a40', cap: '#b0b8c8', capSheen: '#d0d8e8', label: '#faf6ee', labelEdge: '#d8ccb0', text: '#1a1a1a' },
+  },
+  {
+    id: 'black-gold',
+    name: '黑金',
+    colors: { body: '#1a1a1a', shadow: '#080808', highlight: '#505050', cap: '#b88a00', capSheen: '#e0c840', label: '#1e1a10', labelEdge: '#c89a00', text: '#e8d080' },
+  },
+  {
+    id: 'navy',
+    name: '藏青',
+    colors: { body: '#1e3060', shadow: '#0c1838', highlight: '#4060a0', cap: '#a8b0c8', capSheen: '#c8d0e8', label: '#f0f4ff', labelEdge: '#8090c0', text: '#0c1838' },
+  },
+  {
+    id: 'snow',
+    name: '雪白',
+    colors: { body: '#e8e8e4', shadow: '#b0b0a8', highlight: '#ffffff', cap: '#989898', capSheen: '#c0c0c0', label: '#f8f8f4', labelEdge: '#c8c8c0', text: '#303028' },
+  },
+  {
+    id: 'crimson',
+    name: '暗紅',
+    colors: { body: '#6a1020', shadow: '#380810', highlight: '#b04060', cap: '#909090', capSheen: '#b8b8b8', label: '#fff5f5', labelEdge: '#e09090', text: '#380810' },
+  },
+  {
+    id: 'cedar',
+    name: '杉木',
+    colors: { body: '#a06030', shadow: '#684020', highlight: '#d09060', cap: '#d0b888', capSheen: '#e8d0a8', label: '#f8f0e0', labelEdge: '#c0a868', text: '#302010' },
+  },
+];
+
+/**
+ * 四合瓶 SVG — 角形瓶，縮小瓶蓋，白標籤直排「日本酒」
+ */
+export function SakeBottleIcon({ size = 14, colors = YONGO_CLASSIC_COLORS }: { size?: number; colors?: YongoColors }) {
   const w = size;
   const h = Math.round(size * 1.4);
   return (
     <svg width={w} height={h} viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Cap */}
-      <rect x="8" y="1" width="4" height="3" rx="1" fill="#b0b8c8"/>
-      <rect x="8.5" y="1.2" width="3" height="2.6" rx="0.7" fill="#d0d8e8"/>
+      {/* Cap — small */}
+      <rect x="8.8" y="1.5" width="2.4" height="1.8" rx="0.8" fill={colors.cap}/>
+      <rect x="9.2" y="1.8" width="1.6" height="1.2" rx="0.5" fill={colors.capSheen}/>
       {/* Neck */}
-      <rect x="8.8" y="4" width="2.4" height="4" fill="#7a3a10"/>
-      {/* Shoulder curve */}
-      <path d="M8.8 8 C8.8 8 6.5 9.2 6.5 11 L6.5 24 C6.5 25.1 7.4 26 8.5 26 L11.5 26 C12.6 26 13.5 25.1 13.5 24 L13.5 11 C13.5 9.2 11.2 8 11.2 8 Z" fill="#8B4010"/>
-      {/* Highlight on body */}
-      <path d="M8 11.5 C8 11.5 7.4 13.5 7.4 17" stroke="#c27a40" strokeWidth="0.6" strokeLinecap="round" opacity="0.5"/>
-      {/* White label */}
-      <rect x="7.2" y="12.5" width="5.6" height="10" rx="0.5" fill="#faf6ee" stroke="#d8ccb0" strokeWidth="0.35"/>
-      {/* 日 — top */}
-      <text x="10" y="16.5" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill="#1a1a1a" fontFamily="serif">日</text>
-      {/* 本 — middle */}
-      <text x="10" y="19.8" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill="#1a1a1a" fontFamily="serif">本</text>
-      {/* 酒 — bottom */}
-      <text x="10" y="23.1" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill="#1a1a1a" fontFamily="serif">酒</text>
+      <rect x="9" y="3.3" width="2" height="4.2" fill={colors.body}/>
+      <rect x="10.2" y="3.3" width="0.8" height="4.2" fill={colors.shadow} opacity="0.35"/>
+      {/* Shoulder + body */}
+      <path d="M9 7.5 C9 7.5 6.5 9 6.5 11 L6.5 24 C6.5 25.1 7.4 26 8.5 26 L11.5 26 C12.6 26 13.5 25.1 13.5 24 L13.5 11 C13.5 9 11 7.5 11 7.5 Z" fill={colors.body}/>
+      {/* Right-side shadow */}
+      <path d="M11 7.5 C13 9 13.5 11 13.5 14 L13.5 24 C13.5 25.1 12.6 26 11.5 26" stroke={colors.shadow} strokeWidth="3.5" fill="none" opacity="0.22" strokeLinecap="round"/>
+      {/* Left highlight */}
+      <path d="M8 11 C8 11 7.4 13 7.4 17" stroke={colors.highlight} strokeWidth="0.6" strokeLinecap="round" opacity="0.5"/>
+      {/* Label */}
+      <rect x="7.2" y="12.5" width="5.6" height="10" rx="0.5" fill={colors.label} stroke={colors.labelEdge} strokeWidth="0.35"/>
+      <text x="10" y="16.5" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill={colors.text} fontFamily="serif">日</text>
+      <text x="10" y="19.8" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill={colors.text} fontFamily="serif">本</text>
+      <text x="10" y="23.1" textAnchor="middle" fontSize="3.4" fontWeight="bold" fill={colors.text} fontFamily="serif">酒</text>
     </svg>
   );
 }
