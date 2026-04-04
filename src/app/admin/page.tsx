@@ -530,28 +530,34 @@ export default function AdminPage() {
               <div>
                 <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">累積贊助金額管理</h2>
                 <p className="text-[10px] text-muted-foreground">
-                  每次確認付款後，輸入 UID 並加入對應金額，系統累加計算。累積 NT$200 解鎖 🍵，累積 NT$1000 解鎖 🍶。
+                  每次確認付款後，輸入 UID 並加入對應金額，系統累加計算。累積 $200→蛇目杯，$500→🍶，$1000→頂級酒瓶。
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-center text-[10px] font-bold uppercase">
-                <div className="bg-white/5 rounded-2xl border border-white/10 p-3 space-y-1">
-                  <div className="text-2xl">☕</div>
+              <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold uppercase">
+                <div className="bg-white/5 rounded-2xl border border-white/10 p-2.5 space-y-1">
+                  <div className="text-xl">☕</div>
                   <div>咖啡</div>
                   <div className="text-muted-foreground">+NT$50</div>
-                  <div className="text-[8px] text-muted-foreground opacity-60">累積計算</div>
+                  <div className="text-[8px] opacity-60">累積計算</div>
                 </div>
-                <div className="bg-amber-400/10 rounded-2xl border border-amber-400/30 p-3 space-y-1 text-amber-400">
-                  <div className="text-2xl">🍵</div>
+                <div className="bg-blue-400/10 rounded-2xl border border-blue-400/30 p-2.5 space-y-1 text-blue-300">
+                  <div className="flex justify-center"><span className="text-xl">🔵</span></div>
                   <div>蛇目杯</div>
                   <div>累積 $200</div>
-                  <div className="text-[8px] opacity-70">解鎖 🍵 徽章</div>
+                  <div className="text-[8px] opacity-70">解鎖蛇目杯</div>
                 </div>
-                <div className="bg-amber-500/12 rounded-2xl border border-amber-500/40 p-3 space-y-1 text-amber-300">
-                  <div className="text-2xl">🍶</div>
-                  <div>日本酒瓶</div>
+                <div className="bg-amber-400/10 rounded-2xl border border-amber-400/30 p-2.5 space-y-1 text-amber-400">
+                  <div className="text-xl">🍶</div>
+                  <div>一瓶酒</div>
+                  <div>累積 $500</div>
+                  <div className="text-[8px] opacity-70">解鎖 🍶</div>
+                </div>
+                <div className="bg-amber-500/12 rounded-2xl border border-amber-500/40 p-2.5 space-y-1 text-amber-300">
+                  <div className="text-xl">🍶✨</div>
+                  <div>頂級酒瓶</div>
                   <div>累積 $1000</div>
-                  <div className="text-[8px] opacity-70">解鎖 🍶 徽章</div>
+                  <div className="text-[8px] opacity-70">解鎖頂級</div>
                 </div>
               </div>
 
@@ -577,8 +583,8 @@ export default function AdminPage() {
                       className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/40"
                     />
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {([50, 200, 1000, 0] as const).map(v => (
+                  <div className="grid grid-cols-5 gap-2">
+                    {([50, 200, 500, 1000, 0] as const).map(v => (
                       <button
                         key={v}
                         type="button"
@@ -617,7 +623,7 @@ export default function AdminPage() {
                       .sort((a: any, b: any) => (b.sponsorTotal || 0) - (a.sponsorTotal || 0))
                       .map((u: any) => {
                         const total: number = u.sponsorTotal || 0;
-                        const badge = total >= 1000 ? '🍶' : total >= 200 ? '🍵' : '☕';
+                        const badge = total >= 1000 ? '🍶✨' : total >= 500 ? '🍶' : total >= 200 ? '🔵' : '☕';
                         return (
                           <div key={u.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
                             <div>

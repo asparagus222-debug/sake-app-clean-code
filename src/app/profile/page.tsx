@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { UserBadge } from '@/components/UserBadge';
+import { JanomeCupIcon as JanomeCupSponsor, SakeBottleIcon as SakeBottleSponsor } from '@/components/SponsorIcons';
 import { NumericKeypad } from '@/components/NumericKeypad';
 import { UserProfile, QUALIFICATION_OPTIONS, ThemeSettings } from '@/lib/types';
 import { 
@@ -145,7 +146,7 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
 
-  const handleSponsor = async (amount: 50 | 200 | 1000) => {
+  const handleSponsor = async (amount: 50 | 200 | 500 | 1000) => {
     if (!auth?.currentUser) {
       toast({ variant: 'destructive', title: '請先登入' });
       return;
@@ -1158,26 +1159,29 @@ export default function ProfilePage() {
 
             <div className="space-y-2">
               <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center opacity-60">支持本計畫</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-1.5">
                 {([
-                  { amount: 50   as const, emoji: '☕', label: '咖啡',   cls: 'border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500' },
-                  { amount: 200  as const, emoji: '🍵', label: '一杯酒', cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
-                  { amount: 1000 as const, emoji: '🍶', label: '一瓶酒', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
-                ]).map(({ amount, emoji, label, cls }) => (
+                  { amount: 50   as const, icon: <span className="text-base leading-none">☕</span>,          label: '咖啡',   sub: '$50',   cls: 'border-amber-400/25 bg-amber-400/6 hover:bg-amber-400/12 text-amber-500' },
+                  { amount: 200  as const, icon: <JanomeCupSponsor size={18} />,                        label: '蛇目杯', sub: '$200',  cls: 'border-blue-400/30 bg-blue-400/6 hover:bg-blue-400/12 text-blue-300' },
+                  { amount: 500  as const, icon: <span className="text-base leading-none">🍶</span>,          label: '一瓶酒', sub: '$500',  cls: 'border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-500' },
+                  { amount: 1000 as const, icon: <SakeBottleSponsor size={18} />,                       label: '頂級酒瓶', sub: '$1000', cls: 'border-amber-500/50 bg-amber-500/12 hover:bg-amber-500/22 text-amber-400' },
+                ]).map(({ amount, icon, label, sub, cls }) => (
                   <button
                     key={amount}
                     type="button"
                     disabled={isSponsorLoading}
                     onClick={() => handleSponsor(amount)}
-                    className={`flex flex-col items-center justify-center gap-1 h-16 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
+                    className={`flex flex-col items-center justify-center gap-0.5 h-16 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
                   >
-                    <span className="text-lg leading-none">{isSponsorLoading ? <span className="text-[10px]">...</span> : emoji}</span>
-                    <span className="text-[8px] font-bold uppercase tracking-wider">{label}</span>
-                    <span className="text-[9px] font-black">NT${amount}</span>
+                    <span className="leading-none flex items-center justify-center h-5">
+                      {isSponsorLoading ? <span className="text-[9px]">...</span> : icon}
+                    </span>
+                    <span className="text-[7px] font-bold uppercase tracking-wider">{label}</span>
+                    <span className="text-[8px] font-black">NT{sub}</span>
                   </button>
                 ))}
               </div>
-              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">累積 NT$200 解鎖 🍵・累積 NT$1000 解鎖 🍶</p>
+              <p className="text-[8px] text-muted-foreground text-center opacity-50 leading-tight">累積 $200→蛇目杯 ・ $500→🍶 ・ $1000→頂級酒瓶</p>
             </div>
             
             {user && (
