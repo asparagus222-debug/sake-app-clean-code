@@ -52,6 +52,8 @@ export default function EditNotePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
+  const [identifyCountdown, setIdentifyCountdown] = useState(0);
+  const identifyAbortRef = useRef<AbortController | null>(null);
   const [lockedImgs, setLockedImgs] = useState([false, false]);
   
   const [images, setImages] = useState<string[]>([]);
@@ -275,14 +277,26 @@ export default function EditNotePage() {
   };
 
   const triggerAIIdentification = async (photoDataUri: string, backPhotoDataUri?: string) => {
+    const abortController = new AbortController();
+    identifyAbortRef.current = abortController;
     setIsIdentifying(true);
+    setIdentifyCountdown(20);
+    const countdownInterval = setInterval(() => {
+      setIdentifyCountdown(prev => {
+        if (prev <= 1) { clearInterval(countdownInterval); abortController.abort(); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
     try {
-      const optimizedPhoto = await resizeImage(photoDataUri, 1024);
-      const optimizedBack = backPhotoDataUri ? await resizeImage(backPhotoDataUri, 1024) : undefined;
+      const [optimizedPhoto, optimizedBack] = await Promise.all([
+        resizeImage(photoDataUri, 1024),
+        backPhotoDataUri ? resizeImage(backPhotoDataUri, 1024) : Promise.resolve(undefined),
+      ]);
       const response = await fetch('/api/ai/identify-sake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photoDataUri: optimizedPhoto, ...(optimizedBack ? { backPhotoDataUri: optimizedBack } : {}) }),
+        signal: abortController.signal,
       });
       if (!response.ok) throw new Error('API error');
       const result = await response.json();
@@ -307,10 +321,17 @@ export default function EditNotePage() {
         }));
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
       }
-    } catch {
-      toast({ variant: "destructive", title: "AI 辨識失敗" });
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        toast({ title: "AI 辨識已取消" });
+      } else {
+        toast({ variant: "destructive", title: "AI 辨識失敗" });
+      }
     } finally {
+      clearInterval(countdownInterval);
       setIsIdentifying(false);
+      setIdentifyCountdown(0);
+      identifyAbortRef.current = null;
     }
   };
 
@@ -751,7 +772,17 @@ export default function EditNotePage() {
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                   <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
                   <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
-                  <p className="text-white/50 text-[9px] font-bold mt-3 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
+                  {identifyCountdown > 0 && (
+                    <p className="text-primary text-lg font-bold mt-2 tabular-nums">{identifyCountdown}<span className="text-[10px] text-white/50 ml-1">s</span></p>
+                  )}
+                  <p className="text-white/40 text-[9px] font-bold mt-1 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
+                  <button
+                    type="button"
+                    onClick={() => identifyAbortRef.current?.abort()}
+                    className="mt-4 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 hover:text-white backdrop-blur-sm px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all"
+                  >
+                    <X className="w-3 h-3" /> 取消
+                  </button>
                 </div>
               )}
             </div>
