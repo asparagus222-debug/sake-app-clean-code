@@ -1,11 +1,9 @@
 'use server';
 /**
  * @fileOverview 清酒酒標兩段式辨識 AI Agent。
- * Step 1: 純視覺 OCR — 模型只專注讀取圖片上的日文文字，不進行外部搜尋。
+ * Step 1: Gemini 純視覺 OCR — 若有背標優先辨識背標，再以正標補充。
  * Step 2: 精準 Google Search — 用 Step 1 提取到的正確日文名稱搜尋官方規格，補齊細節。
  */
-
-import Anthropic from '@anthropic-ai/sdk';
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
@@ -31,7 +29,7 @@ const IdentifySakeOutputSchema = z.object({
 });
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
-// Claude/Gemini 共用視覺提取 Schema
+// Gemini 視覺提取 Schema
 const VisionExtractionSchema = z.object({
   allText: z.array(z.string()).optional().describe('圖片上所有可見文字列表（用於備用搜尋）'),
   visualDescription: z.string().optional().describe('酒標構圖特徵：瓶身/標籤顏色、主要圖案（如山水、花、動物、幾何）、有無印章或特殊標記、筆觸風格（細緻/粗獷）'),
@@ -56,102 +54,34 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
-    // ── Step 1: Claude 純視覺 OCR ──
-    // 使用 @anthropic-ai/sdk 官方 SDK 直接呼叫，不受 genkit plugin model 清單限制
-    // 使用 claude-sonnet-4-6（最新版）
-    let vision: z.infer<typeof VisionExtractionSchema> | null = null;
+    // ── Step 1: Gemini 純視覺 OCR ──
+    // 若有背標，優先以背標作為主要辨識圖片（背標通常有清晰印刷文字）
+    const hasBackLabel = !!input.backPhotoDataUri;
+    const primaryImage = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
+    const secondaryImage = hasBackLabel ? input.photoDataUri : null;
 
-    try {
-      const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const matches = input.photoDataUri.match(/^data:([^;]+);base64,(.+)$/);
-      if (!matches) throw new Error('Invalid photoDataUri format');
-      const mediaType = matches[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
-      const base64Data = matches[2];
-
-      // 若有背標圖，解析它的 base64
-      const backMatches = input.backPhotoDataUri?.match(/^data:([^;]+);base64,(.+)$/);
-      const backMediaType = backMatches?.[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | undefined;
-      const backBase64Data = backMatches?.[2];
-
-      // 組合 Claude content：正標必傳，背標選傳
-      const claudeImages: Anthropic.ImageBlockParam[] = [
-        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-        ...(backBase64Data && backMediaType
-          ? [{ type: 'image' as const, source: { type: 'base64' as const, media_type: backMediaType, data: backBase64Data } }]
-          : []),
-      ];
-
-      const hasBackLabel = !!backBase64Data;
-
-      const response = await anthropicClient.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        // 超過 12s 視為超時，直接 fallback 到 Gemini，避免整體超過 20s
-        messages: [{
-          role: 'user',
-          content: [
-            ...claudeImages,
-            { type: 'text', text: `你是日文清酒酒標的完整文字辨識專家。${hasBackLabel ? '我提供了第一張（正標）和第二張（背標）兩張圖片，請同時分析兩張，優先採用背標的清晰印刷文字。' : ''}
-
-【第一步】列出圖片上「所有」可見文字（無論大小、印刷或書法）。
-【第二步】描述酒標的「視覺構圖特徵」：
-  - 瓶身/標籤主色調（例：黒瓶・白和紙ラベル）
-  - 大型書道文字：它是什麼字？（請直接寫出「笑」「夢」「粋」「縁」「楽」「宇」等）——這對搜尋很重要
-  - 有無紅色印章或特殊標記
-  - 整體筆觸風格（細緻/粗獷）
-【第三步】從文字和視覺特徵共同判斷銘柄等欄位，並產生 searchQuery。
-
-⚠️ 重要：
-- 酒標大型書道裝飾字（如笑、夢、粋）是美術設計，不是銘柄
-- 真正銘柄通常是裝飾字旁邊較小的清晰印刷文字，特別是平假名${hasBackLabel ? '\n- 背標通常有完整的印刷銘柄文字，請優先從背標讀取' : ''}
-- searchQuery 要包含「正確識別的書道大字本身」+「文字線索」，例如：「笑 伝承乃技 純米大吟醸 日本酒」
-- 若幾乎看不到文字，searchQuery 改以視覺描述為主
-- 只報告實際可見的文字，不要猜測
-
-請回傳 JSON（不加 markdown code block）：
-{"allText":["圖片上所有可見文字"],"visualDescription":"酒標視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造（圖片看不到填不明）","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["種別/製法"],"searchQuery":"書道大字+文字線索的日文搜尋詞"}` },
-          ],
-        }],
-      }, { timeout: 12000 }); // 12s timeout — fallback 到 Gemini 避免整體超過 20s
-
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        vision = JSON.parse(jsonMatch[0]);
-        console.log('[AI辨識] Step 1 使用: Claude claude-sonnet-4-6');
-      }
-    } catch (err) {
-      console.error('[AI辨識] Claude Step 1 failed, falling back to Gemini:', err);
-    }
-
-    // Claude 失敗/超時時降級到 Gemini 單步辨識（圖片直接輸入，省去 F1+F2 兩步）
-    if (!vision) {
-      console.log('[AI辨識] Step 1 使用: Gemini fallback');
-      const { output: geminiVision } = await ai.generate({
-        model: googleAI.model('gemini-flash-latest'),
-        output: { schema: VisionExtractionSchema },
-        prompt: [
-          {
-            text: `你是日文清酒酒標的完整文字辨識專家。${input.backPhotoDataUri ? '我提供了正標和背標兩張圖片，請同時分析，優先採用背標的清晰印刷文字。' : ''}
+    const { output: geminiVision } = await ai.generate({
+      model: googleAI.model('gemini-flash-latest'),
+      output: { schema: VisionExtractionSchema },
+      prompt: [
+        {
+          text: `你是日文清酒酒標的完整文字辨識專家。${hasBackLabel ? '我提供了背標（第一張）和正標（第二張）兩張圖片，背標有完整且清晰的印刷文字，請優先從背標讀取所有資訊（銘柄、酒造、規格等）。' : ''}
 
 【第一步】列出圖片上「所有」可見文字。
 【第二步】描述酒標視覺構圖：主色調、大型書道文字（直接寫出是哪個字，如「笑」「夢」「粋」）、有無印章、筆觸風格。
 【第三步】從文字和視覺共同判斷銘柄，並產生包含「書道大字本身」+「其他關鍵詞」的 searchQuery（例如：「笑 伝承乃技 純米大吟醸 日本酒」）。
 
-⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。${input.backPhotoDataUri ? '\n- 背標通常有完整的印刷銘柄文字，請優先從背標讀取' : ''}
+⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。${hasBackLabel ? '\n- 第一張圖（背標）有完整印刷銘柄文字，請從背標讀取作為主要資訊來源' : ''}
 
 請回傳 JSON（不加 markdown）：
 {"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"書道大字+其他搜尋詞"}`,
-          },
-          { media: { url: input.photoDataUri, contentType: 'image/jpeg' } },
-          ...(input.backPhotoDataUri ? [{ media: { url: input.backPhotoDataUri, contentType: 'image/jpeg' } }] : []),
-        ],
-      }).catch(() => ({ output: null }));
+        },
+        { media: { url: primaryImage, contentType: 'image/jpeg' } },
+        ...(secondaryImage ? [{ media: { url: secondaryImage, contentType: 'image/jpeg' } }] : []),
+      ],
+    }).catch(() => ({ output: null }));
 
-      vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
-    }
-
-    if (!vision) throw new Error('無法從圖片提取資訊，請確保酒標清晰可見。');
+    const vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
 
     const { brandName, brewery, origin } = vision;
     // 取出括號/空格前的「核心銘柄字串」做可疑判斷
