@@ -84,7 +84,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
                 {showText && <span className="text-[9px] font-bold uppercase tracking-tighter opacity-70">{badgeData.label}</span>}
               </span>
             </TooltipTrigger>
-            <TooltipContent className="dark-glass border-white/10 py-2 px-3 max-w-[180px]">
+            <TooltipContent className="bg-[#18181b] border border-white/10 py-2 px-3 max-w-[180px]">
               <p className="text-xs font-bold text-white">{badgeData.label}</p>
               <p className="text-[10px] text-white/60 mt-0.5 leading-snug">{badgeData.desc}</p>
             </TooltipContent>
@@ -114,7 +114,7 @@ export function UserBadge({ userId, className, showText = false }: UserBadgeProp
                 {sponsorBadge === 'kodaru' && <KodaruIcon size={16} colors={KODARU_GOLD_COLORS} />}
               </span>
             </TooltipTrigger>
-            <TooltipContent className="dark-glass border-white/10 py-2 px-3 max-w-[180px]">
+            <TooltipContent className="bg-[#18181b] border border-white/10 py-2 px-3 max-w-[180px]">
               <p className="text-xs font-bold text-white">{title}</p>
               <p className="text-[10px] text-white/60 mt-0.5 leading-snug">{desc}</p>
             </TooltipContent>
