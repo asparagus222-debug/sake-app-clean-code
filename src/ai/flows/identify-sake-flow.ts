@@ -86,34 +86,30 @@ export const identifySakeFlow = ai.defineFlow(
       if (backOcr?.brandName && backOcr?.brewery) {
         console.log('[AI辨識] 快速路徑 Step A 成功:', backOcr.brandName, '→ Step B 補充搜尋');
 
-        // Step B：用品牌+酒造搜尋圖片上沒寫的補充資訊（壓榨手法、有機認證、特殊釀造法等）
-        const supplementQuery = `${backOcr.brandName} ${backOcr.brewery} 日本酒 醸造特徴`;
+        // Step B：搜尋這款酒的補充製法資訊，嚴格要求有搜尋結果依據才能填入
+        const supplementQuery = `"${backOcr.brandName}" "${backOcr.brewery}" 日本酒`;
         const { output: supplement } = await ai.generate({
           model: googleAI.model('gemini-flash-latest'),
           config: { googleSearchRetrieval: true },
           output: { schema: IdentifySakeOutputSchema },
           prompt: [{
-            text: `你是清酒資料庫專家。請用 Google Search 搜尋「${supplementQuery}」，找出這款酒在酒標上「沒有印刷」的補充特點。
+            text: `你是清酒資料庫專家。請用 Google Search 精確搜尋「${supplementQuery}」，只查詢這款酒的官方資料。
 
-已從圖片確認的資訊（請勿覆蓋這些欄位）：
+已從圖片確認的資訊（禁止覆蓋）：
 - 銘柄：${backOcr.brandName}
 - 酒造：${backOcr.brewery}
-- 酒精濃度：${backOcr.alcoholPercent || '（圖片已確認）'}
-- 精米步合：${backOcr.seimaibuai || '（圖片已確認）'}
-- 使用米：${backOcr.riceName || '（圖片已確認）'}
+- 酒精濃度：${backOcr.alcoholPercent}
+- 精米步合：${backOcr.seimaibuai}
+- 使用米：${backOcr.riceName}
 - 種別：${JSON.stringify(backOcr.specialProcess || [])}
 
-請搜尋並補充以下類型的資訊（若搜尋結果有的話）：
-- 壓榨手法（斗瓶囲い、袋吊り、槽搾り等）
-- 有機栽培／特別栽培認証
-- 特殊釀造法（山廃、生酛、木桶仕込み等）
-- 酵母（${backOcr.yeast ? '圖片已有: ' + backOcr.yeast + '，請確認是否更詳細' : '若有請填入'}）
-- 其他酒標上未顯示的特色標籤
-
-回傳規則：
-1. brandName／brewery／alcoholPercent／seimaibuai／riceName 直接使用圖片數值，不要從搜尋覆蓋
-2. specialProcess 只填入「圖片上沒有的補充標籤」（圖片已有的種別不用重複）
-3. 保持日文原文，不要翻譯`,
+補充規則（非常嚴格）：
+1. specialProcess 只能填入搜尋結果中「明確出現在這款酒產品頁」的製法標籤，例如：袋吊り、山廃、生酛、木桶仕込み、有機米使用
+2. 受賞資訊（受賞酒、金賞等）除非搜尋結果明確指出是這瓶，否則不填
+3. 酵母只填入搜尋結果中有明確資料的，不猜測地區酵母
+4. 若搜尋結果沒有可靠的補充資訊，specialProcess 回傳空陣列，不要亂填
+5. 保持日文原文，不要翻譯
+6. 寧可少填，不要填入無法確認的資訊`,
           }],
         }).catch(() => ({ output: null }));
 
@@ -238,7 +234,8 @@ export const identifySakeFlow = ai.defineFlow(
 1. brandName 和 brewery 必須使用圖片辨識結果（${brandName}、${brewery}），不可被搜尋結果覆蓋
 2. 圖片已有的酒精濃度、精米步合等數值以圖片為準，搜尋結果僅補充圖片看不到的欄位
 3. 所有文字保持日文原文，不要翻譯
-4. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`,
+4. specialProcess 只填入搜尋結果中「明確對應這款酒產品頁」的製法標籤，寧可空白也不填可疑資訊
+5. 受賞資訊除非搜尋結果明確說明是這瓶，否則不填；酵母若無明確資料也不填`,
         },
       ],
     }).catch(() => ({ output: null }));
