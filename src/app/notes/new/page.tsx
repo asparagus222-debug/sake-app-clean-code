@@ -1095,7 +1095,7 @@ const handleSave = async () => {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
-            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">選擇圖片來源</p>
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-white/50 mb-4">選擇圖片來源</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -1103,8 +1103,8 @@ const handleSave = async () => {
                 className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Camera className="w-8 h-8 text-primary" />
-                <span className="text-sm font-bold text-foreground">拍照</span>
-                <span className="text-[9px] text-muted-foreground">使用相機</span>
+                <span className="text-sm font-bold text-white">拍照</span>
+                <span className="text-[9px] text-white/50">使用相機</span>
               </button>
               <button
                 type="button"
@@ -1112,8 +1112,8 @@ const handleSave = async () => {
                 className="flex flex-col items-center gap-3 p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all"
               >
                 <Images className="w-8 h-8 text-primary" />
-                <span className="text-sm font-bold text-foreground">相簿</span>
-                <span className="text-[9px] text-muted-foreground">從圖片庫選取</span>
+                <span className="text-sm font-bold text-white">相簿</span>
+                <span className="text-[9px] text-white/50">從圖片庫選取</span>
               </button>
             </div>
           </div>
