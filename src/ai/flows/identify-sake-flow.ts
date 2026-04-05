@@ -56,40 +56,45 @@ export const identifySakeFlow = ai.defineFlow(
   async (input) => {
     const hasBackLabel = !!input.backPhotoDataUri;
 
-    // ── 快速路徑：有背標時，用背標圖片直接做一步視覺+搜尋（類似原 Step1+Step2，但只用一次 API）
+    // ── 快速路徑：有背標時，純視覺 OCR（不開 Google Search）直接從圖片讀取所有欄位
+    // ⚠️ 不使用 Google Search，避免搜尋結果覆蓋圖片上已清楚顯示的酒精濃度、精米步合、種別等數值
     if (hasBackLabel) {
-      console.log('[AI辨識] 快速路徑：背標圖片 + Google Search 單步完成');
-      const { output: fastResult } = await ai.generate({
+      console.log('[AI辨識] 快速路徑：背標圖片純視覺 OCR（不使用搜尋）');
+      const { output: backOcr } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
-        config: { googleSearchRetrieval: true },
+        // 不加 config.googleSearchRetrieval，確保所有欄位都來自圖片
         output: { schema: IdentifySakeOutputSchema },
         prompt: [
           {
-            text: `你是清酒資料庫專家。請閱讀這張清酒背標圖片，直接從圖片讀取所有可見文字，並用 Google Search 搜尋補齊完整規格。
+            text: `你是清酒背標文字辨識專家。請仔細讀取圖片上所有印刷文字，逐字逐行填入對應欄位。
 
-背標通常包含：銘柄（品牌名）、酒造名、産地、酒精濃度、精米步合、使用米、種別（純米大吟醸等）
+背標通常包含：銘柄（品牌名）、酒造名、産地、酒精濃度、精米步合、使用米、種別（純米吟醸／純米大吟醸等）、酵母
 
-請從圖片文字中直接讀取所有欄位，並用 Google Search 搜尋補充圖片未顯示的資訊。
-所有文字保持日文原文，不要翻譯。`,
+⚠️ 重要規則：
+- 所有欄位請「100% 從圖片讀取」，不要推測或補充圖片上沒有的資訊
+- 酒精濃度、精米步合、種別 必須與圖片文字完全一致，不可填入推測值
+- 若圖片上有正標（第二張），可參考補充銘柄文字
+- 保持日文原文，不要翻譯`,
           },
           { media: { url: input.backPhotoDataUri!, contentType: 'image/jpeg' } },
+          ...(input.photoDataUri ? [{ media: { url: input.photoDataUri, contentType: 'image/jpeg' } }] : []),
         ],
       }).catch(() => ({ output: null }));
 
-      if (fastResult?.brandName && fastResult?.brewery) {
-        console.log('[AI辨識] 快速路徑成功:', fastResult.brandName);
+      if (backOcr?.brandName && backOcr?.brewery) {
+        console.log('[AI辨識] 快速路徑純OCR成功:', backOcr.brandName);
         return {
-          brandName: fastResult.brandName,
-          brewery: fastResult.brewery,
-          origin: fastResult.origin || '',
-          alcoholPercent: fastResult.alcoholPercent || '',
-          seimaibuai: fastResult.seimaibuai || '',
-          riceName: fastResult.riceName || '',
-          specialProcess: fastResult.specialProcess || [],
-          yeast: fastResult.yeast || '',
+          brandName: backOcr.brandName,
+          brewery: backOcr.brewery,
+          origin: backOcr.origin || '',
+          alcoholPercent: backOcr.alcoholPercent || '',
+          seimaibuai: backOcr.seimaibuai || '',
+          riceName: backOcr.riceName || '',
+          specialProcess: backOcr.specialProcess || [],
+          yeast: backOcr.yeast || '',
         };
       }
-      console.log('[AI辨識] 快速路徑未取得完整資訊，回退至完整流程');
+      console.log('[AI辨識] 快速路徑純OCR未取得完整品牌資訊，回退至完整流程');
     }
 
     // ── Step 1: Gemini 純視覺 OCR ──
