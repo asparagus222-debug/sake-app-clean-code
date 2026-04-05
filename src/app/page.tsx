@@ -354,7 +354,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">新增筆記</p>
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-white/50 mb-4">新增筆記</p>
             <button
               type="button"
               onClick={() => { setShowDraftPicker(false); router.push('/notes/new'); }}
@@ -364,13 +364,13 @@ export default function Home() {
                 <Plus className="w-5 h-5 text-primary" />
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold text-foreground">新增空白筆記</div>
-                <div className="text-[9px] text-muted-foreground">建立新的品飲筆記</div>
+                <div className="text-sm font-bold text-white">新增空白筆記</div>
+                <div className="text-[9px] text-white/50">建立新的品飲筆記</div>
               </div>
             </button>
             {drafts.length > 0 && (
               <>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-2 ml-1">草稿列表 ({drafts.length})</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/40 mb-2 ml-1">草稿列表 ({drafts.length})</p>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {drafts.map(d => (
                     <div key={d.id} className="flex items-center gap-2 p-3 rounded-[1rem] bg-white/5 border border-white/10 hover:border-primary/30 transition-all">
@@ -383,8 +383,8 @@ export default function Home() {
                           <FileText className="w-3.5 h-3.5 text-amber-400" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-bold text-foreground truncate">{d.brandName}</div>
-                          <div className="text-[9px] text-muted-foreground/60">{formatDraftAge(d.savedAt)}</div>
+                          <div className="text-sm font-bold text-white truncate">{d.brandName}</div>
+                          <div className="text-[9px] text-white/40">{formatDraftAge(d.savedAt)}</div>
                         </div>
                       </button>
                       <button

@@ -257,6 +257,7 @@ export default function NewNotePage() {
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
         if (result.riceName) newInfoTags.push(result.riceName);
         if (result.specialProcess) newInfoTags.push(...result.specialProcess);
+        if (result.yeast) newInfoTags.push(`酵母${result.yeast}`);
         const normalized = normalizeSakeInfo(
           result.brandName || '',
           result.brewery || '',
@@ -697,7 +698,7 @@ const handleSave = async () => {
                     {identifyCountdown > 0 ? (
                       <p className="text-primary text-lg font-bold mt-2 tabular-nums">{identifyCountdown}<span className="text-[10px] text-white/50 ml-1">s</span></p>
                     ) : (
-                      <p className="text-white/60 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">不好意思，剛去扶老奶奶過馬路，延遲了一下，感謝您耐心等候🙇</p>
+                      <p className="text-white/60 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">持續努力辨識中，期間可以先填寫筆記跟評分，感謝您耐心等待 🙇</p>
                     )}
                     <p className="text-white/40 text-[9px] font-bold mt-1 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                     <button

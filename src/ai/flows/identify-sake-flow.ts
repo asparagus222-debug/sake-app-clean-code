@@ -25,8 +25,7 @@ const IdentifySakeOutputSchema = z.object({
   alcoholPercent: z.string().optional().describe('酒精濃度，格式如 "16度" 或 "16%"，若無則回傳空字串。'),
   seimaibuai: z.string().optional().describe('精米步合，格式如 "50%" 或 "50割"，若無則回傳空字串。'),
   riceName: z.string().optional().describe('使用酒米品種 (例如：山田錦、五百万石)，若無則回傳空字串。保持日文原文。'),
-  specialProcess: z.array(z.string()).optional().describe('特殊製程標籤陣列，例如：["純米大吟醸","生原酒","無濾過"]，若無則回傳空陣列。保持日文原文。'),
-});
+  specialProcess: z.array(z.string()).optional().describe('特殊製程標籤陣列，例如：["純米大吟醸","生原酒","無濾過"]，若無則回傳空陣列。保持日文原文。'),  yeast: z.string().optional().describe('使用酵母，例如：卍酵母十五號、魉水酵母、宮城酵母、山形酵母少0l號，若無則回傳空字串。保持日文原文。'),});
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
 // Gemini 視覺提取 Schema
@@ -40,6 +39,7 @@ const VisionExtractionSchema = z.object({
   seimaibuai: z.string(),
   riceName: z.string(),
   specialProcess: z.array(z.string()),
+  yeast: z.string(),
   searchQuery: z.string(),
 });
 
@@ -86,6 +86,7 @@ export const identifySakeFlow = ai.defineFlow(
           seimaibuai: fastResult.seimaibuai || '',
           riceName: fastResult.riceName || '',
           specialProcess: fastResult.specialProcess || [],
+          yeast: fastResult.yeast || '',
         };
       }
       console.log('[AI辨識] 快速路徑未取得完整資訊，回退至完整流程');
@@ -110,7 +111,7 @@ export const identifySakeFlow = ai.defineFlow(
 ⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。${hasBackLabel ? '\n- 第一張圖（背標）有完整印刷銘柄文字，請從背標讀取作為主要資訊來源' : ''}
 
 請回傳 JSON（不加 markdown）：
-{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"searchQuery":"書道大字+其他搜尋詞"}`,
+{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"yeast":"使用酵母","searchQuery":"書道大字+其他搜尋詞"}`,
         },
         { media: { url: primaryImage, contentType: 'image/jpeg' } },
         ...(secondaryImage ? [{ media: { url: secondaryImage, contentType: 'image/jpeg' } }] : []),
@@ -149,6 +150,7 @@ export const identifySakeFlow = ai.defineFlow(
         seimaibuai: vision.seimaibuai || '',
         riceName: vision.riceName || '',
         specialProcess: vision.specialProcess || [],
+        yeast: vision.yeast || '',
       };
     }
 
@@ -179,7 +181,8 @@ export const identifySakeFlow = ai.defineFlow(
 請用 Google Search 查詢。回傳規則：
 1. brandName 和 brewery 必須從搜尋結果確定，不可使用圖片疑似的書道字
 2. 若搜尋結果不確定，brandName 填入空字串
-3. 所有文字保持日文原文，不要翻譯`
+3. 所有文字保持日文原文，不要翻譯
+4. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`
         : `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
 
 從酒標圖片已確認的資訊（這些不需要搜尋，直接使用）：
@@ -194,7 +197,8 @@ export const identifySakeFlow = ai.defineFlow(
 請用 Google Search 查詢並補齊空缺欄位。回傳規則：
 1. brandName 和 brewery 必須使用圖片辨識結果（${brandName}、${brewery}），不可被搜尋結果覆蓋
 2. 圖片已有的酒精濃度、精米步合等數值以圖片為準，搜尋結果僅補充圖片看不到的欄位
-3. 所有文字保持日文原文，不要翻譯`,
+3. 所有文字保持日文原文，不要翻譯
+4. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`,
         },
       ],
     }).catch(() => ({ output: null }));
@@ -209,6 +213,7 @@ export const identifySakeFlow = ai.defineFlow(
         seimaibuai: vision.seimaibuai || '',
         riceName: vision.riceName || '',
         specialProcess: vision.specialProcess || [],
+        yeast: vision.yeast || '',
       };
     }
 
@@ -253,6 +258,7 @@ export const identifySakeFlow = ai.defineFlow(
       seimaibuai: vision.seimaibuai || finalEnriched.seimaibuai || '',
       riceName: vision.riceName || finalEnriched.riceName || '',
       specialProcess: (vision.specialProcess?.length ? vision.specialProcess : finalEnriched.specialProcess) || [],
+      yeast: vision.yeast || finalEnriched.yeast || '',
     };
   }
 );

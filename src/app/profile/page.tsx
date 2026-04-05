@@ -849,9 +849,9 @@ export default function ProfilePage() {
         <form onSubmit={handleCreateAccountClick} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
             <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
-              <Avatar className="w-14 h-14 border-4 border-primary/20 shadow-xl">
+              <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-xl">
                 <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
-                <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
+                <AvatarFallback><User className="w-10 h-10 text-muted-foreground" /></AvatarFallback>
               </Avatar>
               <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                 <Camera className="w-5 h-5 text-white" />
@@ -1022,9 +1022,9 @@ export default function ProfilePage() {
         <form onSubmit={handleSave} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
             <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
-              <Avatar className="w-14 h-14 border-4 border-primary/20 shadow-xl">
+              <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-xl">
                 <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} className="object-cover" />
-                <AvatarFallback><User className="w-6 h-6 text-muted-foreground" /></AvatarFallback>
+                <AvatarFallback><User className="w-10 h-10 text-muted-foreground" /></AvatarFallback>
               </Avatar>
               <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                 <Camera className="w-5 h-5 text-white" />
