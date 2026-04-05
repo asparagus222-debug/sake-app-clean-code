@@ -5,6 +5,7 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 /**
  * 初始化 Firebase SDK。
@@ -27,18 +28,26 @@ export function initializeFirebase() {
       console.warn("Firestore initialization failed - database may not be enabled in Firebase Console:", firestoreError);
     }
 
+    let storage: FirebaseStorage | null = null;
+    try {
+      storage = getStorage(firebaseApp);
+    } catch (storageError) {
+      console.warn("Storage initialization failed:", storageError);
+    }
+
     return {
       firebaseApp,
       auth: getAuth(firebaseApp),
-      firestore: firestore
+      firestore,
+      storage,
     };
   } catch (error) {
     console.error("Firebase initialization failed:", error);
-    // 返回 null 或預設對象，讓 Provider 處理
     return {
       firebaseApp: null as any,
       auth: null as any,
-      firestore: null as any
+      firestore: null as any,
+      storage: null as any,
     };
   }
 }

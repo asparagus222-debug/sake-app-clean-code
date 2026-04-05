@@ -59,11 +59,13 @@ import {
   useFirestore, 
   useUser, 
   useAuth,
+  useStorage,
   useDoc, 
   useMemoFirebase, 
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from '@/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
 import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
 import Link from 'next/link';
@@ -99,6 +101,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
+  const storage = useStorage();
   const { user, isUserLoading } = useUser();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedQuals, setSelectedQuals] = useState<string[]>([]);
@@ -254,12 +257,13 @@ export default function ProfilePage() {
     });
 
   const uploadAndSaveAvatar = async (dataUrl: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !storage) return;
     setIsUploadingAvatar(true);
     try {
-      // 選項 B：直接存 base64 進 Firestore（不需要 Firebase Storage）
-      // 未來若升級 Blaze，只需把這裡換成 Storage 上傳邏輯即可
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { avatarUrl: dataUrl });
+      const storageRef = ref(storage, `avatars/${user.uid}/avatar.jpg`);
+      await uploadString(storageRef, dataUrl, 'data_url');
+      const downloadUrl = await getDownloadURL(storageRef);
+      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { avatarUrl: downloadUrl });
       toast({ title: '頭像已更新 ✓' });
       setShowAvatarEditor(false);
       setAvatarEditorStep('crop');
