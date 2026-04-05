@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SakeNote } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Loader2, Trophy, Building2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Building2, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -20,6 +20,43 @@ export default function RankingsPage() {
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(500));
   }, [firestore]);
   const { data: notes, isLoading } = useCollection<SakeNote>(rankingQuery);
+
+  // 本月月榜：用 tastingDate 或 createdAt 判斷
+  const monthlyNotes = React.useMemo(() => {
+    if (!notes) return [];
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return notes.filter(n => {
+      const d = n.tastingDate || n.createdAt || '';
+      return d.startsWith(ym);
+    });
+  }, [notes]);
+
+  const monthLabel = React.useMemo(() => {
+    const now = new Date();
+    return `${now.getMonth() + 1} 月精選`;
+  }, []);
+
+  // 月榜 Top 3（銘柄）
+  const monthlyTop3 = React.useMemo(() => {
+    if (!monthlyNotes.length) return [];
+    const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
+    for (const note of monthlyNotes) {
+      const key = `${note.brandName}|||${note.brewery}`;
+      if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
+      map.get(key)!.notes.push(note);
+    }
+    return [...map.values()]
+      .map(g => ({
+        ...g,
+        avgRating: g.notes.reduce((s, n) => s + n.overallRating, 0) / g.notes.length,
+        imageUrl: [...g.notes]
+          .sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0))
+          .find(n => n.imageUrls?.[0])?.imageUrls?.[0],
+      }))
+      .sort((a, b) => b.avgRating - a.avgRating)
+      .slice(0, 3);
+  }, [monthlyNotes]);
 
   const brandGroups = React.useMemo(() => {
     if (!notes) return [];
@@ -81,6 +118,63 @@ export default function RankingsPage() {
       </nav>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
+
+        {/* ── 月榜精選 ── */}
+        {!isLoading && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">{monthLabel}</span>
+              <span className="text-[9px] text-muted-foreground ml-1">· 本月品飲筆記綜合評分</span>
+            </div>
+            {monthlyTop3.length === 0 ? (
+              <div className="dark-glass border border-white/10 rounded-2xl p-6 text-center">
+                <p className="text-muted-foreground text-xs">本月尚無品飲記錄</p>
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
+                {monthlyTop3.map((g, idx) => {
+                  const medals = ['🥇', '🥈', '🥉'];
+                  return (
+                    <Link
+                      key={`${g.brandName}-${g.brewery}`}
+                      href={`/sake?brand=${encodeURIComponent(g.brandName)}&brewery=${encodeURIComponent(g.brewery)}`}
+                      className="shrink-0 snap-start w-44 group"
+                    >
+                      <div className="relative rounded-2xl overflow-hidden border border-white/10 hover:border-primary/50 transition-all shadow-lg">
+                        {/* 圖片區 */}
+                        <div className="w-full h-44 bg-white/5 relative">
+                          {g.imageUrl ? (
+                            <img src={g.imageUrl} alt={g.brandName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Trophy className="w-8 h-8 text-primary/20" />
+                            </div>
+                          )}
+                          {/* 漸層遮罩 */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                          {/* 名次標 */}
+                          <div className="absolute top-2 left-2 text-xl leading-none">{medals[idx]}</div>
+                          {/* 評分 */}
+                          <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
+                            <span className="text-primary font-bold text-sm">{g.avgRating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                        {/* 文字區 */}
+                        <div className="bg-[#18181b] px-3 py-2.5">
+                          <p className="font-bold text-xs text-white truncate group-hover:text-primary transition-colors">{g.brandName}</p>
+                          <p className="text-[9px] text-white/50 truncate mt-0.5">{g.brewery}</p>
+                          <p className="text-[9px] text-white/40 mt-1">{g.notes.length} 篇筆記</p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         <Tabs defaultValue="brand">
           <TabsList className="bg-white/5 border border-white/10 rounded-full p-1 h-12 mb-8 w-full">
             <TabsTrigger value="brand" className="rounded-full flex-1 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
