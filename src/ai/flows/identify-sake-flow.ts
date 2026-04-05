@@ -56,13 +56,15 @@ export const identifySakeFlow = ai.defineFlow(
   async (input) => {
     const hasBackLabel = !!input.backPhotoDataUri;
 
-    // ── 快速路徑：有背標時，純視覺 OCR（不開 Google Search）直接從圖片讀取所有欄位
-    // ⚠️ 不使用 Google Search，避免搜尋結果覆蓋圖片上已清楚顯示的酒精濃度、精米步合、種別等數值
+    // 合併標籤陣列，去重（圖片標籤在前）
+    const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
+
+    // ── 快速路徑：有背標時，先純視覺 OCR，再補充搜尋，圖片數值絕對優先 ──
     if (hasBackLabel) {
-      console.log('[AI辨識] 快速路徑：背標圖片純視覺 OCR（不使用搜尋）');
+      // Step A：純視覺 OCR，100% 從圖片讀取所有欄位
+      console.log('[AI辨識] 快速路徑 Step A：背標純視覺 OCR');
       const { output: backOcr } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
-        // 不加 config.googleSearchRetrieval，確保所有欄位都來自圖片
         output: { schema: IdentifySakeOutputSchema },
         prompt: [
           {
@@ -73,7 +75,7 @@ export const identifySakeFlow = ai.defineFlow(
 ⚠️ 重要規則：
 - 所有欄位請「100% 從圖片讀取」，不要推測或補充圖片上沒有的資訊
 - 酒精濃度、精米步合、種別 必須與圖片文字完全一致，不可填入推測值
-- 若圖片上有正標（第二張），可參考補充銘柄文字
+- 若有正標（第二張圖），可參考補充銘柄文字
 - 保持日文原文，不要翻譯`,
           },
           { media: { url: input.backPhotoDataUri!, contentType: 'image/jpeg' } },
@@ -82,19 +84,52 @@ export const identifySakeFlow = ai.defineFlow(
       }).catch(() => ({ output: null }));
 
       if (backOcr?.brandName && backOcr?.brewery) {
-        console.log('[AI辨識] 快速路徑純OCR成功:', backOcr.brandName);
+        console.log('[AI辨識] 快速路徑 Step A 成功:', backOcr.brandName, '→ Step B 補充搜尋');
+
+        // Step B：用品牌+酒造搜尋圖片上沒寫的補充資訊（壓榨手法、有機認證、特殊釀造法等）
+        const supplementQuery = `${backOcr.brandName} ${backOcr.brewery} 日本酒 醸造特徴`;
+        const { output: supplement } = await ai.generate({
+          model: googleAI.model('gemini-flash-latest'),
+          config: { googleSearchRetrieval: true },
+          output: { schema: IdentifySakeOutputSchema },
+          prompt: [{
+            text: `你是清酒資料庫專家。請用 Google Search 搜尋「${supplementQuery}」，找出這款酒在酒標上「沒有印刷」的補充特點。
+
+已從圖片確認的資訊（請勿覆蓋這些欄位）：
+- 銘柄：${backOcr.brandName}
+- 酒造：${backOcr.brewery}
+- 酒精濃度：${backOcr.alcoholPercent || '（圖片已確認）'}
+- 精米步合：${backOcr.seimaibuai || '（圖片已確認）'}
+- 使用米：${backOcr.riceName || '（圖片已確認）'}
+- 種別：${JSON.stringify(backOcr.specialProcess || [])}
+
+請搜尋並補充以下類型的資訊（若搜尋結果有的話）：
+- 壓榨手法（斗瓶囲い、袋吊り、槽搾り等）
+- 有機栽培／特別栽培認証
+- 特殊釀造法（山廃、生酛、木桶仕込み等）
+- 酵母（${backOcr.yeast ? '圖片已有: ' + backOcr.yeast + '，請確認是否更詳細' : '若有請填入'}）
+- 其他酒標上未顯示的特色標籤
+
+回傳規則：
+1. brandName／brewery／alcoholPercent／seimaibuai／riceName 直接使用圖片數值，不要從搜尋覆蓋
+2. specialProcess 只填入「圖片上沒有的補充標籤」（圖片已有的種別不用重複）
+3. 保持日文原文，不要翻譯`,
+          }],
+        }).catch(() => ({ output: null }));
+
+        // Step B 合併：圖片數值絕對優先，specialProcess 取聯集
         return {
           brandName: backOcr.brandName,
           brewery: backOcr.brewery,
-          origin: backOcr.origin || '',
+          origin: backOcr.origin || supplement?.origin || '',
           alcoholPercent: backOcr.alcoholPercent || '',
           seimaibuai: backOcr.seimaibuai || '',
           riceName: backOcr.riceName || '',
-          specialProcess: backOcr.specialProcess || [],
-          yeast: backOcr.yeast || '',
+          specialProcess: mergeUnique(backOcr.specialProcess || [], supplement?.specialProcess || []),
+          yeast: backOcr.yeast || supplement?.yeast || '',
         };
       }
-      console.log('[AI辨識] 快速路徑純OCR未取得完整品牌資訊，回退至完整流程');
+      console.log('[AI辨識] 快速路徑 OCR 未取得完整品牌資訊，回退至完整流程');
     }
 
     // ── Step 1: Gemini 純視覺 OCR ──
@@ -253,6 +288,7 @@ export const identifySakeFlow = ai.defineFlow(
     }
 
     // 合併結果：銘柄/酒造以視覺辨識為主，規格細節以搜尋為主（補充圖片看不到的）
+    // specialProcess 取聯集：圖片讀到的 + 搜尋補充的，兩者皆保留
     // 例外：若視覺 brandName 疑為裝飾字（≤2字），以 Step 2/2.5 搜尋結果覆蓋
     return {
       ...finalEnriched,
@@ -262,7 +298,7 @@ export const identifySakeFlow = ai.defineFlow(
       alcoholPercent: vision.alcoholPercent || finalEnriched.alcoholPercent || '',
       seimaibuai: vision.seimaibuai || finalEnriched.seimaibuai || '',
       riceName: vision.riceName || finalEnriched.riceName || '',
-      specialProcess: (vision.specialProcess?.length ? vision.specialProcess : finalEnriched.specialProcess) || [],
+      specialProcess: mergeUnique(vision.specialProcess || [], finalEnriched.specialProcess || []),
       yeast: vision.yeast || finalEnriched.yeast || '',
     };
   }
