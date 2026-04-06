@@ -271,15 +271,19 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const handleShare = async () => {
     if (!cardRef.current) return;
     setIsExporting(true);
+    // Let React flush so "點擊編輯" overlay disappears before capture
+    await new Promise(r => setTimeout(r, 50));
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3, useCORS: true, allowTaint: false,
-        backgroundColor: rawBg, logging: false,
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, {
+        pixelRatio: 3,
+        backgroundColor: rawBg,
+        // Retry twice — first attempt can miss web fonts / cross-origin images
+        fetchRequestInit: { cache: 'force-cache' },
       });
-      const blob = await new Promise<Blob>((res, rej) =>
-        canvas.toBlob(b => (b ? res(b) : rej(new Error('blob'))), 'image/png')
-      );
+      // Convert dataURL → Blob
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
       const fileName = `${note.brandName || 'sake'}-sakepath.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
