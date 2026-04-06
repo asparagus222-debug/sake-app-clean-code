@@ -302,6 +302,8 @@ export default function EditNotePage() {
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
         if (result.riceName) newInfoTags.push(result.riceName);
         if (result.specialProcess) newInfoTags.push(...result.specialProcess);
+        if (result.yeast) newInfoTags.push(`酵母${result.yeast}`);
+        if (result.smv) newInfoTags.push(`日本酒度${result.smv}`);
         const normalized = normalizeSakeInfo(
           result.brandName || '',
           result.brewery || '',

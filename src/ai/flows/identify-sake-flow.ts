@@ -25,7 +25,10 @@ const IdentifySakeOutputSchema = z.object({
   alcoholPercent: z.string().optional().describe('酒精濃度，格式如 "16度" 或 "16%"，若無則回傳空字串。'),
   seimaibuai: z.string().optional().describe('精米步合，格式如 "50%" 或 "50割"，若無則回傳空字串。'),
   riceName: z.string().optional().describe('使用酒米品種 (例如：山田錦、五百万石)，若無則回傳空字串。保持日文原文。'),
-  specialProcess: z.array(z.string()).optional().describe('特殊製程標籤陣列，例如：["純米大吟醸","生原酒","無濾過"]，若無則回傳空陣列。保持日文原文。'),  yeast: z.string().optional().describe('使用酵母，例如：卍酵母十五號、魉水酵母、宮城酵母、山形酵母少0l號，若無則回傳空字串。保持日文原文。'),});
+  specialProcess: z.array(z.string()).optional().describe('特殊製程標籤陣列，例如：["純米大吟醸","生原酒","無濾過"]，若無則回傳空陣列。保持日文原文。'),
+  yeast: z.string().optional().describe('使用酵母，例如：卍酵母十五號、魉水酵母、宮城酵母、山形酵母少0l號，若無則回傳空字串。保持日文原文。'),
+  smv: z.string().optional().describe('日本酒度 (SMV)，格式如 "+5" 或 "-3"，辛口為正值、甘口為負值。若無則回傳空字串。'),
+});
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
 // Gemini 視覺提取 Schema
@@ -40,6 +43,7 @@ const VisionExtractionSchema = z.object({
   riceName: z.string(),
   specialProcess: z.array(z.string()),
   yeast: z.string(),
+  smv: z.string(),
   searchQuery: z.string(),
 });
 
@@ -75,6 +79,7 @@ export const identifySakeFlow = ai.defineFlow(
 ⚠️ 重要規則：
 - 所有欄位請「100% 從圖片讀取」，不要推測或補充圖片上沒有的資訊
 - 酒精濃度、精米步合、種別 必須與圖片文字完全一致，不可填入推測值
+- 日本酒度 (SMV) 若標籤上有印出（如「日本酒度 +5」「+3」「±0」），請填入 smv 欄位
 - 若有正標（第二張圖），可參考補充銘柄文字
 - 保持日文原文，不要翻譯`,
           },
@@ -123,6 +128,7 @@ export const identifySakeFlow = ai.defineFlow(
           riceName: backOcr.riceName || '',
           specialProcess: mergeUnique(backOcr.specialProcess || [], supplement?.specialProcess || []),
           yeast: backOcr.yeast || supplement?.yeast || '',
+          smv: backOcr.smv || supplement?.smv || '',
         };
       }
       console.log('[AI辨識] 快速路徑 OCR 未取得完整品牌資訊，回退至完整流程');
@@ -187,6 +193,7 @@ export const identifySakeFlow = ai.defineFlow(
         riceName: vision.riceName || '',
         specialProcess: vision.specialProcess || [],
         yeast: vision.yeast || '',
+        smv: vision.smv || '',
       };
     }
 
@@ -251,6 +258,7 @@ export const identifySakeFlow = ai.defineFlow(
         riceName: vision.riceName || '',
         specialProcess: vision.specialProcess || [],
         yeast: vision.yeast || '',
+        smv: vision.smv || '',
       };
     }
 
@@ -297,6 +305,7 @@ export const identifySakeFlow = ai.defineFlow(
       riceName: vision.riceName || finalEnriched.riceName || '',
       specialProcess: mergeUnique(vision.specialProcess || [], finalEnriched.specialProcess || []),
       yeast: vision.yeast || finalEnriched.yeast || '',
+      smv: vision.smv || finalEnriched.smv || '',
     };
   }
 );
