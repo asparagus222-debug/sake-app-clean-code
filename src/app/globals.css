@@ -27,6 +27,9 @@
     --glass-color: 20, 20, 25;
     --glass-border: 255, 255, 255;
     --texture-color: 255, 255, 255;
+    --card-overlay-from: rgba(0, 0, 0, 0.82);
+    --card-overlay-via: rgba(0, 0, 0, 0.42);
+    --card-overlay-text: #ffffff;
 
     --font-size-base: 16px;
   }
@@ -53,6 +56,9 @@
     --glass-color: 255, 255, 255;
     --glass-border: 0, 0, 0;
     --texture-color: 0, 0, 0;
+    --card-overlay-from: rgba(255, 255, 255, 0.92);
+    --card-overlay-via: rgba(255, 255, 255, 0.55);
+    --card-overlay-text: hsl(240 10% 4%);
   }
 }
 
@@ -77,6 +83,15 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--glass-border), 0.1);
+}
+
+.card-img-overlay {
+  background: linear-gradient(
+    to top,
+    var(--card-overlay-from),
+    var(--card-overlay-via),
+    transparent
+  );
 }
 
 .gold-glow {

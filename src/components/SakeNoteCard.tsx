@@ -64,12 +64,12 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
           </Badge>
         </div>
         {/* 漸層遮罩 + 酒廠 / 酒名 */}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+        <div className="card-img-overlay absolute inset-x-0 bottom-0 h-28 pointer-events-none" />
         <div className="absolute bottom-0 inset-x-0 p-4 pointer-events-none">
           <p className="text-[9px] text-primary font-bold uppercase tracking-widest opacity-90 leading-none mb-1 drop-shadow">
             {note.brewery}
           </p>
-          <h3 className="font-headline text-base text-white leading-tight drop-shadow">
+          <h3 className="font-headline text-base leading-tight drop-shadow" style={{ color: 'var(--card-overlay-text)' }}>
             {note.brandName}
           </h3>
         </div>
