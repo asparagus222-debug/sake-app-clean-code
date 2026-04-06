@@ -25,6 +25,14 @@ export default function Home() {
   const [showDraftPicker, setShowDraftPicker] = useState(false);
   const [drafts, setDrafts] = useState<Array<{id: string; brandName: string; savedAt: string}>>([]);
 
+  // 頭像與用戶名快取 —— 下次進入即展示，不必等 Firestore
+  const [cachedAvatar, setCachedAvatar] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('cached_avatar') : null
+  );
+  const [cachedUsername, setCachedUsername] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('cached_username') : null
+  );;
+
   const loadDrafts = React.useCallback(() => {
     try {
       // Migration: move old single-draft key to new array format
@@ -121,6 +129,18 @@ export default function Home() {
   }, [firestore, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
+  // profile 載入後寫入 localStorage，下次進入可立即呈現
+  React.useEffect(() => {
+    if (profile?.avatarUrl) {
+      localStorage.setItem('cached_avatar', profile.avatarUrl);
+      setCachedAvatar(profile.avatarUrl);
+    }
+    if (profile?.username) {
+      localStorage.setItem('cached_username', profile.username);
+      setCachedUsername(profile.username);
+    }
+  }, [profile?.avatarUrl, profile?.username]);
+
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(100));
@@ -203,8 +223,8 @@ export default function Home() {
     }).catch(() => {});
   }, [top3Groups, rankingNotes, firestore]);
 
-  // ── Skeleton：只在 user / profile 還沒確定時顯示 ──
-  if (isUserLoading || isProfileLoading || !user) {
+  // ── Skeleton：只在 auth 尚未確定時顯示，profile 就算還在載入也勿防研頁面 ──
+  if (isUserLoading || !user) {
     return (
       <div className="min-h-screen notebook-texture pb-32 font-body">
         {/* nav skeleton */}
@@ -238,7 +258,7 @@ export default function Home() {
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
         <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words flex-1 leading-tight">
-          {profile?.username ? `${profile.username} 的品飲筆記` : "品飲筆記"}
+          {(profile?.username || cachedUsername) ? `${profile?.username || cachedUsername} 的品飲筆記` : "品飲筆記"}
         </h1>
         <div className="flex items-center gap-3 shrink-0">
           {!isFormalUser && !profile?.username && (
@@ -251,14 +271,14 @@ export default function Home() {
           <Link href="/profile" className="flex items-center gap-4 group">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                {profile?.username || (isFormalUser ? "恢復身分中..." : "愛好者")}
+                {profile?.username || cachedUsername || (isFormalUser ? "恢復身分中..." : "愛好者")}
               </p>
               <p className="text-[10px] text-primary/60 group-hover:text-primary transition-colors tracking-widest uppercase font-bold">
                 個人資料
               </p>
             </div>
             <Avatar className="w-10 h-10 border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg">
-              <AvatarImage src={profile?.avatarUrl || `https://picsum.photos/seed/${user?.uid}/100/100`} />
+              <AvatarImage src={profile?.avatarUrl || cachedAvatar || `https://picsum.photos/seed/${user?.uid}/100/100`} />
               <AvatarFallback className="bg-muted"><User className="w-5 h-5" /></AvatarFallback>
             </Avatar>
           </Link>

@@ -4,7 +4,6 @@
 import { SakeNote, UserProfile } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserBadge } from "@/components/UserBadge";
 import Image from "next/image";
 import { Calendar, Star, Heart, User, Award } from "lucide-react";
 import Link from "next/link";
@@ -84,7 +83,6 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
             <span className="text-xs text-muted-foreground font-bold truncate group-hover/author:text-primary transition-colors">
               {authorProfile?.username || note.username || "匿名"}
             </span>
-            <UserBadge userId={note.userId} />
           </Link>
         </div>
         <div className="flex items-center gap-3 shrink-0">
