@@ -223,6 +223,10 @@ export default function NewNotePage() {
       body: JSON.stringify({
         brandName: formData.brandName,
         subBrand: formData.subBrand,
+        brewery: formData.brewery,
+        origin: formData.origin,
+        alcoholPercent: formData.alcoholPercent,
+        sakeInfoTags: formData.sakeInfoTags,
         ratings: { 
           sweetness: formData.sweetness, 
           acidity: formData.acidity, 
@@ -231,7 +235,7 @@ export default function NewNotePage() {
           astringency: formData.astringency 
         },
         tags: formData.styleTags,
-        userDescription: formData.userDescription, // 把作者寫的原始內容傳給 AI
+        userDescription: formData.userDescription,
         mode
       })
     });

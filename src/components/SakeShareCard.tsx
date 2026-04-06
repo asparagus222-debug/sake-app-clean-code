@@ -74,6 +74,9 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  type DescMode = 'none' | 'user' | 'ai' | 'both';
+  const [descMode, setDescMode] = useState<DescMode>('user');
+
   // Image pan / pinch
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
   const [imgZoom, setImgZoom] = useState(1);
@@ -110,8 +113,16 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const bi = note.bitternessRating ?? 0;
   const um = note.umamiRating ?? 0;
   const as_ = note.astringencyRating ?? 0;
-  const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 6);
-  const descText = note.userDescription || note.description;
+  const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 5);
+
+  // Compute the description content to render based on descMode
+  const userDesc = note.userDescription || note.description || '';
+  const aiDesc = note.aiResultNote || '';
+  const hasDesc = descMode !== 'none' && (
+    (descMode === 'user' && userDesc) ||
+    (descMode === 'ai' && aiDesc) ||
+    (descMode === 'both' && (userDesc || aiDesc))
+  );
 
   const handleShare = async () => {
     if (!cardRef.current) return;
@@ -173,20 +184,26 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 <div style={{ fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1 }}>{note.overallRating}</div>
               </div>
             </div>
-            {sortedTags.length > 0 && (
+{(note.alcoholPercent || sortedTags.length > 0) && (
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginTop: 7 }}>
-                {sortedTags.map((tag, i) => {
-                  const hi = i < 3;
-                  return (
-                    <span key={i} style={{
-                      fontSize: 9, fontWeight: 700,
-                      color: hi ? 'rgba(251,191,36,0.92)' : 'rgba(125,211,252,0.9)',
-                      background: hi ? 'rgba(245,158,11,0.13)' : 'rgba(14,165,233,0.12)',
-                      border: `1px solid ${hi ? 'rgba(245,158,11,0.32)' : 'rgba(14,165,233,0.28)'}`,
-                      padding: '2px 7px', borderRadius: 999,
-                    }}>{tag}</span>
-                  );
-                })}
+                {note.alcoholPercent && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700,
+                    color: 'rgba(251,191,36,0.95)',
+                    background: 'rgba(245,158,11,0.18)',
+                    border: '1px solid rgba(245,158,11,0.45)',
+                    padding: '2px 7px', borderRadius: 999,
+                  }}>{note.alcoholPercent}</span>
+                )}
+                {sortedTags.map((tag, i) => (
+                  <span key={i} style={{
+                    fontSize: 9, fontWeight: 700,
+                    color: 'rgba(125,211,252,0.9)',
+                    background: 'rgba(14,165,233,0.12)',
+                    border: '1px solid rgba(14,165,233,0.28)',
+                    padding: '2px 7px', borderRadius: 999,
+                  }}>{tag}</span>
+                ))}
               </div>
             )}
           </div>
@@ -224,21 +241,30 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
           </div>
 
           {/* Description */}
-          {descText && (
+          {hasDesc && (
             <div style={{ padding: '0 18px 10px' }}>
               <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />
-              <p style={{
-                fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: 0,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-              }}>
-                {descText}
-              </p>
+              {descMode === 'both' ? (
+                <>
+                  {userDesc && <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 6px' }}>{userDesc}</p>}
+                  {aiDesc && (
+                    <>
+                      {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 6 }} />}
+                      <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
+                    </>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
+                  {descMode === 'ai' ? aiDesc : userDesc}
+                </p>
+              )}
             </div>
           )}
 
           {/* Footer */}
-          <div style={{ padding: `${descText ? 6 : 0}px 18px 15px` }}>
-            {!descText && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />}
+          <div style={{ padding: `${hasDesc ? 6 : 0}px 18px 15px` }}>
+            {!hasDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
               <div>
                 <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲者</div>
@@ -260,6 +286,21 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
         <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)', textAlign: 'center', margin: 0 }}>
           拖移 / 滾輪 / 捏合縮放 可調整圖片
         </p>
+
+        {/* 描述顯示模式選擇 */}
+        <div className="flex gap-1.5 justify-center flex-wrap">
+          {(['none', 'user', 'ai', 'both'] as DescMode[]).map(m => (
+            <button key={m} onClick={() => setDescMode(m)}
+              className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+                descMode === m
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-transparent text-white/40 border-white/20 hover:border-white/40'
+              }`}
+            >
+              {m === 'none' ? '不顯示描述' : m === 'user' ? '作者描述' : m === 'ai' ? 'AI品鑑' : '兩者'}
+            </button>
+          ))}
+        </div>
 
         <div className="flex gap-3 w-full">
           <Button
