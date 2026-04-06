@@ -18,19 +18,6 @@ export async function POST(req: NextRequest) {
     const tagsLine = (sakeInfoTags ?? []).length > 0 ? (sakeInfoTags as string[]).join('、') : '無';
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-    const getRatingDesc = (key: string, val: number) => {
-      const maps: Record<string, string[]> = {
-        sweetness: ['極不甜','偏不甜','中等甜度','偏甜','極甜'],
-        acidity: ['極低酸','低酸','中等酸度','高酸','极高酸'],
-        bitterness: ['無苦味','微苦','中等苦味','偏苦','極苦'],
-        umami: ['無旨味','微旨','中等旨味','旨味豐富','極豐旨味'],
-        astringency: ['無澀感','微澀','中等澀感','偏澀','極澀'],
-      };
-      return maps[key]?.[val - 1] ?? '';
-    };
-    const flavorProfile = Object.entries(ratings as Record<string, number>)
-      .map(([k, v]) => getRatingDesc(k, v)).filter(Boolean).join('、');
-
     const prompt = mode === 'left'
       ? `你是一位資深唎酒師，正在撰寫這款清酒的品飲報告。
 請根據以下感官特徵與作者筆記，客觀描述這款酒的特性，語氣專業自然。
@@ -39,7 +26,6 @@ export async function POST(req: NextRequest) {
 
 【銘柄】${brandName}${subBrand ? `　${subBrand}` : ''}
 【基本資料】${basicInfo || '無'}
-【感官特徵】${flavorProfile}
 【特色標籤】${tagsLine}
 【作者筆記】${userDescription || '（無）'}`
       : `你是一位富有文學氣質的清酒品飲師。請針對以下資訊，撰寫一段充滿畫面感的感性品飲筆記。
@@ -47,7 +33,6 @@ export async function POST(req: NextRequest) {
 
 【銘柄】${brandName}${subBrand ? `　${subBrand}` : ''}
 【基本資料】${basicInfo || '無'}
-【感官特徵】${flavorProfile}
 【特色標籤】${tagsLine}
 【作者筆記】${userDescription || '（無）'}`;
 

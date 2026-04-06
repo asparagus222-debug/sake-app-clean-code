@@ -274,11 +274,11 @@ export default function NoteDetailPage() {
                 </div>
                 <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{note.brandName}</h1>
                 
-                {/* 酒鑑資訊標籤（酒精濃度金黃色排第一） */}
+                {/* 酒鑑資訊標籤 */}
                 {((note.alcoholPercent) || (note.sakeInfoTags && note.sakeInfoTags.length > 0)) && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {note.alcoholPercent && (
-                      <span className="bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                      <span className="bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
                         {`酒精濃度 ${note.alcoholPercent}`}
                       </span>
                     )}

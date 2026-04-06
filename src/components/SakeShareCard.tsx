@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { SakeNote, UserProfile } from '@/lib/types';
-import { Share2, X, Loader2 } from 'lucide-react';
+import { Share2, X, Loader2, Pencil, RotateCcw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SakeShareCardProps {
@@ -11,7 +11,7 @@ interface SakeShareCardProps {
   onClose: () => void;
 }
 
-// ── Inline SVG Radar Chart（html2canvas 相容，純 SVG 不依賴 recharts）──────
+// ── Inline SVG Radar Chart ───────────────────────────────────────────────────
 function RadarSvg({
   sw, ac, bi, um, as_, size = 130,
 }: { sw: number; ac: number; bi: number; um: number; as_: number; size?: number }) {
@@ -58,17 +58,24 @@ function RadarSvg({
   );
 }
 
-// ── Tag 優先排序：酒精 > 日本酒度 > 酒米 > 精米步合 > 其他 ──────
+// ── Tag 排序：日本酒度 > 酒米 > 精米步合 > 其他 ─────────────────────────────
 function sortInfoTags(tags: string[]): string[] {
   const priority = (t: string) => {
-    if (/\d+(\.\d+)?[度%]/.test(t) && !/精米/.test(t)) return 0;
-    if (/日本酒度/.test(t)) return 1;
-    if (/山田錦|五百万石|雄町|美山錦|渡舟|愛山|八反錦|越淡麗|神力|日本晴|酒米|米$/.test(t)) return 2;
-    if (/精米/.test(t)) return 3;
-    return 4;
+    if (/日本酒度/.test(t)) return 0;
+    if (/山田錦|五百万石|雄町|美山錦|渡舟|愛山|八反錦|越淡麗|神力|日本晴|酒米|米$/.test(t)) return 1;
+    if (/精米/.test(t)) return 2;
+    return 3;
   };
   return [...tags].sort((a, b) => priority(a) - priority(b));
 }
+
+const tagStyle = {
+  fontSize: 9, fontWeight: 700,
+  color: 'rgba(125,211,252,0.9)',
+  background: 'rgba(14,165,233,0.12)',
+  border: '1px solid rgba(14,165,233,0.28)',
+  padding: '2px 7px', borderRadius: 999,
+};
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -77,46 +84,64 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   type DescMode = 'none' | 'user' | 'ai' | 'both';
   const [descMode, setDescMode] = useState<DescMode>('user');
 
-  // Image pan / pinch
+  // Committed image position (used in the card)
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
   const [imgZoom, setImgZoom] = useState(1);
+
+  // Editor modal state
+  const [showImgEditor, setShowImgEditor] = useState(false);
+  const [editorOffset, setEditorOffset] = useState({ x: 0, y: 0 });
+  const [editorZoom, setEditorZoom] = useState(1);
+
   const dragging = useRef(false);
   const lastPt = useRef({ x: 0, y: 0 });
   const lastDist = useRef<number | null>(null);
-  const imgContainerRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  // Prevent page scroll while dragging inside the image box (React registers touchmove as passive)
+  // Non-passive touchmove inside the editor to prevent page scroll
   useEffect(() => {
-    const el = imgContainerRef.current;
+    if (!showImgEditor) return;
+    const el = editorContainerRef.current;
     if (!el) return;
     const prevent = (e: TouchEvent) => { e.preventDefault(); };
     el.addEventListener('touchmove', prevent, { passive: false });
     return () => el.removeEventListener('touchmove', prevent);
-  }, []);
+  }, [showImgEditor]);
 
-  const onMouseDown = (e: React.MouseEvent) => { dragging.current = true; lastPt.current = { x: e.clientX, y: e.clientY }; };
-  const onMouseMove = (e: React.MouseEvent) => {
+  const onEditorMouseDown = (e: React.MouseEvent) => { dragging.current = true; lastPt.current = { x: e.clientX, y: e.clientY }; };
+  const onEditorMouseMove = (e: React.MouseEvent) => {
     if (!dragging.current) return;
-    setImgOffset(prev => ({ x: prev.x + e.clientX - lastPt.current.x, y: prev.y + e.clientY - lastPt.current.y }));
+    setEditorOffset(prev => ({ x: prev.x + e.clientX - lastPt.current.x, y: prev.y + e.clientY - lastPt.current.y }));
     lastPt.current = { x: e.clientX, y: e.clientY };
   };
-  const onMouseUp = () => { dragging.current = false; };
-  const onWheel = (e: React.WheelEvent) => { e.preventDefault(); setImgZoom(z => Math.max(0.4, Math.min(3, z - e.deltaY * 0.0008))); };
-  const onTouchStart = (e: React.TouchEvent) => {
+  const onEditorMouseUp = () => { dragging.current = false; };
+  const onEditorWheel = (e: React.WheelEvent) => { e.preventDefault(); setEditorZoom(z => Math.max(0.3, Math.min(5, z - e.deltaY * 0.001))); };
+  const onEditorTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) { dragging.current = true; lastPt.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
     else if (e.touches.length === 2) { lastDist.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
   };
-  const onTouchMove = (e: React.TouchEvent) => {
+  const onEditorTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 1 && dragging.current) {
-      setImgOffset(prev => ({ x: prev.x + e.touches[0].clientX - lastPt.current.x, y: prev.y + e.touches[0].clientY - lastPt.current.y }));
+      setEditorOffset(prev => ({ x: prev.x + e.touches[0].clientX - lastPt.current.x, y: prev.y + e.touches[0].clientY - lastPt.current.y }));
       lastPt.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     } else if (e.touches.length === 2 && lastDist.current != null) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      setImgZoom(z => Math.max(0.4, Math.min(3, z * (dist / lastDist.current!))));
+      setEditorZoom(z => Math.max(0.3, Math.min(5, z * (dist / lastDist.current!))));
       lastDist.current = dist;
     }
   };
-  const onTouchEnd = () => { dragging.current = false; lastDist.current = null; };
+  const onEditorTouchEnd = () => { dragging.current = false; lastDist.current = null; };
+
+  const openImgEditor = () => {
+    setEditorOffset(imgOffset);
+    setEditorZoom(imgZoom);
+    setShowImgEditor(true);
+  };
+  const confirmImgEdit = () => {
+    setImgOffset(editorOffset);
+    setImgZoom(editorZoom);
+    setShowImgEditor(false);
+  };
 
   const sw = note.sweetnessRating ?? 0;
   const ac = note.acidityRating ?? 0;
@@ -125,7 +150,6 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const as_ = note.astringencyRating ?? 0;
   const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 5);
 
-  // Compute the description content to render based on descMode
   const userDesc = note.userDescription || note.description || '';
   const aiDesc = note.aiResultNote || '';
   const hasDesc = descMode !== 'none' && (
@@ -163,176 +187,238 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div className="w-full max-w-sm flex flex-col items-center gap-3 py-4" onClick={e => e.stopPropagation()}>
+    <>
+      {/* ── Image Editor Modal ── */}
+      {showImgEditor && note.imageUrls?.[0] && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-md">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+            <button
+              className="text-white/50 text-sm font-bold px-2 py-1"
+              onClick={() => setShowImgEditor(false)}
+            >
+              取消
+            </button>
+            <span className="text-white/40 text-[11px] tracking-widest">拖移 · 雙指縮放</span>
+            <button
+              className="flex items-center gap-1.5 bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full"
+              onClick={confirmImgEdit}
+            >
+              <Check className="w-3.5 h-3.5" /> 確認
+            </button>
+          </div>
+          {/* Editing canvas */}
+          <div
+            ref={editorContainerRef}
+            className="flex-1 relative overflow-hidden touch-none select-none cursor-move"
+            onMouseDown={onEditorMouseDown}
+            onMouseMove={onEditorMouseMove}
+            onMouseUp={onEditorMouseUp}
+            onMouseLeave={onEditorMouseUp}
+            onTouchStart={onEditorTouchStart}
+            onTouchMove={onEditorTouchMove}
+            onTouchEnd={onEditorTouchEnd}
+            onWheel={onEditorWheel}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={note.imageUrls[0]}
+              alt=""
+              crossOrigin="anonymous"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: `translate(calc(-50% + ${editorOffset.x}px), calc(-50% + ${editorOffset.y}px)) scale(${editorZoom})`,
+                transformOrigin: 'center center',
+                maxWidth: '90%',
+                maxHeight: '90%',
+                objectFit: 'contain',
+                userSelect: 'none',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+          {/* Footer hint */}
+          <div className="flex items-center justify-center gap-6 px-4 py-3 border-t border-white/10 shrink-0">
+            <button
+              className="flex items-center gap-1.5 text-white/30 text-[11px] hover:text-white/60 transition-colors"
+              onClick={() => { setEditorOffset({ x: 0, y: 0 }); setEditorZoom(1); }}
+            >
+              <RotateCcw className="w-3 h-3" /> 重置
+            </button>
+            <p className="text-white/20 text-[11px]">調整後點確認套用至打卡圖片</p>
+          </div>
+        </div>
+      )}
 
-        {/* ── 分享卡本體 ── */}
-        <div
-          ref={cardRef}
-          style={{
-            width: '100%', borderRadius: 26, overflow: 'hidden',
-            background: 'linear-gradient(155deg, #1a1a1e 0%, #0c0c10 55%, #1c0900 100%)',
-            fontFamily: '"PingFang TC", "Heiti TC", "Noto Sans TC", sans-serif',
-          }}
-        >
-          {/* Header */}
-          <div style={{ padding: '16px 18px 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 9, color: 'rgba(249,115,22,0.82)', fontWeight: 700, letterSpacing: '0.12em', marginBottom: 3 }}>
-                  {note.brewery}{note.origin ? `　${note.origin}` : ''}
-                </p>
-                <h2 style={{ fontSize: 19, fontWeight: 700, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', margin: 0 }}>
-                  {note.brandName}
-                </h2>
+      {/* ── Main share card modal ── */}
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
+        onClick={onClose}
+      >
+        <div className="w-full max-w-sm flex flex-col items-center gap-3 py-4" onClick={e => e.stopPropagation()}>
+
+          {/* ── 分享卡本體 ── */}
+          <div
+            ref={cardRef}
+            style={{
+              width: '100%', borderRadius: 26, overflow: 'hidden',
+              background: 'linear-gradient(155deg, #1a1a1e 0%, #0c0c10 55%, #1c0900 100%)',
+              fontFamily: '"PingFang TC", "Heiti TC", "Noto Sans TC", sans-serif',
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: '16px 18px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 9, color: 'rgba(249,115,22,0.82)', fontWeight: 700, letterSpacing: '0.12em', marginBottom: 3 }}>
+                    {note.brewery}{note.origin ? `　${note.origin}` : ''}
+                  </p>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', margin: 0 }}>
+                    {note.brandName}
+                  </h2>
+                </div>
+                <div style={{ background: '#f97316', borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
+                  <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.1em' }}>SCORE</div>
+                  <div style={{ fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1 }}>{note.overallRating}</div>
+                </div>
               </div>
-              <div style={{ background: '#f97316', borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.1em' }}>SCORE</div>
-                <div style={{ fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1 }}>{note.overallRating}</div>
+              {(note.alcoholPercent || sortedTags.length > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginTop: 7 }}>
+                  {note.alcoholPercent && (
+                    <span style={tagStyle}>{`酒精濃度 ${note.alcoholPercent}`}</span>
+                  )}
+                  {sortedTags.map((tag, i) => (
+                    <span key={i} style={tagStyle}>{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Image + Radar */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', gap: 8 }}>
+              {/* Static image preview — click to open editor */}
+              <div
+                style={{
+                  width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
+                  background: 'rgba(0,0,0,0.5)', flexShrink: 0, position: 'relative' as const,
+                  cursor: note.imageUrls?.[0] ? 'pointer' : 'default',
+                }}
+                onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
+              >
+                {note.imageUrls?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
+                    style={{
+                      position: 'absolute' as const, inset: 0, width: '100%', height: '100%',
+                      objectFit: 'contain' as const,
+                      transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
+                      transformOrigin: 'center center',
+                      userSelect: 'none' as const, pointerEvents: 'none' as const,
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
+                )}
+                {note.imageUrls?.[0] && (
+                  <div style={{
+                    position: 'absolute' as const, bottom: 0, left: 0, right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 3, paddingBottom: 5, paddingTop: 10,
+                    pointerEvents: 'none' as const,
+                  }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>點擊編輯</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} />
               </div>
             </div>
-{(note.alcoholPercent || sortedTags.length > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginTop: 7 }}>
-                {note.alcoholPercent && (
-                  <span style={{
-                    fontSize: 9, fontWeight: 700,
-                    color: 'rgba(251,191,36,0.95)',
-                    background: 'rgba(245,158,11,0.18)',
-                    border: '1px solid rgba(245,158,11,0.45)',
-                    padding: '2px 7px', borderRadius: 999,
-                  }}>{`酒精濃度 ${note.alcoholPercent}`}</span>
+
+            {/* Description */}
+            {hasDesc && (
+              <div style={{ padding: '0 18px 10px' }}>
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />
+                {descMode === 'both' ? (
+                  <>
+                    {userDesc && <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 6px' }}>{userDesc}</p>}
+                    {aiDesc && (
+                      <>
+                        {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 6 }} />}
+                        <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
+                    {descMode === 'ai' ? aiDesc : userDesc}
+                  </p>
                 )}
-                {sortedTags.map((tag, i) => (
-                  <span key={i} style={{
-                    fontSize: 9, fontWeight: 700,
-                    color: 'rgba(125,211,252,0.9)',
-                    background: 'rgba(14,165,233,0.12)',
-                    border: '1px solid rgba(14,165,233,0.28)',
-                    padding: '2px 7px', borderRadius: 999,
-                  }}>{tag}</span>
-                ))}
               </div>
             )}
-          </div>
 
-          {/* Image + Radar */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', gap: 8 }}>
-            <div
-              style={{
-                width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
-                background: 'rgba(0,0,0,0.5)', flexShrink: 0, position: 'relative' as const, cursor: 'move',
-              }}
-              ref={imgContainerRef}
-              onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
-              onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-              onWheel={onWheel}
-            >
-              {note.imageUrls?.[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
-                  style={{
-                    position: 'absolute' as const, inset: 0, width: '100%', height: '100%',
-                    objectFit: 'contain' as const,
-                    transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
-                    transformOrigin: 'center center',
-                    userSelect: 'none' as const, pointerEvents: 'none' as const,
-                  }}
-                />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
-              )}
-              <div style={{ position: 'absolute' as const, bottom: 4, right: 5, fontSize: 7, color: 'rgba(255,255,255,0.22)', fontWeight: 700, pointerEvents: 'none' as const }}>拖移縮放</div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} />
-            </div>
-          </div>
-
-          {/* Description */}
-          {hasDesc && (
-            <div style={{ padding: '0 18px 10px' }}>
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />
-              {descMode === 'both' ? (
-                <>
-                  {userDesc && <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 6px' }}>{userDesc}</p>}
-                  {aiDesc && (
-                    <>
-                      {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 6 }} />}
-                      <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
-                    </>
-                  )}
-                </>
-              ) : (
-                <p style={{ fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
-                  {descMode === 'ai' ? aiDesc : userDesc}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div style={{ padding: `${hasDesc ? 6 : 0}px 18px 15px` }}>
-            {!hasDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
-              <div>
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲者</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{authorProfile?.username || note.username || '酒友'}</div>
+            {/* Footer */}
+            <div style={{ padding: `${hasDesc ? 6 : 0}px 18px 15px` }}>
+              {!hasDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+                <div>
+                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲者</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{authorProfile?.username || note.username || '酒友'}</div>
+                </div>
+                <div style={{ textAlign: 'right' as const }}>
+                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲日期</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
+                </div>
               </div>
-              <div style={{ textAlign: 'right' as const }}>
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲日期</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
+                <span style={{ fontSize: 9, color: 'rgba(249,115,22,0.45)', letterSpacing: '0.22em', fontWeight: 700 }}>SAKEPATH.COM</span>
+                <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
-              <span style={{ fontSize: 9, color: 'rgba(249,115,22,0.45)', letterSpacing: '0.22em', fontWeight: 700 }}>SAKEPATH.COM</span>
-              <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
-            </div>
           </div>
-        </div>
 
-        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)', textAlign: 'center', margin: 0 }}>
-          拖移 / 滾輪 / 捏合縮放 可調整圖片
-        </p>
+          {/* 描述顯示模式選擇 */}
+          <div className="flex gap-1.5 justify-center flex-wrap">
+            {(['none', 'user', 'ai', 'both'] as DescMode[]).map(m => (
+              <button key={m} onClick={() => setDescMode(m)}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+                  descMode === m
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-transparent text-white/40 border-white/20 hover:border-white/40'
+                }`}
+              >
+                {m === 'none' ? '不顯示描述' : m === 'user' ? '作者描述' : m === 'ai' ? 'AI品鑑' : '兩者'}
+              </button>
+            ))}
+          </div>
 
-        {/* 描述顯示模式選擇 */}
-        <div className="flex gap-1.5 justify-center flex-wrap">
-          {(['none', 'user', 'ai', 'both'] as DescMode[]).map(m => (
-            <button key={m} onClick={() => setDescMode(m)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
-                descMode === m
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-transparent text-white/40 border-white/20 hover:border-white/40'
-              }`}
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-full border-white/20 text-white/70 hover:bg-white/10 h-11 text-xs font-bold uppercase tracking-widest"
+              onClick={onClose}
             >
-              {m === 'none' ? '不顯示描述' : m === 'user' ? '作者描述' : m === 'ai' ? 'AI品鑑' : '兩者'}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-3 w-full">
-          <Button
-            variant="outline"
-            className="flex-1 rounded-full border-white/20 text-white/70 hover:bg-white/10 h-11 text-xs font-bold uppercase tracking-widest"
-            onClick={onClose}
-          >
-            <X className="w-4 h-4 mr-1.5" /> 關閉
-          </Button>
-          <Button
-            className="flex-1 rounded-full h-11 text-xs font-bold uppercase tracking-widest"
-            onClick={handleShare}
-            disabled={isExporting}
-          >
-            {isExporting
-              ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> 處理中</>
-              : <><Share2 className="w-4 h-4 mr-1.5" /> 分享圖片</>
-            }
-          </Button>
+              <X className="w-4 h-4 mr-1.5" /> 關閉
+            </Button>
+            <Button
+              className="flex-1 rounded-full h-11 text-xs font-bold uppercase tracking-widest"
+              onClick={handleShare}
+              disabled={isExporting}
+            >
+              {isExporting
+                ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> 處理中</>
+                : <><Share2 className="w-4 h-4 mr-1.5" /> 分享圖片</>
+              }
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
