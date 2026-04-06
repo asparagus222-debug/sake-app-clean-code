@@ -50,72 +50,70 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden h-full transition-all border-none dark-glass flex flex-col">
-      <Link href={`/notes/${note.id}`} className="relative h-44 w-full bg-muted/20 block overflow-hidden group/img-container">
+    <Card className="overflow-hidden transition-all border-none dark-glass flex flex-col">
+      {/* 圖片區：3:4 直向比例，酒名浮在漸層上 */}
+      <Link href={`/notes/${note.id}`} className="relative w-full aspect-[3/4] bg-muted/20 block overflow-hidden group/img-container">
         {note.imageUrls && note.imageUrls.length > 0 ? (
-          <Image src={note.imageUrls[0]} alt={note.brandName} fill className="object-cover group-hover/img-container:scale-105 transition-transform duration-700 ease-out opacity-80" />
+          <Image src={note.imageUrls[0]} alt={note.brandName} fill className="object-cover group-hover/img-container:scale-105 transition-transform duration-700 ease-out" />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground/40 text-[10px] font-bold">NO PHOTO</div>
         )}
+        {/* 評分 badge */}
         <div className="absolute top-3 right-3">
           <Badge className="bg-primary/90 hover:bg-primary font-bold border-none shadow-lg text-[10px]">
             <Star className="w-3 h-3 mr-1 fill-white" /> {note.overallRating}
           </Badge>
         </div>
+        {/* 漸層遮罩 + 酒廠 / 酒名 */}
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 inset-x-0 p-4 pointer-events-none">
+          <p className="text-[9px] text-primary font-bold uppercase tracking-widest opacity-90 leading-none mb-1 drop-shadow">
+            {note.brewery}
+          </p>
+          <h3 className="font-headline text-base text-white leading-tight drop-shadow">
+            {note.brandName}
+          </h3>
+        </div>
       </Link>
-      
-      <CardContent className="p-4 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-primary font-bold uppercase tracking-widest mb-0.5 break-words opacity-80 leading-tight">
-              {note.brewery}
-            </p>
-            <Link href={`/notes/${note.id}`} className="inline-block max-w-full group/title">
-              <h3 className="font-headline text-base text-foreground group-hover/title:text-primary transition-colors break-words leading-tight">
-                {note.brandName}
-              </h3>
-            </Link>
+
+      {/* 底欄：作者、日期、愛心 */}
+      <CardContent className="p-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Link href={`/users/${note.userId}`} className="flex items-center gap-1 hover:text-primary transition-colors min-w-0 group/author">
+            <User className="w-2.5 h-2.5 text-primary/60 shrink-0" />
+            <span className="text-xs text-muted-foreground font-bold truncate group-hover/author:text-primary transition-colors">
+              {authorProfile?.username || note.username || "匿名"}
+            </span>
+            <UserBadge userId={note.userId} />
+          </Link>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-tighter">
+            <Calendar className="w-2.5 h-2.5 opacity-50" />
+            {new Date(note.tastingDate || note.createdAt || "").toLocaleDateString('zh-TW')}
           </div>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
-            className={cn("h-9 px-2 rounded-full transition-all bg-transparent shadow-none border-none select-none [&]:[-webkit-tap-highlight-color:transparent] active:scale-90 active:opacity-60", isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            className={cn("h-8 px-2 rounded-full transition-all bg-transparent shadow-none border-none select-none [&]:[-webkit-tap-highlight-color:transparent] active:scale-90 active:opacity-60", isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
             onClick={handleLike}
           >
             <Heart className={cn("w-4 h-4 mr-1", isLiked && "fill-current")} />
             <span className="text-[11px] font-bold">{likesCount}</span>
           </Button>
         </div>
-
-        <div className="mt-auto pt-3 border-t border-white/5 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <Link href={`/users/${note.userId}`} className="flex items-center gap-1 hover:text-primary transition-colors min-w-0 group/author">
-                <User className="w-2.5 h-2.5 text-primary/60" />
-                <span className="text-xs text-muted-foreground font-bold break-words group-hover/author:text-primary transition-colors">
-                  {authorProfile?.username || note.username || "匿名"}
-                </span>
-                <UserBadge userId={note.userId} />
-              </Link>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-tighter ml-2">
-              <Calendar className="w-2.5 h-2.5 opacity-50" />
-              {new Date(note.tastingDate || note.createdAt || "").toLocaleDateString('zh-TW')}
-            </div>
-          </div>
-          
-          {/* 作者頭銜顯示 (最多3個) */}
-          {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
-                <Badge key={idx} variant="outline" className="text-[7px] py-0 h-4 border-primary/20 bg-primary/5 text-primary/70 font-bold flex items-center gap-0.5 uppercase">
-                  <Award className="w-2 h-2" /> {q}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
       </CardContent>
+
+      {/* 作者頭銜（有才顯示） */}
+      {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
+        <div className="px-3 pb-3 flex flex-wrap gap-1">
+          {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
+            <Badge key={idx} variant="outline" className="text-[7px] py-0 h-4 border-primary/20 bg-primary/5 text-primary/70 font-bold flex items-center gap-0.5 uppercase">
+              <Award className="w-2 h-2" /> {q}
+            </Badge>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
