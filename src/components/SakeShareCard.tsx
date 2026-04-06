@@ -306,6 +306,35 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 pointerEvents: 'none',
               }}
             />
+            {/* Preview frame: square crop guide matching the card image box */}
+            <div style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 'min(76vw, 76vh)',
+              height: 'min(76vw, 76vh)',
+              boxShadow: '0 0 0 9999px rgba(0,0,0,0.52)',
+              border: '1.5px solid rgba(249,115,22,0.65)',
+              borderRadius: 12,
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}>
+              {/* Corner markers */}
+              {[
+                { top: -1, left: -1, borderTop: '2.5px solid #f97316', borderLeft: '2.5px solid #f97316' },
+                { top: -1, right: -1, borderTop: '2.5px solid #f97316', borderRight: '2.5px solid #f97316' },
+                { bottom: -1, left: -1, borderBottom: '2.5px solid #f97316', borderLeft: '2.5px solid #f97316' },
+                { bottom: -1, right: -1, borderBottom: '2.5px solid #f97316', borderRight: '2.5px solid #f97316' },
+              ].map((s, i) => (
+                <div key={i} style={{ position: 'absolute', width: 14, height: 14, ...s }} />
+              ))}
+              <div style={{
+                position: 'absolute', bottom: -22, left: 0, right: 0,
+                textAlign: 'center', fontSize: 9, fontWeight: 700,
+                color: 'rgba(249,115,22,0.55)', letterSpacing: '0.1em',
+                pointerEvents: 'none',
+              }}>實際顯示範圍</div>
+            </div>
           </div>
           {/* Footer hint */}
           <div className="flex items-center justify-center gap-6 px-4 py-3 border-t border-white/10 shrink-0">
