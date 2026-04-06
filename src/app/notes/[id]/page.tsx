@@ -279,7 +279,7 @@ export default function NoteDetailPage() {
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {note.alcoholPercent && (
                       <span className="bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2 py-0.5 rounded-full text-[9px] font-bold">
-                        {note.alcoholPercent}
+                        {`酒精濃度 ${note.alcoholPercent}`}
                       </span>
                     )}
                     {note.sakeInfoTags?.map((tag, idx) => (

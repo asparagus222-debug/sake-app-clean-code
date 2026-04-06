@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { SakeNote, UserProfile } from '@/lib/types';
 import { Share2, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,13 +58,13 @@ function RadarSvg({
   );
 }
 
-// ── Tag 優先排序：酒精 > 日本酒度 > 精米步合 > 酒米 > 其他 ──────
+// ── Tag 優先排序：酒精 > 日本酒度 > 酒米 > 精米步合 > 其他 ──────
 function sortInfoTags(tags: string[]): string[] {
   const priority = (t: string) => {
     if (/\d+(\.\d+)?[度%]/.test(t) && !/精米/.test(t)) return 0;
     if (/日本酒度/.test(t)) return 1;
-    if (/精米/.test(t)) return 2;
-    if (/山田錦|五百万石|雄町|美山錦|渡舟|愛山|八反錦|越淡麗|神力|日本晴|酒米|米$/.test(t)) return 3;
+    if (/山田錦|五百万石|雄町|美山錦|渡舟|愛山|八反錦|越淡麗|神力|日本晴|酒米|米$/.test(t)) return 2;
+    if (/精米/.test(t)) return 3;
     return 4;
   };
   return [...tags].sort((a, b) => priority(a) - priority(b));
@@ -83,6 +83,16 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const dragging = useRef(false);
   const lastPt = useRef({ x: 0, y: 0 });
   const lastDist = useRef<number | null>(null);
+  const imgContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prevent page scroll while dragging inside the image box (React registers touchmove as passive)
+  useEffect(() => {
+    const el = imgContainerRef.current;
+    if (!el) return;
+    const prevent = (e: TouchEvent) => { e.preventDefault(); };
+    el.addEventListener('touchmove', prevent, { passive: false });
+    return () => el.removeEventListener('touchmove', prevent);
+  }, []);
 
   const onMouseDown = (e: React.MouseEvent) => { dragging.current = true; lastPt.current = { x: e.clientX, y: e.clientY }; };
   const onMouseMove = (e: React.MouseEvent) => {
@@ -193,7 +203,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                     background: 'rgba(245,158,11,0.18)',
                     border: '1px solid rgba(245,158,11,0.45)',
                     padding: '2px 7px', borderRadius: 999,
-                  }}>{note.alcoholPercent}</span>
+                  }}>{`酒精濃度 ${note.alcoholPercent}`}</span>
                 )}
                 {sortedTags.map((tag, i) => (
                   <span key={i} style={{
@@ -215,6 +225,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
                 background: 'rgba(0,0,0,0.5)', flexShrink: 0, position: 'relative' as const, cursor: 'move',
               }}
+              ref={imgContainerRef}
               onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
               onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
               onWheel={onWheel}
