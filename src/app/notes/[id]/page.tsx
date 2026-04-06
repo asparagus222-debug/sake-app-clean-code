@@ -392,7 +392,7 @@ export default function NoteDetailPage() {
     </p>
   </div>
 
-  {/* 風格標籤區塊 (保持不變) */}
+  {/* 風格標籤區塊 */}
   {note.styleTags && note.styleTags.length > 0 && (
     <div className="pt-4 border-t border-white/5">
       <div className="flex items-center gap-2 mb-2 text-primary">
@@ -404,6 +404,34 @@ export default function NoteDetailPage() {
           <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
             {tag}
           </Badge>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* 餐搭資訊 */}
+  {note.foodPairings && note.foodPairings.length > 0 && (
+    <div className="pt-4 border-t border-white/5">
+      <div className="flex items-center gap-2 mb-3 text-primary">
+        <span className="text-sm">🍽</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest">餐搭建議</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {note.foodPairings.map((fp, idx) => (
+          <div key={idx} className="flex items-start gap-3 dark-glass rounded-xl px-3 py-2 border border-white/5">
+            <span className={cn(
+              "shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 mt-0.5",
+              fp.pairing === 'yes'
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                : "bg-red-500/15 text-red-400 border border-red-500/30"
+            )}>
+              {fp.pairing === 'yes' ? '搭配' : '不搭'}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-bold text-foreground leading-snug">{fp.food}</p>
+              {fp.reason && <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{fp.reason}</p>}
+            </div>
+          </div>
         ))}
       </div>
     </div>
