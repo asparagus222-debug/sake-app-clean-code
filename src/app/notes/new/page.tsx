@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, Lock, Unlock } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, Lock, Unlock, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { GuidedTasting, GuidedTastingResult } from '@/components/GuidedTasting';
 import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { SakeNote } from '@/lib/types';
@@ -88,6 +89,23 @@ export default function NewNotePage() {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderUnit, setReminderUnit] = useState<'hours' | 'days' | 'months' | 'years'>('hours');
   const [reminderValue, setReminderValue] = useState(24);
+  const [showGuidedTasting, setShowGuidedTasting] = useState(false);
+
+  const handleGuidedComplete = (result: GuidedTastingResult) => {
+    setFormData(prev => ({
+      ...prev,
+      sweetness: result.sweetness,
+      acidity: result.acidity,
+      bitterness: result.bitterness,
+      umami: result.umami,
+      astringency: result.astringency,
+      userDescription: result.userDescription,
+      styleTags: [...new Set([...prev.styleTags, ...result.styleTags])],
+      foodPairings: result.foodPairings,
+    }));
+    setShowGuidedTasting(false);
+    toast({ title: '引導品鑑完成', description: '已自動填入評分與品飲描述' });
+  };
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -630,7 +648,21 @@ const handleSave = async () => {
       )}
 
       <div className="space-y-5" style={{ opacity: !profile?.username ? 0.5 : 1, pointerEvents: !profile?.username ? 'none' : 'auto' }}>
-        
+
+        {/* 引導式品鑒入口 */}
+        <button
+          type="button"
+          onClick={() => setShowGuidedTasting(true)}
+          className="w-full dark-glass rounded-[2rem] border border-primary/20 p-4 flex items-center gap-4 text-left hover:bg-primary/5 active:scale-[0.98] transition-all shadow-lg"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center text-2xl shrink-0">🍶</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-primary font-bold text-xs uppercase tracking-widest mb-0.5">引導式品鑒</p>
+            <p className="text-white/50 text-[11px] leading-snug">跟著步驟逐一品評，自動填入評分與描述</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-primary/50 shrink-0" />
+        </button>
+
         {/* 照片聚焦編輯 */}
         <section className="space-y-3">
           <div className="flex justify-between items-center px-1">
@@ -1138,6 +1170,13 @@ const handleSave = async () => {
         className="hidden"
         onChange={handlePickerFile}
       />
+
+      {showGuidedTasting && (
+        <GuidedTasting
+          onComplete={handleGuidedComplete}
+          onClose={() => setShowGuidedTasting(false)}
+        />
+      )}
     </div>
   );
 }
