@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
-    const { brandName, subBrand, brewery, origin, alcoholPercent, sakeInfoTags, ratings, tags, userDescription, mode } = await req.json();
+    const { brandName, subBrand, brewery, origin, alcoholPercent, sakeInfoTags, ratings, userDescription, mode } = await req.json();
 
     // 組合銘柄基本資料行
     const basicInfo = [
@@ -14,9 +14,8 @@ export async function POST(req: NextRequest) {
       alcoholPercent ? `酒精：${alcoholPercent}` : '',
     ].filter(Boolean).join('　');
 
-    // 組合特色標籤（sakeInfoTags + styleTags，去重）
-    const allTags = [...new Set([...(sakeInfoTags ?? []), ...(tags ?? [])])];
-    const tagsLine = allTags.length > 0 ? allTags.join('、') : '無';
+    // 特色標籤只使用 sakeInfoTags（酒米、精米步合、日本酒度等客觀資訊）
+    const tagsLine = (sakeInfoTags ?? []).length > 0 ? (sakeInfoTags as string[]).join('、') : '無';
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const getRatingDesc = (key: string, val: number) => {

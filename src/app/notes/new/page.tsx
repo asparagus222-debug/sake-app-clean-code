@@ -234,7 +234,6 @@ export default function NewNotePage() {
           umami: formData.umami, 
           astringency: formData.astringency 
         },
-        tags: formData.styleTags,
         userDescription: formData.userDescription,
         mode
       })
