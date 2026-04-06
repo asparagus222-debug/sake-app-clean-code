@@ -93,46 +93,114 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const [editorOffset, setEditorOffset] = useState({ x: 0, y: 0 });
   const [editorZoom, setEditorZoom] = useState(1);
 
-  const dragging = useRef(false);
-  const lastPt = useRef({ x: 0, y: 0 });
-  const lastDist = useRef<number | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  // Use refs for live values so native event handlers always see latest state
+  const editorOffsetRef = useRef({ x: 0, y: 0 });
+  const editorZoomRef = useRef(1);
+  // Mouse drag (desktop)
+  const mouseDragging = useRef(false);
+  const mouseLastPt = useRef({ x: 0, y: 0 });
 
-  // Non-passive touchmove inside the editor to prevent page scroll
+  const onEditorMouseDown = (e: React.MouseEvent) => { mouseDragging.current = true; mouseLastPt.current = { x: e.clientX, y: e.clientY }; };
+  const onEditorMouseMove = (e: React.MouseEvent) => {
+    if (!mouseDragging.current) return;
+    const dx = e.clientX - mouseLastPt.current.x;
+    const dy = e.clientY - mouseLastPt.current.y;
+    mouseLastPt.current = { x: e.clientX, y: e.clientY };
+    const next = { x: editorOffsetRef.current.x + dx, y: editorOffsetRef.current.y + dy };
+    editorOffsetRef.current = next;
+    setEditorOffset({ ...next });
+  };
+  const onEditorMouseUp = () => { mouseDragging.current = false; };
+  const onEditorWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const next = Math.max(0.3, Math.min(5, editorZoomRef.current - e.deltaY * 0.001));
+    editorZoomRef.current = next;
+    setEditorZoom(next);
+  };
+
+  // All touch handling via native listeners to avoid React synthetic event issues
   useEffect(() => {
     if (!showImgEditor) return;
     const el = editorContainerRef.current;
     if (!el) return;
-    const prevent = (e: TouchEvent) => { e.preventDefault(); };
-    el.addEventListener('touchmove', prevent, { passive: false });
-    return () => el.removeEventListener('touchmove', prevent);
+
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let lastDist: number | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isDragging = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        lastDist = null;
+      } else if (e.touches.length >= 2) {
+        isDragging = false;
+        const d = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+        // Only initialise pinch if fingers are sufficiently apart (avoids tiny-dist explosion)
+        lastDist = d > 10 ? d : null;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1 && isDragging) {
+        const dx = e.touches[0].clientX - lastX;
+        const dy = e.touches[0].clientY - lastY;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        const next = { x: editorOffsetRef.current.x + dx, y: editorOffsetRef.current.y + dy };
+        editorOffsetRef.current = next;
+        setEditorOffset({ ...next });
+      } else if (e.touches.length >= 2 && lastDist !== null) {
+        const d = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
+        if (d > 10) {
+          const ratio = d / lastDist;
+          // Clamp per-frame ratio to prevent sudden jumps
+          const safeRatio = Math.max(0.85, Math.min(1.15, ratio));
+          const next = Math.max(0.3, Math.min(5, editorZoomRef.current * safeRatio));
+          editorZoomRef.current = next;
+          setEditorZoom(next);
+        }
+        lastDist = d;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        isDragging = false;
+        lastDist = null;
+      } else if (e.touches.length === 1) {
+        // One finger remains — switch to drag mode
+        isDragging = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        lastDist = null;
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
   }, [showImgEditor]);
 
-  const onEditorMouseDown = (e: React.MouseEvent) => { dragging.current = true; lastPt.current = { x: e.clientX, y: e.clientY }; };
-  const onEditorMouseMove = (e: React.MouseEvent) => {
-    if (!dragging.current) return;
-    setEditorOffset(prev => ({ x: prev.x + e.clientX - lastPt.current.x, y: prev.y + e.clientY - lastPt.current.y }));
-    lastPt.current = { x: e.clientX, y: e.clientY };
-  };
-  const onEditorMouseUp = () => { dragging.current = false; };
-  const onEditorWheel = (e: React.WheelEvent) => { e.preventDefault(); setEditorZoom(z => Math.max(0.3, Math.min(5, z - e.deltaY * 0.001))); };
-  const onEditorTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) { dragging.current = true; lastPt.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
-    else if (e.touches.length === 2) { lastDist.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
-  };
-  const onEditorTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && dragging.current) {
-      setEditorOffset(prev => ({ x: prev.x + e.touches[0].clientX - lastPt.current.x, y: prev.y + e.touches[0].clientY - lastPt.current.y }));
-      lastPt.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else if (e.touches.length === 2 && lastDist.current != null) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      setEditorZoom(z => Math.max(0.3, Math.min(5, z * (dist / lastDist.current!))));
-      lastDist.current = dist;
-    }
-  };
-  const onEditorTouchEnd = () => { dragging.current = false; lastDist.current = null; };
-
   const openImgEditor = () => {
+    editorOffsetRef.current = { ...imgOffset };
+    editorZoomRef.current = imgZoom;
     setEditorOffset(imgOffset);
     setEditorZoom(imgZoom);
     setShowImgEditor(true);
@@ -215,9 +283,6 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             onMouseMove={onEditorMouseMove}
             onMouseUp={onEditorMouseUp}
             onMouseLeave={onEditorMouseUp}
-            onTouchStart={onEditorTouchStart}
-            onTouchMove={onEditorTouchMove}
-            onTouchEnd={onEditorTouchEnd}
             onWheel={onEditorWheel}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -244,7 +309,12 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
           <div className="flex items-center justify-center gap-6 px-4 py-3 border-t border-white/10 shrink-0">
             <button
               className="flex items-center gap-1.5 text-white/30 text-[11px] hover:text-white/60 transition-colors"
-              onClick={() => { setEditorOffset({ x: 0, y: 0 }); setEditorZoom(1); }}
+              onClick={() => {
+                editorOffsetRef.current = { x: 0, y: 0 };
+                editorZoomRef.current = 1;
+                setEditorOffset({ x: 0, y: 0 });
+                setEditorZoom(1);
+              }}
             >
               <RotateCcw className="w-3 h-3" /> 重置
             </button>
