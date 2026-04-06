@@ -243,8 +243,8 @@ export default function Home() {
           {/* notes skeleton */}
           <section className="space-y-4">
             <Skeleton className="h-10 w-64 rounded-full" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
             </div>
           </section>
         </main>
@@ -345,7 +345,7 @@ export default function Home() {
                 const pageNotes = latestNotes?.slice(latestPage * PAGE_SIZE, (latestPage + 1) * PAGE_SIZE) ?? [];
                 return (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-3">
                       {pageNotes.map(note => (
                         <SakeNoteCard key={note.id} note={note} />
                       ))}
@@ -392,7 +392,7 @@ export default function Home() {
                 const pageNotes = followingNotes.slice(followingPage * PAGE_SIZE, (followingPage + 1) * PAGE_SIZE);
                 return (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-3">
                       {pageNotes.map(note => (
                         <SakeNoteCard key={note.id} note={note} />
                       ))}
