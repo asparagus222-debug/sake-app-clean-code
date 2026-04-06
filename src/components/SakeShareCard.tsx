@@ -93,6 +93,8 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const [editorZoom, setEditorZoom] = useState(1);
 
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const imgBoxRef = useRef<HTMLDivElement>(null);  // ref on the card image square
+  const [previewFrameSize, setPreviewFrameSize] = useState(0);
   // Use refs for live values so native event handlers always see latest state
   const editorOffsetRef = useRef({ x: 0, y: 0 });
   const editorZoomRef = useRef(1);
@@ -198,6 +200,10 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   }, [showImgEditor]);
 
   const openImgEditor = () => {
+    // Measure the actual rendered card image box so the preview frame matches perfectly
+    if (imgBoxRef.current) {
+      setPreviewFrameSize(imgBoxRef.current.getBoundingClientRect().width);
+    }
     editorOffsetRef.current = { ...imgOffset };
     editorZoomRef.current = imgZoom;
     setEditorOffset(imgOffset);
@@ -350,13 +356,13 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 pointerEvents: 'none',
               }}
             />
-            {/* Preview frame: square crop guide matching the card image box */}
+            {/* Preview frame: exact size measured from the card image box */}
             <div style={{
               position: 'absolute',
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: 'min(76vw, 76vh)',
-              height: 'min(76vw, 76vh)',
+              width: previewFrameSize || 160,
+              height: previewFrameSize || 160,
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.52)',
               border: '1.5px solid rgba(249,115,22,0.65)',
               borderRadius: 12,
@@ -452,7 +458,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
               >
                 {/* padding-bottom: 100% = height equals width → square box */}
-                <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
+                <div ref={imgBoxRef} style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
                   <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                     borderRadius: 12, overflow: 'hidden', background: tc.imageBg,
