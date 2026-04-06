@@ -77,6 +77,7 @@ const tagStyle: React.CSSProperties = {
   border: '1px solid rgba(14,165,233,0.28)',
   padding: '2px 7px', borderRadius: 999,
   whiteSpace: 'nowrap',
+  marginRight: 4, marginBottom: 4,
 };
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
@@ -387,7 +388,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 </div>
               </div>
               {(note.alcoholPercent || sortedTags.length > 0) && (
-                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginTop: 7 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, marginTop: 3 }}>
                   {note.alcoholPercent && (
                     <span style={tagStyle}>{`酒精濃度 ${note.alcoholPercent}`}</span>
                   )}
@@ -399,42 +400,49 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             </div>
 
             {/* Image + Radar */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', gap: 8 }}>
+            {/* Note: aspect-ratio is NOT supported by html2canvas 1.4.x.
+                Use padding-bottom: 100% trick to create a square that html2canvas can render. */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px' }}>
               {/* Static image preview — click to open editor */}
               <div
-                style={{
-                  width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
-                  background: 'rgba(0,0,0,0.5)', flexShrink: 0, position: 'relative' as const,
-                  cursor: note.imageUrls?.[0] ? 'pointer' : 'default',
-                }}
+                style={{ width: '48%', flexShrink: 0, marginRight: 8, cursor: note.imageUrls?.[0] ? 'pointer' : 'default' }}
                 onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
               >
-                {note.imageUrls?.[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
-                    style={{
-                      position: 'absolute' as const, inset: 0, width: '100%', height: '100%',
-                      objectFit: 'contain' as const,
-                      transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
-                      transformOrigin: 'center center',
-                      userSelect: 'none' as const, pointerEvents: 'none' as const,
-                    }}
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
-                )}
-                {note.imageUrls?.[0] && (
+                {/* padding-bottom: 100% = height equals width → square box */}
+                <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
                   <div style={{
-                    position: 'absolute' as const, bottom: 0, left: 0, right: 0,
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: 3, paddingBottom: 5, paddingTop: 10,
-                    pointerEvents: 'none' as const,
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 12, overflow: 'hidden', background: 'rgba(0,0,0,0.5)',
                   }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>點擊編輯</span>
+                    {note.imageUrls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
+                        style={{
+                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                          objectFit: 'cover' as const,
+                          transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
+                          transformOrigin: 'center center',
+                          userSelect: 'none' as const, pointerEvents: 'none' as const,
+                        }}
+                      />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
+                    )}
+                    {/* Edit hint — hidden during export so it doesn't appear in the shared image */}
+                    {note.imageUrls?.[0] && !isExporting && (
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: 3, paddingBottom: 5, paddingTop: 10,
+                        pointerEvents: 'none',
+                      }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>點擊編輯</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} />
