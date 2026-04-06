@@ -26,7 +26,9 @@ import {
   TrendingUp,
   Sparkles,
   Edit3,
+  Camera,
 } from 'lucide-react';
+import { SakeShareCard } from '@/components/SakeShareCard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +73,7 @@ export default function NoteDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingEvolution, setIsGeneratingEvolution] = useState(false);
   const [evolutionNoteText, setEvolutionNoteText] = useState("");
+  const [showShareCard, setShowShareCard] = useState(false);
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
@@ -209,6 +212,9 @@ export default function NoteDetailPage() {
                 toast({ title: "連結已複製" });
             }}>
               <Share2 className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => setShowShareCard(true)}>
+              <Camera className="w-5 h-5" />
             </Button>
             {user?.uid === note.userId && (
               <Link href={`/notes/${note.id}/edit`}>
@@ -580,6 +586,13 @@ export default function NoteDetailPage() {
     </div>
   </div>
 </div>
+      {showShareCard && note && (
+        <SakeShareCard
+          note={note}
+          authorProfile={authorProfile}
+          onClose={() => setShowShareCard(false)}
+        />
+      )}
   );
 }
 
