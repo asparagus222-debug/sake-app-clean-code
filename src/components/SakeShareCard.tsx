@@ -69,12 +69,14 @@ function sortInfoTags(tags: string[]): string[] {
   return [...tags].sort((a, b) => priority(a) - priority(b));
 }
 
-const tagStyle = {
-  fontSize: 9, fontWeight: 700,
+const tagStyle: React.CSSProperties = {
+  display: 'inline-block',
+  fontSize: 9, fontWeight: 700, lineHeight: 1.3,
   color: 'rgba(125,211,252,0.9)',
   background: 'rgba(14,165,233,0.12)',
   border: '1px solid rgba(14,165,233,0.28)',
   padding: '2px 7px', borderRadius: 999,
+  whiteSpace: 'nowrap',
 };
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
@@ -351,8 +353,8 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                   </h2>
                 </div>
                 <div style={{ background: '#f97316', borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
-                  <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.1em' }}>SCORE</div>
-                  <div style={{ fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1 }}>{note.overallRating}</div>
+                  <div style={{ display: 'block', fontSize: 7, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.1em', margin: 0, lineHeight: 1.3 }}>SCORE</div>
+                  <div style={{ display: 'block', fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1, margin: 0 }}>{note.overallRating}</div>
                 </div>
               </div>
               {(note.alcoholPercent || sortedTags.length > 0) && (
@@ -416,16 +418,22 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />
                 {descMode === 'both' ? (
                   <>
-                    {userDesc && <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 6px' }}>{userDesc}</p>}
+                    {userDesc && (
+                      <>
+                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>作者描述</div>
+                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 8px' }}>{userDesc}</p>
+                      </>
+                    )}
                     {aiDesc && (
                       <>
-                        {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 6 }} />}
-                        <p style={{ fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
+                        {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 8 }} />}
+                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: 'rgba(249,115,22,0.4)', letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>AI 品鑑</div>
+                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
                       </>
                     )}
                   </>
                 ) : (
-                  <p style={{ fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
+                  <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
                     {descMode === 'ai' ? aiDesc : userDesc}
                   </p>
                 )}
