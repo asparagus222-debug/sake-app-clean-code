@@ -72,43 +72,43 @@ export default function RecoverPage() {
   }
 
   return (
-    <div className="min-h-screen notebook-texture p-6 flex flex-col items-center justify-center font-body">
-      <div className="w-full max-w-md space-y-8 text-center">
-        <header className="space-y-4">
-          <div className="flex justify-center">
-            <div className="bg-primary/20 p-4 rounded-[2rem] border border-primary/20">
-              <KeyRound className="w-10 h-10 text-primary" />
-            </div>
+    <div className="min-h-screen notebook-texture px-4 py-6 flex flex-col items-center justify-center font-body">
+      <div className="w-full max-w-sm space-y-4 text-center">
+        <header className="flex items-center gap-3 justify-center">
+          <div className="bg-primary/20 p-2.5 rounded-2xl border border-primary/20">
+            <KeyRound className="w-6 h-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-headline font-bold text-primary gold-glow tracking-widest uppercase">找回品飲帳戶</h1>
-          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">請輸入您的原有名稱與救援 PIN 碼</p>
+          <div className="text-left">
+            <h1 className="text-base font-headline font-bold text-primary gold-glow tracking-widest uppercase">找回品飲帳戶</h1>
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">輸入名稱與救援 PIN 碼</p>
+          </div>
         </header>
 
-        <div className="dark-glass p-8 rounded-[3rem] border border-white/10 shadow-2xl space-y-6">
-          <div className="space-y-2 text-left">
+        <div className="dark-glass p-5 rounded-[2rem] border border-white/10 shadow-2xl space-y-4">
+          <div className="space-y-1.5 text-left">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest ml-1">使用者名稱</Label>
             <div className="relative">
               <Input 
                 placeholder="例如：清酒大師" 
                 value={username} 
                 onChange={(e) => setUsername(e.target.value)}
-                className="bg-white/5 border-white/10 h-12 rounded-xl pl-10 text-sm"
+                className="bg-white/5 border-white/10 h-10 rounded-xl pl-10 text-sm"
               />
               <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
              <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">輸入 6 位數救援 PIN 碼</Label>
              <div className="flex justify-center gap-2">
                {[0, 1, 2, 3, 4, 5].map((i) => (
-                 <div key={i} className={cn("w-4 h-4 rounded-full border-2 border-primary/20", pin.length > i ? 'bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-transparent')} />
+                 <div key={i} className={cn("w-3.5 h-3.5 rounded-full border-2 border-primary/20", pin.length > i ? 'bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-transparent')} />
                ))}
              </div>
-             <NumericKeypad onNumberClick={handleNumberClick} onDelete={handleDelete} onClear={handleClear} />
+             <NumericKeypad onNumberClick={handleNumberClick} onDelete={handleDelete} onClear={handleClear} compact />
           </div>
 
-          <Button onClick={handleRecover} disabled={isRecovering || !username || pin.length !== 6} className="w-full h-14 rounded-full text-sm font-bold shadow-xl">
+          <Button onClick={handleRecover} disabled={isRecovering || !username || pin.length !== 6} className="w-full h-11 rounded-full text-sm font-bold shadow-xl">
             {isRecovering ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ShieldAlert className="w-5 h-5 mr-2" />} 驗證身份並找回
           </Button>
         </div>

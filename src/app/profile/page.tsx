@@ -127,6 +127,7 @@ export default function ProfilePage() {
   
   // 修改密碼相關
   const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [cpStep, setCpStep] = useState<'new' | 'confirm'>('new');
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -749,28 +750,50 @@ export default function ProfilePage() {
             </Button>
           </Link>
 
-          <Dialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog}>
+          <Dialog open={showChangePasswordDialog} onOpenChange={(open) => { setShowChangePasswordDialog(open); if (!open) { setNewPassword(''); setConfirmPassword(''); setCpStep('new'); } }}>
             <DialogTrigger asChild>
               <Button variant="outline" className="flex-1 h-11 rounded-2xl border-accent/30 bg-accent/5 hover:bg-accent/10 shadow-lg p-2 flex items-center justify-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                 <p className="text-[9px] font-bold uppercase tracking-widest truncate">修改密碼</p>
               </Button>
             </DialogTrigger>
-            <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-8 max-sm">
+            <DialogContent className="dark-glass border-primary/20 rounded-[2.5rem] p-5 max-w-sm">
               <DialogHeader><DialogTitle className="text-primary font-headline uppercase text-center">修改密碼</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-primary uppercase">新密碼</Label>
-                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="輸入新密碼" className="bg-white/5 border-primary/40 rounded-xl" />
+              <div className="space-y-3 py-2">
+                <p className="text-[10px] text-muted-foreground text-center uppercase font-bold tracking-widest">
+                  {cpStep === 'new' ? '輸入新 6 位數 PIN 碼' : '再次確認 PIN 碼'}
+                </p>
+                <div className="flex justify-center gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className={cn("w-3.5 h-3.5 rounded-full border-2 border-primary/20",
+                      (cpStep === 'new' ? newPassword : confirmPassword).length > i
+                        ? 'bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]'
+                        : 'bg-transparent'
+                    )} />
+                  ))}
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-primary uppercase">確認密碼</Label>
-                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="確認新密碼" className="bg-white/5 border-primary/40 rounded-xl" />
-                </div>
-                <Button onClick={handleChangePassword} disabled={isChangingPassword || !newPassword.trim()} className="w-full rounded-full font-bold uppercase">
-                  {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  {isChangingPassword ? '更新中...' : '確認修改'}
-                </Button>
+                <NumericKeypad
+                  compact
+                  onNumberClick={(num) => {
+                    if (cpStep === 'new') { if (newPassword.length < 6) setNewPassword(p => p + num); }
+                    else { if (confirmPassword.length < 6) setConfirmPassword(p => p + num); }
+                  }}
+                  onDelete={() => { if (cpStep === 'new') setNewPassword(p => p.slice(0, -1)); else setConfirmPassword(p => p.slice(0, -1)); }}
+                  onClear={() => { if (cpStep === 'new') setNewPassword(''); else setConfirmPassword(''); }}
+                />
+                {cpStep === 'new' ? (
+                  <Button onClick={() => { setCpStep('confirm'); setConfirmPassword(''); }} disabled={newPassword.length !== 6} className="w-full h-10 rounded-full font-bold uppercase text-xs">
+                    下一步 →
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => { setCpStep('new'); setConfirmPassword(''); }} className="h-10 px-4 rounded-full text-xs">← 返回</Button>
+                    <Button onClick={handleChangePassword} disabled={isChangingPassword || confirmPassword.length !== 6} className="flex-1 h-10 rounded-full font-bold uppercase text-xs">
+                      {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      確認修改
+                    </Button>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
