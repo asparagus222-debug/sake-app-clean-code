@@ -13,8 +13,8 @@ interface SakeShareCardProps {
 
 // ── Inline SVG Radar Chart ───────────────────────────────────────────────────
 function RadarSvg({
-  sw, ac, bi, um, as_, size = 130,
-}: { sw: number; ac: number; bi: number; um: number; as_: number; size?: number }) {
+  sw, ac, bi, um, as_, size = 130, primaryColor = '#f97316', isDark = true,
+}: { sw: number; ac: number; bi: number; um: number; as_: number; size?: number; primaryColor?: string; isDark?: boolean }) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.36;
@@ -30,25 +30,32 @@ function RadarSvg({
     angles.map((_, i) => `${i === 0 ? 'M' : 'L'}${pt(r, i).x.toFixed(1)},${pt(r, i).y.toFixed(1)}`).join(' ') + ' Z';
   const dataPoints = values.map((v, i) => pt((v / 5) * maxR, i));
   const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z';
+  const gridStroke = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  const axisStroke = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+  const labelFill = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)';
+  const ph = primaryColor.replace('#', '');
+  const areaFill = ph.length === 6
+    ? `rgba(${parseInt(ph.slice(0,2),16)},${parseInt(ph.slice(2,4),16)},${parseInt(ph.slice(4,6),16)},0.22)`
+    : 'rgba(249,115,22,0.22)';
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
       {[1, 2, 3, 4, 5].map(lvl => (
-        <path key={lvl} d={toPath((lvl / 5) * maxR)} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.8" />
+        <path key={lvl} d={toPath((lvl / 5) * maxR)} fill="none" stroke={gridStroke} strokeWidth="0.8" />
       ))}
       {angles.map((_, i) => {
         const end = pt(maxR, i);
-        return <line key={i} x1={cx.toFixed(1)} y1={cy.toFixed(1)} x2={end.x.toFixed(1)} y2={end.y.toFixed(1)} stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />;
+        return <line key={i} x1={cx.toFixed(1)} y1={cy.toFixed(1)} x2={end.x.toFixed(1)} y2={end.y.toFixed(1)} stroke={axisStroke} strokeWidth="0.8" />;
       })}
-      <path d={dataPath} fill="rgba(249,115,22,0.22)" stroke="#f97316" strokeWidth="1.5" />
+      <path d={dataPath} fill={areaFill} stroke={primaryColor} strokeWidth="1.5" />
       {dataPoints.map((p, i) => (
-        <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="2.5" fill="#f97316" />
+        <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="2.5" fill={primaryColor} />
       ))}
       {angles.map((_, i) => {
         const lp = pt(labelR, i);
         return (
           <text key={i} x={lp.x.toFixed(1)} y={(lp.y + 4).toFixed(1)}
-            textAnchor="middle" fontSize="10" fontWeight="700" fill="rgba(255,255,255,0.55)"
+            textAnchor="middle" fontSize="10" fontWeight="700" fill={labelFill}
           >
             {labels[i]}
           </text>
@@ -68,17 +75,6 @@ function sortInfoTags(tags: string[]): string[] {
   };
   return [...tags].sort((a, b) => priority(a) - priority(b));
 }
-
-const tagStyle: React.CSSProperties = {
-  display: 'inline-block',
-  fontSize: 9, fontWeight: 700, lineHeight: 1.3,
-  color: 'rgba(125,211,252,0.9)',
-  background: 'rgba(14,165,233,0.12)',
-  border: '1px solid rgba(14,165,233,0.28)',
-  padding: '2px 7px', borderRadius: 999,
-  whiteSpace: 'nowrap',
-  marginRight: 4, marginBottom: 4,
-};
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -221,6 +217,49 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const as_ = note.astringencyRating ?? 0;
   const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 5);
 
+  // ── Theme-adaptive card palette ──────────────────────────────────────────
+  const theme = authorProfile?.themeSettings;
+  const rawBg = (theme?.mode === 'custom' && theme.customBg) ? theme.customBg
+              : theme?.mode === 'light' ? '#f5f5f0'
+              : '#0c0c10';
+  const primaryColor = theme?.customPrimary ?? '#f97316';
+  const hBright = (hex: string) => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return 0;
+    return (parseInt(h.slice(0,2),16)*299 + parseInt(h.slice(2,4),16)*587 + parseInt(h.slice(4,6),16)*114) / 1000;
+  };
+  const isDark = hBright(rawBg) < 128;
+  const rgba = (hex: string, a: number) => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return `rgba(249,115,22,${a})`;
+    return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+  };
+  const cardBackground = theme?.mode === 'light'
+    ? 'linear-gradient(155deg, #fafaf5 0%, #f5f5ee 55%, #fff5ee 100%)'
+    : (theme?.mode === 'custom' && theme.customBg) ? theme.customBg
+    : 'linear-gradient(155deg, #1a1a1e 0%, #0c0c10 55%, #1c0900 100%)';
+  const tagStyle: React.CSSProperties = {
+    display: 'inline-block', fontSize: 9, fontWeight: 700, lineHeight: 1.3,
+    color: isDark ? 'rgba(125,211,252,0.9)' : 'rgba(2,100,165,0.95)',
+    background: isDark ? 'rgba(14,165,233,0.12)' : 'rgba(14,165,233,0.1)',
+    border: `1px solid ${isDark ? 'rgba(14,165,233,0.28)' : 'rgba(14,165,233,0.45)'}`,
+    padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap',
+    marginRight: 4, marginBottom: 4,
+  };
+  const tc = {
+    text: isDark ? 'white' : '#1a1812',
+    textSoft: isDark ? 'rgba(255,255,255,0.8)' : '#2a2420',
+    textMuted: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.42)',
+    textDesc: isDark ? 'rgba(255,255,255,0.58)' : 'rgba(0,0,0,0.7)',
+    divider: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)',
+    brandLabel: rgba(primaryColor, 0.9),
+    primaryDesc: rgba(primaryColor, 0.65),
+    primaryLabel: rgba(primaryColor, 0.4),
+    primarySite: rgba(primaryColor, 0.5),
+    imageBg: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.08)',
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const userDesc = note.userDescription || note.description || '';
   const aiDesc = note.aiResultNote || '';
   const hasDesc = descMode !== 'none' && (
@@ -236,7 +275,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
         scale: 3, useCORS: true, allowTaint: false,
-        backgroundColor: '#0c0c10', logging: false,
+        backgroundColor: rawBg, logging: false,
       });
       const blob = await new Promise<Blob>((res, rej) =>
         canvas.toBlob(b => (b ? res(b) : rej(new Error('blob'))), 'image/png')
@@ -367,7 +406,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             ref={cardRef}
             style={{
               width: '100%', borderRadius: 26, overflow: 'hidden',
-              background: 'linear-gradient(155deg, #1a1a1e 0%, #0c0c10 55%, #1c0900 100%)',
+              background: cardBackground,
               fontFamily: '"PingFang TC", "Heiti TC", "Noto Sans TC", sans-serif',
             }}
           >
@@ -375,14 +414,14 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             <div style={{ padding: '16px 18px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 9, color: 'rgba(249,115,22,0.82)', fontWeight: 700, letterSpacing: '0.12em', marginBottom: 3 }}>
+                  <p style={{ fontSize: 9, color: tc.brandLabel, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 3 }}>
                     {note.brewery}{note.origin ? `　${note.origin}` : ''}
                   </p>
-                  <h2 style={{ fontSize: 19, fontWeight: 700, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', margin: 0 }}>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: tc.text, lineHeight: 1.2, wordBreak: 'break-word', margin: 0 }}>
                     {note.brandName}
                   </h2>
                 </div>
-                <div style={{ background: '#f97316', borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
+                <div style={{ background: primaryColor, borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
                   <div style={{ display: 'block', fontSize: 7, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.1em', margin: 0, lineHeight: 1.3 }}>SCORE</div>
                   <div style={{ display: 'block', fontSize: 21, fontWeight: 700, color: 'white', lineHeight: 1.1, margin: 0 }}>{note.overallRating}</div>
                 </div>
@@ -412,7 +451,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
                   <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    borderRadius: 12, overflow: 'hidden', background: 'rgba(0,0,0,0.5)',
+                    borderRadius: 12, overflow: 'hidden', background: tc.imageBg,
                   }}>
                     {note.imageUrls?.[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -445,32 +484,32 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 </div>
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} />
+                <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} primaryColor={primaryColor} isDark={isDark} />
               </div>
             </div>
 
             {/* Description */}
             {hasDesc && (
               <div style={{ padding: '0 18px 10px' }}>
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />
+                <div style={{ height: 1, background: tc.divider, marginBottom: 9 }} />
                 {descMode === 'both' ? (
                   <>
                     {userDesc && (
                       <>
-                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>作者描述</div>
-                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: 'rgba(255,255,255,0.58)', margin: '0 0 8px' }}>{userDesc}</p>
+                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: tc.textMuted, letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>作者描述</div>
+                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: tc.textDesc, margin: '0 0 8px' }}>{userDesc}</p>
                       </>
                     )}
                     {aiDesc && (
                       <>
-                        {userDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 8 }} />}
-                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: 'rgba(249,115,22,0.4)', letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>AI 品鑑</div>
-                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: 'rgba(249,115,22,0.65)', margin: 0 }}>{aiDesc}</p>
+                        {userDesc && <div style={{ height: 1, background: tc.divider, marginBottom: 8 }} />}
+                        <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: tc.primaryLabel, letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>AI 品鑑</div>
+                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: tc.primaryDesc, margin: 0 }}>{aiDesc}</p>
                       </>
                     )}
                   </>
                 ) : (
-                  <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? 'rgba(249,115,22,0.65)' : 'rgba(255,255,255,0.58)', margin: 0 }}>
+                  <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? tc.primaryDesc : tc.textDesc, margin: 0 }}>
                     {descMode === 'ai' ? aiDesc : userDesc}
                   </p>
                 )}
@@ -479,21 +518,21 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
 
             {/* Footer */}
             <div style={{ padding: `${hasDesc ? 6 : 0}px 18px 15px` }}>
-              {!hasDesc && <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 9 }} />}
+              {!hasDesc && <div style={{ height: 1, background: tc.divider, marginBottom: 9 }} />}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
                 <div>
-                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲者</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{authorProfile?.username || note.username || '酒友'}</div>
+                  <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 1 }}>品飲者</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: tc.textSoft }}>{authorProfile?.username || note.username || '酒友'}</div>
                 </div>
                 <div style={{ textAlign: 'right' as const }}>
-                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', marginBottom: 1 }}>品飲日期</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
+                  <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 1 }}>品飲日期</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: tc.textSoft }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
-                <span style={{ fontSize: 9, color: 'rgba(249,115,22,0.45)', letterSpacing: '0.22em', fontWeight: 700 }}>SAKEPATH.COM</span>
-                <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.05)' }} />
+                <div style={{ height: 1, flex: 1, background: tc.divider }} />
+                <span style={{ fontSize: 9, color: tc.primarySite, letterSpacing: '0.22em', fontWeight: 700 }}>SAKEPATH.COM</span>
+                <div style={{ height: 1, flex: 1, background: tc.divider }} />
               </div>
             </div>
           </div>
@@ -515,8 +554,9 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
 
           <div className="flex gap-3 w-full">
             <Button
-              variant="outline"
-              className="flex-1 rounded-full border-white/20 text-white/70 hover:bg-white/10 h-11 text-xs font-bold uppercase tracking-widest"
+              variant="ghost"
+              style={{ color: 'rgba(255,255,255,0.75)', borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.08)' }}
+              className="flex-1 rounded-full border h-11 text-xs font-bold uppercase tracking-widest hover:bg-white/15"
               onClick={onClose}
             >
               <X className="w-4 h-4 mr-1.5" /> 關閉
