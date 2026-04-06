@@ -583,9 +583,6 @@ export default function NoteDetailPage() {
           </div>
         </section>
       </div>
-    </div>
-  </div>
-</div>
       {showShareCard && note && (
         <SakeShareCard
           note={note}
@@ -593,6 +590,7 @@ export default function NoteDetailPage() {
           onClose={() => setShowShareCard(false)}
         />
       )}
+    </div>
   );
 }
 
