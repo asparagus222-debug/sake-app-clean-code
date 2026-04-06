@@ -7,7 +7,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, FileText, Bell, X } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, Bell, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +18,9 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [activeTab, setActiveTab] = useState("latest");
+  const PAGE_SIZE = 10;
+  const [latestPage, setLatestPage] = useState(0);
+  const [followingPage, setFollowingPage] = useState(0);
   const router = useRouter();
   const [showDraftPicker, setShowDraftPicker] = useState(false);
   const [drafts, setDrafts] = useState<Array<{id: string; brandName: string; savedAt: string}>>([]);
@@ -120,7 +123,7 @@ export default function Home() {
 
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(10));
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(100));
   }, [firestore]);
   const { data: latestNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(latestNotesQuery);
 
@@ -316,13 +319,45 @@ export default function Home() {
             <TabsContent value="latest" className="mt-0">
               {isNotesLoading ? (
                 <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {latestNotes?.map(note => (
-                    <SakeNoteCard key={note.id} note={note} />
-                  ))}
-                </div>
-              )}
+              ) : (() => {
+                const total = latestNotes?.length ?? 0;
+                const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+                const pageNotes = latestNotes?.slice(latestPage * PAGE_SIZE, (latestPage + 1) * PAGE_SIZE) ?? [];
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pageNotes.map(note => (
+                        <SakeNoteCard key={note.id} note={note} />
+                      ))}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 pt-6">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setLatestPage(p => Math.max(0, p - 1))}
+                          disabled={latestPage === 0}
+                          className="rounded-full border border-white/10 text-[11px] font-bold uppercase tracking-widest h-9 px-5 disabled:opacity-30"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5 mr-1" /> 上一頁
+                        </Button>
+                        <span className="text-[11px] text-muted-foreground font-bold tabular-nums">
+                          {latestPage + 1} / {totalPages}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setLatestPage(p => Math.min(totalPages - 1, p + 1))}
+                          disabled={latestPage >= totalPages - 1}
+                          className="rounded-full border border-white/10 text-[11px] font-bold uppercase tracking-widest h-9 px-5 disabled:opacity-30"
+                        >
+                          下一頁 <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="following" className="mt-0">
@@ -331,13 +366,45 @@ export default function Home() {
                   <Users className="w-12 h-12 text-muted-foreground/20 mx-auto" />
                   <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">目前尚未追蹤任何作者</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {followingNotes.map(note => (
-                    <SakeNoteCard key={note.id} note={note} />
-                  ))}
-                </div>
-              )}
+              ) : (() => {
+                const total = followingNotes.length;
+                const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+                const pageNotes = followingNotes.slice(followingPage * PAGE_SIZE, (followingPage + 1) * PAGE_SIZE);
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pageNotes.map(note => (
+                        <SakeNoteCard key={note.id} note={note} />
+                      ))}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 pt-6">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFollowingPage(p => Math.max(0, p - 1))}
+                          disabled={followingPage === 0}
+                          className="rounded-full border border-white/10 text-[11px] font-bold uppercase tracking-widest h-9 px-5 disabled:opacity-30"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5 mr-1" /> 上一頁
+                        </Button>
+                        <span className="text-[11px] text-muted-foreground font-bold tabular-nums">
+                          {followingPage + 1} / {totalPages}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFollowingPage(p => Math.min(totalPages - 1, p + 1))}
+                          disabled={followingPage >= totalPages - 1}
+                          className="rounded-full border border-white/10 text-[11px] font-bold uppercase tracking-widest h-9 px-5 disabled:opacity-30"
+                        >
+                          下一頁 <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </section>
