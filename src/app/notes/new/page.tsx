@@ -676,14 +676,45 @@ const handleSave = async () => {
                 {images.length === 2 ? (
                   <>
                     <div className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
-                      <img src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                      {/* 雙圖模式：手動 cover 定位，圖片超出容器才有平移空間，不會露出空白背景 */}
+                      {(() => {
+                        const R = imgRatios[0] || 1;
+                        const C = splitRatio / 100; // 容器寬高比（寬/高，高=正方形邊長）
+                        const byH = R >= C;
+                        return <img src={images[0]} className="absolute pointer-events-none" style={byH ? {
+                          height: '100%', width: `${(R / C) * 100}%`,
+                          left: `${(1 - R / C) * 50}%`, top: '0%',
+                          transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                          transformOrigin: 'center center',
+                        } : {
+                          width: '100%', height: `${(C / R) * 100}%`,
+                          left: '0%', top: `${(1 - C / R) * 50}%`,
+                          transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                          transformOrigin: 'center center',
+                        }} alt="img1" />;
+                      })()}
                       <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                         {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                       </button>
                     </div>
                     <div className="h-full w-px bg-white/20 z-10" />
                     <div className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
-                      <img src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                      {(() => {
+                        const R = imgRatios[1] || 1;
+                        const C = (100 - splitRatio) / 100;
+                        const byH = R >= C;
+                        return <img src={images[1]} className="absolute pointer-events-none" style={byH ? {
+                          height: '100%', width: `${(R / C) * 100}%`,
+                          left: `${(1 - R / C) * 50}%`, top: '0%',
+                          transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                          transformOrigin: 'center center',
+                        } : {
+                          width: '100%', height: `${(C / R) * 100}%`,
+                          left: '0%', top: `${(1 - C / R) * 50}%`,
+                          transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                          transformOrigin: 'center center',
+                        }} alt="img2" />;
+                      })()}
                       <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border cursor-pointer", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
                         {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                       </button>
