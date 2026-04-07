@@ -91,6 +91,8 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const [showImgEditor, setShowImgEditor] = useState(false);
   const [editorOffset, setEditorOffset] = useState({ x: 0, y: 0 });
   const [editorZoom, setEditorZoom] = useState(1);
+  const [frameAdjust, setFrameAdjust] = useState(0); // user-calibrated delta in px
+  const [showCalibration, setShowCalibration] = useState(false);
 
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const imgBoxRef = useRef<HTMLDivElement>(null);  // ref on the card image square
@@ -198,6 +200,17 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
       el.removeEventListener('touchend', onTouchEnd);
     };
   }, [showImgEditor]);
+
+  // Persist user-calibrated frame adjustment
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('sakeFrameAdjust');
+    if (saved !== null) setFrameAdjust(parseInt(saved) || 0);
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('sakeFrameAdjust', String(frameAdjust));
+  }, [frameAdjust]);
 
   const openImgEditor = () => {
     // Measure the actual rendered card image box so the preview frame matches perfectly
@@ -356,13 +369,13 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 pointerEvents: 'none',
               }}
             />
-            {/* Preview frame: exact size measured from the card image box */}
+            {/* Preview frame: size = auto-measured + user calibration delta */}
             <div style={{
               position: 'absolute',
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: previewFrameSize || 160,
-              height: previewFrameSize || 160,
+              width: (previewFrameSize || 160) + frameAdjust,
+              height: (previewFrameSize || 160) + frameAdjust,
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.52)',
               border: '1.5px solid rgba(249,115,22,0.65)',
               borderRadius: 12,
@@ -386,20 +399,47 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
               }}>實際顯示範圍</div>
             </div>
           </div>
-          {/* Footer hint */}
-          <div className="flex items-center justify-center gap-6 px-4 py-3 border-t border-white/10 shrink-0">
-            <button
-              className="flex items-center gap-1.5 text-white/30 text-[11px] hover:text-white/60 transition-colors"
-              onClick={() => {
-                editorOffsetRef.current = { x: 0, y: 0 };
-                editorZoomRef.current = 1;
-                setEditorOffset({ x: 0, y: 0 });
-                setEditorZoom(1);
-              }}
-            >
-              <RotateCcw className="w-3 h-3" /> 重置
-            </button>
-            <p className="text-white/20 text-[11px]">調整後點確認套用至打卡圖片</p>
+          {/* Footer: reset + calibration controls */}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 shrink-0 min-h-[52px]">
+            {showCalibration ? (
+              <div className="flex items-center justify-between w-full">
+                <span className="text-white/40 text-[10px] uppercase tracking-widest">校正框</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-base flex items-center justify-center active:bg-white/25"
+                    onClick={() => setFrameAdjust(a => a - 4)}
+                  >−</button>
+                  <span className="text-orange-400 text-[12px] font-bold w-14 text-center">{(previewFrameSize || 160) + frameAdjust}px</span>
+                  <button
+                    className="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-base flex items-center justify-center active:bg-white/25"
+                    onClick={() => setFrameAdjust(a => a + 4)}
+                  >+</button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button className="text-white/30 text-[10px] hover:text-white/50" onClick={() => setFrameAdjust(0)}>重置</button>
+                  <button className="text-orange-400 text-[10px] font-bold" onClick={() => setShowCalibration(false)}>完成</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  className="flex items-center gap-1.5 text-white/30 text-[11px] hover:text-white/60 transition-colors"
+                  onClick={() => {
+                    editorOffsetRef.current = { x: 0, y: 0 };
+                    editorZoomRef.current = 1;
+                    setEditorOffset({ x: 0, y: 0 });
+                    setEditorZoom(1);
+                  }}
+                >
+                  <RotateCcw className="w-3 h-3" /> 重置
+                </button>
+                <p className="text-white/20 text-[11px]">調整後點確認套用至打卡圖片</p>
+                <button
+                  className="text-white/25 text-[10px] hover:text-white/50 transition-colors"
+                  onClick={() => setShowCalibration(true)}
+                >校正框</button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -449,49 +489,45 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             </div>
 
             {/* Image + Radar */}
-            {/* Note: aspect-ratio is NOT supported by html2canvas 1.4.x.
-                Use padding-bottom: 100% trick to create a square that html2canvas can render. */}
+            {/* html-to-image uses browser renderer → aspect-ratio:1/1 is fully supported */}
             <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px' }}>
               {/* Static image preview — click to open editor */}
               <div
-                style={{ width: '48%', flexShrink: 0, marginRight: 8, cursor: note.imageUrls?.[0] ? 'pointer' : 'default' }}
+                ref={imgBoxRef}
+                style={{
+                  width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
+                  background: tc.imageBg, flexShrink: 0, position: 'relative',
+                  marginRight: 8, cursor: note.imageUrls?.[0] ? 'pointer' : 'default',
+                }}
                 onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
               >
-                {/* padding-bottom: 100% = height equals width → square box */}
-                <div ref={imgBoxRef} style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
+                {note.imageUrls?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
+                    style={{
+                      position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                      objectFit: 'cover' as const,
+                      transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
+                      transformOrigin: 'center center',
+                      userSelect: 'none' as const, pointerEvents: 'none' as const,
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
+                )}
+                {/* Edit hint — hidden during export so it doesn't appear in the shared image */}
+                {note.imageUrls?.[0] && !isExporting && (
                   <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    borderRadius: 12, overflow: 'hidden', background: tc.imageBg,
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 3, paddingBottom: 5, paddingTop: 10,
+                    pointerEvents: 'none',
                   }}>
-                    {note.imageUrls?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
-                        style={{
-                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                          objectFit: 'cover' as const,
-                          transform: `translate(${imgOffset.x}px,${imgOffset.y}px) scale(${imgZoom})`,
-                          transformOrigin: 'center center',
-                          userSelect: 'none' as const, pointerEvents: 'none' as const,
-                        }}
-                      />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
-                    )}
-                    {/* Edit hint — hidden during export so it doesn't appear in the shared image */}
-                    {note.imageUrls?.[0] && !isExporting && (
-                      <div style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                        background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: 3, paddingBottom: 5, paddingTop: 10,
-                        pointerEvents: 'none',
-                      }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>點擊編輯</span>
-                      </div>
-                    )}
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>點擊編輯</span>
                   </div>
-                </div>
+                )}
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} primaryColor={primaryColor} isDark={isDark} />
