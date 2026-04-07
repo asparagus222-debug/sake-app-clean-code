@@ -168,8 +168,10 @@ export const identifySakeFlow = ai.defineFlow(
     // 常見裝飾漢字（書道大字）一律視為可疑，不論長短
     const DECORATIVE_KANJI = new Set(['笑', '夢', '粋', '縁', '楽', '誠', '心', '愛', '龍', '鶴', '宇', '字', '子', '幸', '福']);
     const brandNameCore = brandName.split(/[\s（(]/)[0].trim();
+    // 單字「非漢字/假名」（如 OCR 誤讀成 "1"、"A"）視為可疑；合法的單字漢字銘柄（橘、颯 等）不觸發
+    const isSingleNonCJK = brandNameCore.length === 1 && !/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(brandNameCore);
     const isSuspiciousBrand = !brandName
-      || brandNameCore.length <= 1
+      || isSingleNonCJK
       || DECORATIVE_KANJI.has(brandNameCore);
     const allTextJoined = (vision.allText || []).join(' ');
     // isSuspiciousBrand 時：vision.searchQuery（含 Step 1 推斷的視覺關鍵詞）+ visualDescription（含書道大字名稱如「笑」）

@@ -185,7 +185,7 @@ export default function NoteDetailPage() {
     router.replace('/');
   };
 
-  if (isLoading) return (
+  if (isLoading || !noteDocRef) return (
     <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
       <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
       <p className="text-muted-foreground font-bold text-[10px] tracking-widest uppercase">載入中...</p>
@@ -195,7 +195,7 @@ export default function NoteDetailPage() {
   if (!note) return (
     <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
       <p className="text-muted-foreground text-xs uppercase font-bold">筆記不存在或已被刪除</p>
-      <Button variant="link" onClick={() => router.push('/')} className="mt-4 text-primary text-xs">返回首頁</Button>
+      <Button variant="link" onClick={() => window.location.replace('/')} className="mt-4 text-primary text-xs">返回首頁</Button>
     </div>
   );
 
