@@ -51,6 +51,44 @@ export async function identifySake(input: IdentifySakeInput): Promise<IdentifySa
   return identifySakeFlow(input);
 }
 
+// ── Cloud Vision 預檢：OCR + WEB_DETECTION 合併為單次請求 ──
+async function callCloudVision(base64: string): Promise<{
+  ocrText: string;
+  webEntities: Array<{ description?: string; score?: number }>;
+  bestGuessLabel: string;
+}> {
+  const visionKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
+  if (!visionKey || !base64) return { ocrText: '', webEntities: [], bestGuessLabel: '' };
+  try {
+    const res = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64 },
+            features: [
+              { type: 'DOCUMENT_TEXT_DETECTION' },
+              { type: 'WEB_DETECTION', maxResults: 10 },
+            ],
+          }],
+        }),
+      }
+    );
+    if (!res.ok) return { ocrText: '', webEntities: [], bestGuessLabel: '' };
+    const data = await res.json();
+    const r = data.responses?.[0];
+    return {
+      ocrText: r?.fullTextAnnotation?.text || '',
+      webEntities: r?.webDetection?.webEntities || [],
+      bestGuessLabel: r?.webDetection?.bestGuessLabels?.[0]?.label || '',
+    };
+  } catch {
+    return { ocrText: '', webEntities: [], bestGuessLabel: '' };
+  }
+}
+
 export const identifySakeFlow = ai.defineFlow(
   {
     name: 'identifySakeFlow',
@@ -63,14 +101,80 @@ export const identifySakeFlow = ai.defineFlow(
     // 合併標籤陣列，去重（圖片標籤在前）
     const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
 
+    // ── Step 0: Cloud Vision 快速預檢（OCR + WEB_DETECTION，約 0.5-1.5 秒）──
+    // 優先送背標，背標印刷文字清晰、OCR 準確率高
+    const primaryDataUri = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
+    const primaryBase64 = primaryDataUri.split(',')[1] || '';
+    const { ocrText: vOcr, webEntities: vWebEntities } = await callCloudVision(primaryBase64);
+
+    // 篩選高信心日文實體（score > 0.65，且含日文字元）
+    const highConfEntities = vWebEntities
+      .filter(e => (e.score || 0) > 0.65 && e.description)
+      .slice(0, 6)
+      .map(e => e.description as string);
+    const hasStrongWebHit = highConfEntities.some(d => /[\u3040-\u30ff\u4e00-\u9fff]/.test(d));
+
+    console.log(`[AI辨識] Vision 預檢 ─ OCR:${vOcr.length}字, 高信心:${highConfEntities.join('|') || '無'}`);
+
+    // ── 快速通道：WEB_DETECTION 高信心 + OCR 有文字 → 跳過 Google Search ──
+    // 對常見知名清酒省下整個 ~6 秒的 Google Search 步驟
+    if (hasStrongWebHit && vOcr.length > 20) {
+      console.log('[AI辨識] 快速通道：Vision 識別成功 → Gemini 文字整合（跳過 Google Search）');
+      const webSummary = highConfEntities.join('、');
+      const { output: fastResult } = await ai.generate({
+        model: googleAI.model('gemini-flash-latest'),
+        output: { schema: IdentifySakeOutputSchema },
+        prompt: [{
+          text: `你是清酒辨識專家。請結合以下兩組資訊，填入完整的清酒規格。
+
+【Cloud Vision OCR 辨識文字（直接從圖片讀取）】
+${vOcr}
+
+【Google 以圖搜圖高信心比對結果（可直接採用）】
+${webSummary}
+
+填寫規則：
+1. 銘柄/酒造：優先採用 Google 比對結果，OCR 可補充確認
+2. 酒精濃度、精米步合等數值：從 OCR 文字讀取（數值以圖片為準，不可推測）
+3. 日本酒度 (SMV) 若 OCR 有印出（如「日本酒度 +5」「+3」「±0」），填入 smv 欄位
+4. specialProcess：只填 OCR 或比對結果中明確出現的製法詞
+5. 保持日文原文，不要翻譯`,
+        }],
+      }).catch(() => ({ output: null }));
+
+      if (fastResult?.brandName && fastResult?.brewery) {
+        console.log(`[AI辨識] 快速通道成功 ✓ ${fastResult.brandName} / ${fastResult.brewery}`);
+        return fastResult;
+      }
+      console.log('[AI辨識] 快速通道萃取不完整，回退至標準流程');
+    }
+
     // ── 快速路徑：有背標時，先純視覺 OCR，再補充搜尋，圖片數值絕對優先 ──
     if (hasBackLabel) {
-      // Step A：純視覺 OCR，100% 從圖片讀取所有欄位
-      console.log('[AI辨識] 快速路徑 Step A：背標純視覺 OCR');
+      // Step A：若 Cloud Vision OCR 文字充足（背標印刷文字清晰），改用純文字 Gemini，比視覺呼叫快 ~2 秒
+      // 否則回退至傳統視覺 OCR
+      const useTextOcr = vOcr.length > 50;
+      console.log(`[AI辨識] 快速路徑 Step A：${useTextOcr ? 'Cloud Vision 文字版（加速）' : '視覺版'} OCR`);
       const { output: backOcr } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
         output: { schema: IdentifySakeOutputSchema },
-        prompt: [
+        prompt: useTextOcr ? [
+          {
+            text: `你是清酒背標文字辨識專家。以下是 Cloud Vision OCR 從背標讀取的完整文字：
+
+\`\`\`
+${vOcr}
+\`\`\`
+
+請從以上文字提取所有清酒規格，逐行對照填入對應欄位。
+
+⚠️ 重要規則：
+- 所有欄位請「100% 從 OCR 文字讀取」，不要推測或補充文字中沒有的資訊
+- 酒精濃度、精米步合、種別 必須與文字完全一致，不可填入推測值
+- 日本酒度 (SMV) 若文字中有印出（如「日本酒度 +5」「+3」「±0」），請填入 smv 欄位
+- 保持日文原文，不要翻譯`,
+          },
+        ] : [
           {
             text: `你是清酒背標文字辨識專家。請仔細讀取圖片上所有印刷文字，逐字逐行填入對應欄位。
 
@@ -160,7 +264,7 @@ export const identifySakeFlow = ai.defineFlow(
       ],
     }).catch(() => ({ output: null }));
 
-    const vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '' };
+    const vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '', yeast: '', smv: '', visualDescription: '' };
 
     const { brandName, brewery, origin } = vision;
     // 取出括號/空格前的「核心銘柄字串」做可疑判斷
