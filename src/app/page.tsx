@@ -147,6 +147,14 @@ export default function Home() {
   }, [firestore]);
   const { data: latestNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(latestNotesQuery);
 
+  // 若超過 15 秒仍無資料，顯示空狀態 + 重新整理按鈕，避免無限轉圈
+  const [notesTimedOut, setNotesTimedOut] = useState(false);
+  useEffect(() => {
+    if (latestNotes !== null) { setNotesTimedOut(false); return; }
+    const t = setTimeout(() => setNotesTimedOut(true), 15000);
+    return () => clearTimeout(t);
+  }, [latestNotes]);
+
   const followingQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'users', user.uid, 'following');
@@ -337,8 +345,17 @@ export default function Home() {
             </div>
 
             <TabsContent value="latest" className="mt-0">
-              {(isNotesLoading || latestNotes === null) ? (
-                <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              {notesTimedOut ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-4">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">載入逾時，請重新整理</p>
+                  <Button variant="outline" size="sm" className="rounded-full border-primary/40 text-primary text-[11px] font-bold" onClick={() => window.location.reload()}>
+                    重新整理
+                  </Button>
+                </div>
+              ) : (isNotesLoading || latestNotes === null) ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[0,1,2,3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
+                </div>
               ) : (() => {
                 const total = latestNotes?.length ?? 0;
                 const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
