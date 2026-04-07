@@ -676,20 +676,23 @@ const handleSave = async () => {
                 {images.length === 2 ? (
                   <>
                     <div className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
-                      {/* 雙圖模式：手動 cover 定位，圖片超出容器才有平移空間，不會露出空白背景 */}
+                      {/* 雙圖模式：以 px 精確定位 cover，避免百分比在非正方形容器中拉伸 */}
                       {(() => {
                         const R = imgRatios[0] || 1;
-                        const C = splitRatio / 100; // 容器寬高比（寬/高，高=正方形邊長）
+                        const C = splitRatio / 100; // sub-container aspect (W/H), H = total square side
+                        // cover by height: img height = 100%, img width = R/C * 100% of container width
+                        // cover by width:  img width  = 100%, img height = C/R * 100% of container height
+                        // always set only ONE dimension explicitly + the other as 'auto' to prevent stretch
                         const byH = R >= C;
                         return <img src={images[0]} className="absolute pointer-events-none" style={byH ? {
-                          height: '100%', width: `${(R / C) * 100}%`,
-                          left: `${(1 - R / C) * 50}%`, top: '0%',
-                          transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                          height: '100%', width: 'auto',
+                          top: '0', left: '50%',
+                          transform: `translateX(-50%) translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                           transformOrigin: 'center center',
                         } : {
-                          width: '100%', height: `${(C / R) * 100}%`,
-                          left: '0%', top: `${(1 - C / R) * 50}%`,
-                          transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                          width: '100%', height: 'auto',
+                          left: '0', top: '50%',
+                          transform: `translateY(-50%) translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
                           transformOrigin: 'center center',
                         }} alt="img1" />;
                       })()}
@@ -704,14 +707,14 @@ const handleSave = async () => {
                         const C = (100 - splitRatio) / 100;
                         const byH = R >= C;
                         return <img src={images[1]} className="absolute pointer-events-none" style={byH ? {
-                          height: '100%', width: `${(R / C) * 100}%`,
-                          left: `${(1 - R / C) * 50}%`, top: '0%',
-                          transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                          height: '100%', width: 'auto',
+                          top: '0', left: '50%',
+                          transform: `translateX(-50%) translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
                           transformOrigin: 'center center',
                         } : {
-                          width: '100%', height: `${(C / R) * 100}%`,
-                          left: '0%', top: `${(1 - C / R) * 50}%`,
-                          transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                          width: '100%', height: 'auto',
+                          left: '0', top: '50%',
+                          transform: `translateY(-50%) translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
                           transformOrigin: 'center center',
                         }} alt="img2" />;
                       })()}
