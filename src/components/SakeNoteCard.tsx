@@ -106,7 +106,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
       {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
         <div className="px-3 pb-3 flex flex-wrap gap-1">
           {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
-            <Badge key={idx} variant="outline" className="text-[7px] py-0 h-4 border-primary/20 bg-primary/5 text-primary/70 font-bold flex items-center gap-0.5 uppercase">
+            <Badge key={idx} variant="outline" className="text-[7px] py-0 h-4 border-primary/20 bg-primary/5 text-primary/70 font-bold flex items-center gap-0.5 uppercase whitespace-nowrap">
               <Award className="w-2 h-2" /> {q}
             </Badge>
           ))}

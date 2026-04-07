@@ -941,7 +941,7 @@ export default function ProfilePage() {
                       : [...selectedQuals, q];
                     setPendingFormData((prev: any) => ({ ...prev, qualifications: updatedQuals }));
                   }}
-                  className={cn("px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors",
+                  className={cn("px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors whitespace-nowrap",
                     pendingFormData?.qualifications?.includes(q)
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-white/5 border-primary/30 text-muted-foreground"
@@ -955,7 +955,7 @@ export default function ProfilePage() {
             {(pendingFormData?.qualifications || []).filter((q: string) => !QUALIFICATION_OPTIONS.includes(q)).length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {(pendingFormData?.qualifications || []).filter((q: string) => !QUALIFICATION_OPTIONS.includes(q)).map((q: string) => (
-                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary">
+                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary whitespace-nowrap">
                     {q}
                     <button type="button" onClick={() => setPendingFormData((prev: any) => ({ ...prev, qualifications: (prev.qualifications || []).filter((v: string) => v !== q) }))} className="ml-0.5 opacity-60 hover:opacity-100">✕</button>
                   </span>
@@ -1113,7 +1113,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => setSelectedQuals(prev => prev.includes(q) ? prev.filter(v => v !== q) : [...prev, q])}
                   className={cn(
-                    "px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors",
+                    "px-2.5 py-1 rounded-full border text-[8px] font-bold transition-colors whitespace-nowrap",
                     selectedQuals.includes(q)
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-white/5 border-primary/30 text-muted-foreground"
@@ -1127,7 +1127,7 @@ export default function ProfilePage() {
             {selectedQuals.filter(q => !QUALIFICATION_OPTIONS.includes(q)).length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {selectedQuals.filter(q => !QUALIFICATION_OPTIONS.includes(q)).map((q) => (
-                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary">
+                  <span key={q} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/20 border border-primary/40 text-[8px] font-bold text-primary whitespace-nowrap">
                     {q}
                     <button type="button" onClick={() => setSelectedQuals(prev => prev.filter(v => v !== q))} className="ml-0.5 opacity-60 hover:opacity-100">✕</button>
                   </span>

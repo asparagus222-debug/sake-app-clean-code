@@ -149,7 +149,7 @@ function CardC({ note }: { note: typeof MOCK_NOTES[0] }) {
           {note.qualifications.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {note.qualifications.slice(0, 2).map((q, i) => (
-                <Badge key={i} variant="outline" className="text-[7px] py-0 h-4 border-pink-400/20 bg-pink-400/5 text-pink-400/70 font-bold flex items-center gap-0.5 uppercase">
+                <Badge key={i} variant="outline" className="text-[7px] py-0 h-4 border-pink-400/20 bg-pink-400/5 text-pink-400/70 font-bold flex items-center gap-0.5 uppercase whitespace-nowrap">
                   <Award className="w-2 h-2" /> {q}
                 </Badge>
               ))}
