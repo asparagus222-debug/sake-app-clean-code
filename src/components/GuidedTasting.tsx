@@ -244,7 +244,7 @@ function buildResult(answers: Record<string, string | string[]>): GuidedTastingR
   const as_ = getNum('astringency');
   const tasteOverall = get('tasteOverall');
   if (tasteOverall) {
-    parts.push(`【口感】${tasteOverall}，甜/酸/苦/旨/澀 ${sw}/${ac}/${bi}/${um}/${as_}`);
+    parts.push(`【口感】${tasteOverall}`);
   }
 
   // 尾韻
