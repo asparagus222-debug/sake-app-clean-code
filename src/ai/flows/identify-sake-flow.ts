@@ -148,12 +148,12 @@ export const identifySakeFlow = ai.defineFlow(
 
 【第一步】列出圖片上「所有」可見文字。
 【第二步】描述酒標視覺構圖：主色調、大型書道文字（直接寫出是哪個字，如「笑」「夢」「粋」）、有無印章、筆觸風格。
-【第三步】從文字和視覺共同判斷銘柄，並產生包含「書道大字本身」+「其他關鍵詞」的 searchQuery（例如：「笑 伝承乃技 純米大吟醸 日本酒」）。
+【第三步】從文字和視覺共同判斷銘柄，並產生包含「銘柄」+「酒造」+「日本酒」的 searchQuery（例如：「新政 No.6 新政酒造 日本酒」）。若圖中有多瓶酒，請辨識最清晰、標籤最完整的那一瓶。
 
-⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 要包含正確讀出的書道大字。${hasBackLabel ? '\n- 第一張圖（背標）有完整印刷銘柄文字，請從背標讀取作為主要資訊來源' : ''}
+⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 必須包含「日本酒」關鍵字，縮小搜尋至清酒領域。${hasBackLabel ? '\n- 第一張圖（背標）有完整印刷銘柄文字，請從背標讀取作為主要資訊來源' : ''}
 
 請回傳 JSON（不加 markdown）：
-{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"yeast":"使用酵母","searchQuery":"書道大字+其他搜尋詞"}`,
+{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"銘柄","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"yeast":"使用酵母","searchQuery":"銘柄+酒造+日本酒"}`,
         },
         { media: { url: primaryImage, contentType: 'image/jpeg' } },
         ...(secondaryImage ? [{ media: { url: secondaryImage, contentType: 'image/jpeg' } }] : []),
@@ -174,9 +174,11 @@ export const identifySakeFlow = ai.defineFlow(
     const allTextJoined = (vision.allText || []).join(' ');
     // isSuspiciousBrand 時：vision.searchQuery（含 Step 1 推斷的視覺關鍵詞）+ visualDescription（含書道大字名稱如「笑」）
     // 這樣能確保「笑 伝承乃技 純米大吟醸」進入 Google Search，找到 まるわらい 等用書道字命名的酒
+    // 確保搜尋詞一定帶有「日本酒」，縮小搜尋範圍至清酒領域
+    const appendSake = (q: string) => /日本酒|清酒/.test(q) ? q : `${q} 日本酒`;
     const searchQuery = isSuspiciousBrand
-      ? [`${vision.searchQuery || ''}`, `${vision.visualDescription || ''}`, '日本酒'].filter(Boolean).join(' ').trim()
-      : (vision.searchQuery || `${brandName} ${brewery} 日本酒`);
+      ? appendSake([`${vision.searchQuery || ''}`, `${vision.visualDescription || ''}`].filter(Boolean).join(' ').trim())
+      : appendSake(vision.searchQuery || `${brandName} ${brewery} 日本酒`);
 
     if (isSuspiciousBrand) {
       console.log(`[AI辨識] brandName "${brandName}" 疑為裝飾字，改用 allText 搜尋: ${searchQuery}`);
@@ -262,50 +264,19 @@ export const identifySakeFlow = ai.defineFlow(
       };
     }
 
-    // ── Step 2.5: 酒造名縮小搜尋（若 Step 2 返回的 brandName 是酒造名前綴）──
-    // 例：brandName "名城" 是 brewery "名城酒造" 的組成部分 → 再以酒造名+製法精確搜尋真正的銘柄
-    let finalEnriched = enriched;
-    if (isSuspiciousBrand && enriched.brandName && enriched.brewery) {
-      const isBrandLikeBrewery = enriched.brewery.includes(enriched.brandName) && enriched.brandName.length >= 2;
-      if (isBrandLikeBrewery) {
-        console.log(`[AI辨識] brandName "${enriched.brandName}" 疑似酒造名前綴，以酒造名再搜尋`);
-        const refinedQuery = `${enriched.brewery} ${(vision.specialProcess || []).join(' ')} 銘柄`;
-        const { output: refined } = await ai.generate({
-          model: googleAI.model('gemini-flash-latest'),
-          config: { googleSearchRetrieval: true },
-          output: { schema: IdentifySakeOutputSchema },
-          prompt: [{
-            text: `你是清酒資料庫專家。已確認此酒的酒造是「${enriched.brewery}」，特殊製法是「${JSON.stringify(vision.specialProcess || [])}」。
-
-請用 Google Search 搜尋「${refinedQuery}」，找出這家酒造出產的具體銘柄（品牌名）。
-
-⚠️ 重要：
-- 銘柄是品牌名（例如：まるわらい、而今、新政）
-- 不可將酒造名作為銘柄回傳（例如：「名城」「名城酒造」不是銘柄）
-- 所有文字保持日文原文，不要翻譯`,
-          }],
-        }).catch(() => ({ output: null }));
-        // 確認 refined 的 brandName 不是酒造名本身才採用
-        if (refined?.brandName && !enriched.brewery.includes(refined.brandName)) {
-          finalEnriched = { ...enriched, ...refined, brewery: refined.brewery || enriched.brewery };
-        }
-      }
-    }
-
-    // 合併結果：銘柄/酒造以視覺辨識為主，規格細節以搜尋為主（補充圖片看不到的）
-    // specialProcess 取聯集：圖片讀到的 + 搜尋補充的，兩者皆保留
-    // 例外：若視覺 brandName 疑為裝飾字（≤2字），以 Step 2/2.5 搜尋結果覆蓋
+    // 合併結果：銘柄/酒造以視覺辨識為主，規格細節以搜尋補充
+    // specialProcess 取聯集；若視覺 brandName 疑為裝飾字，以搜尋結果覆蓋
     return {
-      ...finalEnriched,
-      brandName: (!isSuspiciousBrand && brandName) ? brandName : finalEnriched.brandName,
-      brewery: brewery || finalEnriched.brewery,
-      origin: origin || finalEnriched.origin,
-      alcoholPercent: vision.alcoholPercent || finalEnriched.alcoholPercent || '',
-      seimaibuai: vision.seimaibuai || finalEnriched.seimaibuai || '',
-      riceName: vision.riceName || finalEnriched.riceName || '',
-      specialProcess: mergeUnique(vision.specialProcess || [], finalEnriched.specialProcess || []),
-      yeast: vision.yeast || finalEnriched.yeast || '',
-      smv: vision.smv || finalEnriched.smv || '',
+      ...enriched,
+      brandName: (!isSuspiciousBrand && brandName) ? brandName : enriched.brandName,
+      brewery: brewery || enriched.brewery,
+      origin: origin || enriched.origin,
+      alcoholPercent: vision.alcoholPercent || enriched.alcoholPercent || '',
+      seimaibuai: vision.seimaibuai || enriched.seimaibuai || '',
+      riceName: vision.riceName || enriched.riceName || '',
+      specialProcess: mergeUnique(vision.specialProcess || [], enriched.specialProcess || []),
+      yeast: vision.yeast || enriched.yeast || '',
+      smv: vision.smv || enriched.smv || '',
     };
   }
 );

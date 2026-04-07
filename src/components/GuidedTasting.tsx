@@ -357,32 +357,25 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center overflow-y-auto pb-6">
-          <div className="text-5xl mb-4">🍶</div>
-          <h1 className="text-2xl font-bold text-white tracking-wide mb-2">引導式品鑒</h1>
-          <p className="text-white/45 text-sm leading-relaxed mb-8 max-w-xs">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center overflow-y-auto pb-4">
+          <div className="text-4xl mb-2">🍶</div>
+          <h1 className="text-xl font-bold text-white tracking-wide mb-1">引導式品鑒</h1>
+          <p className="text-white/45 text-xs leading-relaxed mb-4 max-w-xs">
             跟著步驟完成品評，系統自動填入評分與品飲描述，共 {QUESTIONS.length} 個問題
           </p>
 
-          <div className="w-full space-y-2 max-w-sm">
+          <div className="w-full grid grid-cols-2 gap-1.5 max-w-sm">
             {SECTIONS.map((s, i) => {
               const count = QUESTIONS.filter(q => q.section === s).length;
               return (
                 <div
                   key={s}
-                  className="flex items-center gap-3 rounded-2xl px-4 py-3"
+                  className="flex items-center gap-2 rounded-xl px-3 py-2"
                   style={{ background: `${SECTION_COLORS[s]}14`, border: `1px solid ${SECTION_COLORS[s]}28` }}
                 >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0"
-                    style={{ background: `${SECTION_COLORS[s]}22` }}
-                  >
-                    {SECTION_ICONS[s]}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="text-sm font-bold text-white/80">{s}</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-white/30">{count} 題</span>
+                  <span className="text-sm shrink-0">{SECTION_ICONS[s]}</span>
+                  <span className="text-xs font-bold text-white/80 flex-1 text-left">{s}</span>
+                  <span className="text-[9px] font-bold text-white/30">{count}</span>
                 </div>
               );
             })}

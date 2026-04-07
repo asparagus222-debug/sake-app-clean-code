@@ -654,24 +654,19 @@ const handleSave = async () => {
 
         {/* 照片聚焦編輯 */}
         <section className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center justify-between gap-2 px-1">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest shrink-0">照片聚焦編輯</Label>
-            <div className="flex gap-1.5 flex-1 justify-center">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => setShowGuidedTasting(true)}>
                 <ListChecks className="w-2.5 h-2.5 mr-1" /> 引導品鑒
               </Button>
-              <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-6 rounded-full border-white/15 text-white/30 bg-transparent cursor-not-allowed" disabled>
-                <ClipboardCheck className="w-2.5 h-2.5 mr-1" /> 專業品鑒表
-              </Button>
-            </div>
-            <div className="flex gap-1.5 shrink-0">
               {images.length > 0 && (
-                <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')}>
-                  <Camera className="w-2.5 h-2.5 mr-1" /> 重選
+                <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 px-2 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')} title="重選圖片">
+                  <Camera className="w-3 h-3" />
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2}>
-                <Repeat className="w-2.5 h-2.5 mr-1" /> 換位
+              <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 px-2 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2} title="換位">
+                <Repeat className="w-3 h-3" />
               </Button>
             </div>
           </div>
