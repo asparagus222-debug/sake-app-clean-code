@@ -147,11 +147,26 @@ export default function Home() {
   }, [firestore]);
   const { data: latestNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(latestNotesQuery);
 
-  // 若超過 15 秒仍無資料，顯示空狀態 + 重新整理按鈕，避免無限轉圈
+  // 若超過時限仍無資料，自動重整（今天第一次）或顯示手動重整按鈕（同日後續次）
   const [notesTimedOut, setNotesTimedOut] = useState(false);
   useEffect(() => {
-    if (latestNotes !== null) { setNotesTimedOut(false); return; }
-    const t = setTimeout(() => setNotesTimedOut(true), 15000);
+    if (latestNotes !== null) {
+      setNotesTimedOut(false);
+      localStorage.setItem('sakeLastLoadDate', new Date().toDateString());
+      return;
+    }
+    const lastLoadDate = localStorage.getItem('sakeLastLoadDate');
+    const isFirstVisitToday = lastLoadDate !== new Date().toDateString();
+    // 今天第一次：3 秒沒資料就自動 reload（讓 IndexedDB 暖機後重載）
+    // 同日後續：快取應已熱，15 秒無資料才顯示手動重整
+    const delay = isFirstVisitToday ? 3000 : 15000;
+    const t = setTimeout(() => {
+      if (isFirstVisitToday) {
+        window.location.reload();
+      } else {
+        setNotesTimedOut(true);
+      }
+    }, delay);
     return () => clearTimeout(t);
   }, [latestNotes]);
 
