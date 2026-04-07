@@ -617,7 +617,7 @@ const handleSave = async () => {
     }
 
     toast({ title: "筆記已發布" });
-    router.push('/');
+    window.location.replace('/');
   } catch (err) {
     toast({ variant: "destructive", title: "儲存失敗" });
     setIsSaving(false);
@@ -627,7 +627,7 @@ const handleSave = async () => {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="text-primary hover:bg-primary/10 transition-colors"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => window.location.replace('/')} className="text-primary hover:bg-primary/10 transition-colors"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">建立品飲筆記</h1>
       </div>
 

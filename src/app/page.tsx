@@ -337,7 +337,7 @@ export default function Home() {
             </div>
 
             <TabsContent value="latest" className="mt-0">
-              {isNotesLoading ? (
+              {(isNotesLoading || latestNotes === null) ? (
                 <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
               ) : (() => {
                 const total = latestNotes?.length ?? 0;
