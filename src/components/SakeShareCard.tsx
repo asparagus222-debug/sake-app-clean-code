@@ -95,6 +95,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const imgBoxRef = useRef<HTMLDivElement>(null);
   const [previewFrameSize, setPreviewFrameSize] = useState(0);
+  const cardImageSizeRef = useRef(0); // card image box px — used for offset scaling
   // Use refs for live values so native event handlers always see latest state
   const editorOffsetRef = useRef({ x: 0, y: 0 });
   const editorZoomRef = useRef(1);
@@ -200,18 +201,28 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   }, [showImgEditor]);
 
   const openImgEditor = () => {
-    // Measure the actual rendered image box — rounds to integer to avoid sub-pixel jitter
-    if (imgBoxRef.current) {
-      setPreviewFrameSize(Math.round(imgBoxRef.current.getBoundingClientRect().width));
-    }
-    editorOffsetRef.current = { ...imgOffset };
+    const cardSize = imgBoxRef.current
+      ? Math.round(imgBoxRef.current.getBoundingClientRect().width)
+      : 160;
+    cardImageSizeRef.current = cardSize;
+    // Make the orange frame fill ~85% of the usable editor canvas (viewport minus two toolbars ~110px)
+    const editorFrameSize = Math.round(
+      Math.min(window.innerWidth * 0.88, (window.innerHeight - 110) * 0.88)
+    );
+    setPreviewFrameSize(editorFrameSize);
+    // Scale existing card-space offset up into editor-space so the crop is shown correctly
+    const upScale = editorFrameSize / cardSize;
+    const scaledOffset = { x: imgOffset.x * upScale, y: imgOffset.y * upScale };
+    editorOffsetRef.current = scaledOffset;
     editorZoomRef.current = imgZoom;
-    setEditorOffset(imgOffset);
+    setEditorOffset(scaledOffset);
     setEditorZoom(imgZoom);
     setShowImgEditor(true);
   };
   const confirmImgEdit = () => {
-    setImgOffset(editorOffset);
+    // Scale editor-space offset back down to card-space
+    const downScale = cardImageSizeRef.current / previewFrameSize;
+    setImgOffset({ x: editorOffset.x * downScale, y: editorOffset.y * downScale });
     setImgZoom(editorZoom);
     setShowImgEditor(false);
   };
