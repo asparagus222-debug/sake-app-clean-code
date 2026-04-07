@@ -676,14 +676,13 @@ const handleSave = async () => {
                 {images.length === 2 ? (
                   <>
                     <div className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
-                      {/* 雙圖模式：以 px 精確定位 cover，避免百分比在非正方形容器中拉伸 */}
+                      {/* 雙圖模式：contain 定位，顯示完整圖片，作者自行平移/縮放構圖 */}
                       {(() => {
                         const R = imgRatios[0] || 1;
                         const C = splitRatio / 100; // sub-container aspect (W/H), H = total square side
-                        // cover by height: img height = 100%, img width = R/C * 100% of container width
-                        // cover by width:  img width  = 100%, img height = C/R * 100% of container height
-                        // always set only ONE dimension explicitly + the other as 'auto' to prevent stretch
-                        const byH = R >= C;
+                        // contain by height: R < C → image taller → fill height, center horizontally
+                        // contain by width:  R >= C → image wider  → fill width,  center vertically
+                        const byH = R < C;
                         return <img src={images[0]} className="absolute pointer-events-none" style={byH ? {
                           height: '100%', width: 'auto',
                           top: '0', left: '50%',
@@ -705,7 +704,7 @@ const handleSave = async () => {
                       {(() => {
                         const R = imgRatios[1] || 1;
                         const C = (100 - splitRatio) / 100;
-                        const byH = R >= C;
+                        const byH = R < C;
                         return <img src={images[1]} className="absolute pointer-events-none" style={byH ? {
                           height: '100%', width: 'auto',
                           top: '0', left: '50%',
