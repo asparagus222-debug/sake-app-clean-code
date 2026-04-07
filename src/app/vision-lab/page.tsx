@@ -12,6 +12,7 @@ interface MatchImage { url: string; }
 interface PageMatch { url: string; pageTitle: string; fullMatchingImages?: MatchImage[]; }
 interface Extracted { brandName: string; brewery: string; origin: string; alcoholPercent: string; }
 interface VisionResult {
+  ocrText: string;
   webEntities: WebEntity[];
   fullMatchingImages: MatchImage[];
   partialMatchingImages: MatchImage[];
@@ -196,6 +197,14 @@ export default function VisionLabPage() {
                     </div>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {/* OCR Raw Text */}
+            {result.ocrText && (
+              <section>
+                <SectionTitle icon={<Tag className="w-3.5 h-3.5" />} title="OCR 辨識文字" />
+                <pre className="mt-2 bg-white/5 rounded-xl px-3 py-2.5 text-[11px] text-white/60 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{result.ocrText}</pre>
               </section>
             )}
 

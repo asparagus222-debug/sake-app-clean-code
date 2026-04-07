@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
- * Cloud Vision API — WEB_DETECTION + Gemini 萃取
- * Step 1: Cloud Vision WEB_DETECTION（以圖搜圖）
- * Step 2: Gemini Flash 從 web entities / page titles 萃取銘柄/酒造/產地/酒精濃度
+ * Cloud Vision API — TEXT_DETECTION + WEB_DETECTION（單一請求）+ Gemini 萃取
+ * Step 1: 一次 Vision 呼叫同時取得 OCR 文字 + 以圖搜圖結果
+ * Step 2: Gemini Flash 結合兩組資訊萃取銘柄/酒造/產地/酒精濃度
  */
 
 interface WebDetectionResult {
@@ -22,30 +22,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'photoDataUri is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
+    const visionKey = process.env.GOOGLE_CLOUD_VISION_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (!visionKey) {
       return NextResponse.json({ error: 'Google API key not configured (set GOOGLE_CLOUD_VISION_API_KEY)' }, { status: 500 });
     }
 
-    // Strip the data URI prefix to get raw base64
     const base64 = photoDataUri.replace(/^data:image\/\w+;base64,/, '');
-    const mimeMatch = photoDataUri.match(/^data:(image\/\w+);base64,/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
 
+    // ── Step 1: 單一 Vision 請求，同時做 OCR + WEB_DETECTION ──
     const body = {
       requests: [
         {
           image: { content: base64 },
-          features: [{ type: 'WEB_DETECTION', maxResults: 20 }],
-          imageContext: {
-            webDetectionParams: { includeGeoResults: false },
-          },
+          features: [
+            { type: 'DOCUMENT_TEXT_DETECTION' },   // 完整 OCR（比 TEXT_DETECTION 更適合印刷體）
+            { type: 'WEB_DETECTION', maxResults: 20 },
+          ],
         },
       ],
     };
 
     const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+      `https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,50 +58,58 @@ export async function POST(req: NextRequest) {
     }
 
     const json = await response.json();
-    const annotation = json.responses?.[0]?.webDetection as WebDetectionResult | undefined;
+    const visionResponse = json.responses?.[0];
+    const annotation = visionResponse?.webDetection as WebDetectionResult | undefined;
+    const ocrText: string = visionResponse?.fullTextAnnotation?.text || '';
 
-    if (!annotation) {
-      return NextResponse.json({ error: 'No web detection result returned' }, { status: 500 });
+    if (!annotation && !ocrText) {
+      return NextResponse.json({ error: 'No results returned from Vision API' }, { status: 500 });
     }
 
     const visionData = {
-      webEntities: annotation.webEntities || [],
-      fullMatchingImages: annotation.fullMatchingImages || [],
-      partialMatchingImages: annotation.partialMatchingImages || [],
-      pagesWithMatchingImages: (annotation.pagesWithMatchingImages || []).slice(0, 10),
-      bestGuessLabels: annotation.bestGuessLabels || [],
+      ocrText,
+      webEntities: annotation?.webEntities || [],
+      fullMatchingImages: annotation?.fullMatchingImages || [],
+      partialMatchingImages: annotation?.partialMatchingImages || [],
+      pagesWithMatchingImages: (annotation?.pagesWithMatchingImages || []).slice(0, 10),
+      bestGuessLabels: annotation?.bestGuessLabels || [],
     };
 
-    // ── Step 2: Gemini Flash 從 Vision 結果萃取清酒欄位 ──
+    // ── Step 2: Gemini Flash 結合 OCR + Web 資訊萃取欄位 ──
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
     let extracted: { brandName: string; brewery: string; origin: string; alcoholPercent: string } | null = null;
 
-    if (geminiKey && (visionData.webEntities.length > 0 || visionData.pagesWithMatchingImages.length > 0)) {
+    if (geminiKey) {
       try {
         const genAI = new GoogleGenerativeAI(geminiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
         const entitiesText = visionData.webEntities
           .filter(e => e.description)
-          .map(e => `${e.description}（信心 ${(e.score * 100).toFixed(0)}%）`)
+          .map(e => `${e.description}（${(e.score * 100).toFixed(0)}%）`)
           .join('、');
         const labelsText = visionData.bestGuessLabels.map(l => l.label).join('、');
         const pageTitles = visionData.pagesWithMatchingImages
-          .map(p => p.pageTitle)
-          .filter(Boolean)
-          .slice(0, 8)
-          .join('\n');
+          .map(p => p.pageTitle).filter(Boolean).slice(0, 6).join('\n');
 
-        const prompt = `你是清酒資料庫專家。以下是對一張清酒酒標圖片進行以圖搜圖後得到的 Google Cloud Vision 結果。
-請根據這些資訊，推斷這款酒的基本資料，回傳 JSON。
+        const prompt = `你是清酒資料庫專家。以下是對一張清酒酒標圖片的分析結果，包含 OCR 文字和以圖搜圖資料。
+請綜合判斷，萃取這款酒的基本資料，回傳純 JSON（不要 markdown）。
+
+【OCR 辨識文字】
+${ocrText || '（無）'}
 
 【Best Guess Labels】${labelsText || '無'}
 【Web Entities】${entitiesText || '無'}
 【相關網頁標題】
 ${pageTitles || '無'}
 
-請回傳以下格式（純 JSON，不要 markdown）：
-{"brandName":"銘柄（日文原文，不確定填空字串）","brewery":"酒造（日文原文，不確定填空字串）","origin":"產地縣（日文原文，不確定填空字串）","alcoholPercent":"酒精濃度如 16度，不確定填空字串"}`;
+規則：
+1. 銘柄優先從 OCR 文字中找，再參考 Web Entities 確認
+2. 酒精濃度從 OCR 文字讀取（格式如「16度」「16%」）
+3. 不確定的欄位填空字串，不要猜測
+4. 保持日文原文
+
+{"brandName":"","brewery":"","origin":"","alcoholPercent":""}`;
 
         const result = await model.generateContent(prompt);
         const raw = result.response.text().trim().replace(/^```json\n?|```$/g, '').trim();
