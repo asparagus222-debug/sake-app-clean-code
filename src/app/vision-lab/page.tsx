@@ -10,12 +10,14 @@ import Link from 'next/link';
 interface WebEntity { entityId: string; score: number; description: string; }
 interface MatchImage { url: string; }
 interface PageMatch { url: string; pageTitle: string; fullMatchingImages?: MatchImage[]; }
+interface Extracted { brandName: string; brewery: string; origin: string; alcoholPercent: string; }
 interface VisionResult {
   webEntities: WebEntity[];
   fullMatchingImages: MatchImage[];
   partialMatchingImages: MatchImage[];
   pagesWithMatchingImages: PageMatch[];
   bestGuessLabels: { label: string; languageCode: string }[];
+  extracted: Extracted | null;
 }
 
 async function resizeImage(base64: string, maxDimension = 1024): Promise<string> {
@@ -171,6 +173,31 @@ export default function VisionLabPage() {
             <p className="text-[11px] text-white/30 text-right tracking-wider">
               回應時間：{elapsed ? `${(elapsed / 1000).toFixed(2)}s` : '—'}
             </p>
+
+            {/* Extracted sake info — shown first and prominently */}
+            {result.extracted && (
+              <section className="bg-primary/10 border border-primary/30 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Gemini 萃取結果</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: '銘柄', value: result.extracted.brandName },
+                    { label: '酒造', value: result.extracted.brewery },
+                    { label: '產地', value: result.extracted.origin },
+                    { label: '酒精濃度', value: result.extracted.alcoholPercent },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-black/30 rounded-xl px-3 py-2">
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{label}</p>
+                      <p className={cn("text-sm font-bold", value ? 'text-white' : 'text-white/20')}>
+                        {value || '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Best Guess Labels */}
             {result.bestGuessLabels.length > 0 && (
