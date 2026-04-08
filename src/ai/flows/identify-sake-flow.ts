@@ -102,10 +102,14 @@ export const identifySakeFlow = ai.defineFlow(
     const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
 
     // ── Step 0: Cloud Vision 快速預檢（OCR + WEB_DETECTION，約 0.5-1.5 秒）──
-    // 優先送背標，背標印刷文字清晰、OCR 準確率高
+    // 背標與正標並行送 Vision：背標取規格、正標補銘柄，合併使用
     const primaryDataUri = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
     const primaryBase64 = primaryDataUri.split(',')[1] || '';
-    const { ocrText: vOcr, webEntities: vWebEntities } = await callCloudVision(primaryBase64);
+    const frontBase64 = hasBackLabel ? (input.photoDataUri?.split(',')[1] || '') : '';
+    const [{ ocrText: vOcr, webEntities: vWebEntities }, { ocrText: frontOcr }] = await Promise.all([
+      callCloudVision(primaryBase64),
+      frontBase64 ? callCloudVision(frontBase64) : Promise.resolve({ ocrText: '', webEntities: [], bestGuessLabel: '' }),
+    ]);
 
     // 篩選高信心日文實體（score > 0.65，且含日文字元）
     const highConfEntities = vWebEntities
@@ -125,27 +129,35 @@ export const identifySakeFlow = ai.defineFlow(
         model: googleAI.model('gemini-flash-latest'),
         output: { schema: IdentifySakeOutputSchema },
         prompt: [{
-          text: `你是清酒辨識專家。請結合以下兩組資訊，填入完整的清酒規格。
+          text: `你是清酒辨識專家。請結合以下資訊，填入完整的清酒規格。
 
-【Cloud Vision OCR 辨識文字（直接從圖片讀取）】
+【背標 OCR 文字（規格主要來源：酒精濃度、精米步合、使用米等）】
 ${vOcr}
 
-【Google 以圖搜圖高信心比對結果（可直接採用）】
+${frontOcr ? `【正標 OCR 文字（銘柄/品牌名主要來源，如英文或藝術字銘柄）】
+${frontOcr}
+
+` : ''}【Google 以圖搜圖高信心比對結果（可輔助確認銘柄/酒造）】
 ${webSummary}
 
 填寫規則：
-1. 銘柄/酒造：優先採用 Google 比對結果，OCR 可補充確認
-2. 酒精濃度、精米步合等數值：從 OCR 文字讀取（數值以圖片為準，不可推測）
-3. 日本酒度 (SMV) 若 OCR 有印出（如「日本酒度 +5」「+3」「±0」），填入 smv 欄位
-4. specialProcess：只填 OCR 或比對結果中明確出現的製法詞
-5. 保持日文原文，不要翻譯`,
+1. 銘柄：優先從「正標 OCR」讀取（正標通常印有品牌名），若正標無明確銘柄再從背標或 Google 比對確認
+2. 酒造：從背標 OCR 讀取，Google 比對可輔助確認
+3. 酒精濃度、精米步合等數值：從背標 OCR 讀取（以背標為準，不可推測）
+4. 若正標銘柄與背標資訊有矛盾，以背標明確印刷文字為準
+5. 日本酒度 (SMV) 若 OCR 有印出（如「日本酒度 +5」「+3」「±0」），填入 smv 欄位
+6. specialProcess：只填 OCR 或比對結果中明確出現的製法詞
+7. 保持日文原文，不要翻譯`,
         }],
       }).catch(() => ({ output: null }));
 
-      if (fastResult?.brandName && fastResult?.brewery) {
+      // brandName === brewery 代表沒找到真正銘柄，以酒造名頂替，視為失敗
+      const isBrandSameAsBrewery = fastResult?.brandName && fastResult?.brandName === fastResult?.brewery;
+      if (fastResult?.brandName && fastResult?.brewery && !isBrandSameAsBrewery) {
         console.log(`[AI辨識] 快速通道成功 ✓ ${fastResult.brandName} / ${fastResult.brewery}`);
         return fastResult;
       }
+      if (isBrandSameAsBrewery) console.log('[AI辨識] 快速通道銘柄=酒造，疑似未找到真正銘柄，回退');
       console.log('[AI辨識] 快速通道萃取不完整，回退至標準流程');
     }
 
@@ -160,20 +172,28 @@ ${webSummary}
         output: { schema: IdentifySakeOutputSchema },
         prompt: useTextOcr ? [
           {
-            text: `你是清酒背標文字辨識專家。以下是 Cloud Vision OCR 從背標讀取的完整文字：
+            text: `你是清酒酒標文字辨識專家。以下是 Cloud Vision OCR 分別從背標與正標讀取的完整文字：
 
+【背標 OCR（規格主要來源）】
 \`\`\`
 ${vOcr}
 \`\`\`
 
-請從以上文字提取所有清酒規格，逐行對照填入對應欄位。
+${frontOcr ? `【正標 OCR（銘柄/品牌名來源）】
+\`\`\`
+${frontOcr}
+\`\`\`
+
+` : ''}請結合兩張標籤的資訊填入清酒規格。
 
 ⚠️ 重要規則：
-- 所有欄位請「100% 從 OCR 文字讀取」，不要推測或補充文字中沒有的資訊
-- 酒精濃度、精米步合、種別 必須與文字完全一致，不可填入推測值
+- 銘柄：優先從正標 OCR 讀取（正標通常印有品牌名，如 VEGA、英文或書法字）
+- 酒精濃度、精米步合、種別等規格數值：從背標 OCR 讀取，必須與文字完全一致，不可推測
+- 若正標銘柄與背標資訊有矛盾，以背標明確印刷文字為準
 - 日本酒度 (SMV) 若文字中有印出（如「日本酒度 +5」「+3」「±0」），請填入 smv 欄位
 - 保持日文原文，不要翻譯`,
           },
+          ...(input.photoDataUri ? [{ media: { url: input.photoDataUri, contentType: 'image/jpeg' } }] : []),
         ] : [
           {
             text: `你是清酒背標文字辨識專家。請仔細讀取圖片上所有印刷文字，逐字逐行填入對應欄位。
