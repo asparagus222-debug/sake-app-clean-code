@@ -162,6 +162,8 @@ export default function Home() {
     const delay = isFirstVisitToday ? 3000 : 15000;
     const t = setTimeout(() => {
       if (isFirstVisitToday) {
+        // 先記錄日期再 reload，避免 reload 後資料仍未到造成無限循環
+        localStorage.setItem('sakeLastLoadDate', new Date().toDateString());
         window.location.reload();
       } else {
         setNotesTimedOut(true);
