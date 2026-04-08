@@ -27,7 +27,8 @@ import {
   LifeBuoy,
   Eye,
   Fingerprint,
-  Gift
+  Gift,
+  Check
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -84,6 +85,17 @@ export default function AdminPage() {
   const [sponsorUserId, setSponsorUserId] = useState('');
   const [sponsorAmount, setSponsorAmount] = useState('');
   const [isSponsorSaving, setIsSponsorSaving] = useState(false);
+
+  // 相似銘柄偵測
+  type SimilarGroup = {
+    key: string;
+    canonical: string;
+    entries: Array<{ noteId: string; brandName: string; brewery: string; username: string }>;
+  };
+  const [similarGroups, setSimilarGroups] = useState<SimilarGroup[]>([]);
+  const [isFindingSimilar, setIsFindingSimilar] = useState(false);
+  const [mergingKey, setMergingKey] = useState<string | null>(null);
+  const [groupCanonicals, setGroupCanonicals] = useState<Record<string, string>>({});
 
   // 權限檢查
   const isAdmin = user && user.email && ADMIN_EMAILS.includes(user.email);
@@ -184,6 +196,110 @@ export default function AdminPage() {
     }
   };
 
+  // ── 相似銘柄偵測 ──
+  const levenshtein = (a: string, b: string): number => {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+    for (let i = 1; i <= a.length; i++)
+      for (let j = 1; j <= b.length; j++)
+        dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));
+    return dp[a.length][b.length];
+  };
+
+  const normKey = (s: string) => s.replace(/\s*[\(（][^\)）]{0,80}[\)）]\s*/g,'').trim().toLowerCase().replace(/\s+/g,'');
+
+  const handleFindSimilar = () => {
+    if (!notes) return;
+    setIsFindingSimilar(true);
+    try {
+      // 統計每個 brandName 出現次數
+      const countMap: Record<string, number> = {};
+      for (const n of notes as any[]) {
+        const k = normKey(n.brandName || '');
+        if (k) countMap[k] = (countMap[k] || 0) + 1;
+      }
+      // 以 normKey 為群組，先做 exact grouping
+      const exactGroups: Record<string, SimilarGroup> = {};
+      for (const n of notes as any[]) {
+        const k = normKey(n.brandName || '');
+        if (!k) continue;
+        if (!exactGroups[k]) exactGroups[k] = { key: k, canonical: n.brandName, entries: [] };
+        exactGroups[k].entries.push({ noteId: n.id, brandName: n.brandName, brewery: n.brewery || '', username: n.username || '' });
+      }
+      // 依出現次數選 canonical（取最常見的寫法）
+      for (const g of Object.values(exactGroups)) {
+        const freq: Record<string, number> = {};
+        for (const e of g.entries) freq[e.brandName] = (freq[e.brandName] || 0) + 1;
+        g.canonical = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
+      }
+      // fuzzy merge：若兩個 exactGroup 的 key 相似度 ≤ 2（且 key 長度 ≥ 2），合併
+      const keys = Object.keys(exactGroups);
+      const merged = new Set<string>();
+      const fuzzyGroups: SimilarGroup[] = [];
+      for (let i = 0; i < keys.length; i++) {
+        if (merged.has(keys[i])) continue;
+        const base = exactGroups[keys[i]];
+        for (let j = i+1; j < keys.length; j++) {
+          if (merged.has(keys[j])) continue;
+          const ka = keys[i], kb = keys[j];
+          const maxLen = Math.max(ka.length, kb.length);
+          if (maxLen < 2) continue;
+          const dist = levenshtein(ka, kb);
+          const isSimilar = dist <= Math.min(2, Math.floor(maxLen * 0.3));
+          const isSubstring = ka.includes(kb) || kb.includes(ka);
+          if (isSimilar || isSubstring) {
+            base.entries.push(...exactGroups[keys[j]].entries);
+            merged.add(keys[j]);
+          }
+        }
+        // 只收錄有多種不同寫法的群組
+        const uniqueNames = new Set(base.entries.map(e => e.brandName));
+        if (uniqueNames.size > 1) {
+          // 重新選 canonical
+          const freq: Record<string, number> = {};
+          for (const e of base.entries) freq[e.brandName] = (freq[e.brandName]||0)+1;
+          base.canonical = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
+          fuzzyGroups.push(base);
+        }
+        merged.add(keys[i]);
+      }
+      fuzzyGroups.sort((a,b) => b.entries.length - a.entries.length);
+      setSimilarGroups(fuzzyGroups);
+      const initCanonicals: Record<string, string> = {};
+      for (const g of fuzzyGroups) initCanonicals[g.key] = g.canonical;
+      setGroupCanonicals(initCanonicals);
+    } finally {
+      setIsFindingSimilar(false);
+    }
+  };
+
+  const handleMergeGroup = async (group: SimilarGroup) => {
+    if (!firestore) return;
+    const target = groupCanonicals[group.key] || group.canonical;
+    setMergingKey(group.key);
+    try {
+      const { writeBatch } = await import('firebase/firestore');
+      const batch = writeBatch(firestore);
+      let count = 0;
+      for (const e of group.entries) {
+        if (e.brandName !== target) {
+          batch.update(doc(firestore, 'sakeTastingNotes', e.noteId), { brandName: target });
+          count++;
+        }
+      }
+      if (count > 0) await batch.commit();
+      setSimilarGroups(prev => prev.filter(g => g.key !== group.key));
+      toast({ title: `已將 ${count} 筆修正為「${target}」` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '合併失敗', description: err.message });
+    } finally {
+      setMergingKey(null);
+    }
+  };
+
   // 批次清理酒標名稱（去除括號翻譯）
   const handleCleanNames = async () => {
     if (!firestore || !notes) return;
@@ -279,7 +395,8 @@ export default function AdminPage() {
         </header>
 
         <Tabs defaultValue="notes" className="space-y-6" onValueChange={setActiveTab}>
-          <TabsList className="bg-white/5 border border-white/10 rounded-full p-1 h-12 flex overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div className="overflow-x-auto scrollbar-hide w-full">
+          <TabsList className="bg-white/5 border border-white/10 rounded-full p-1 h-12 flex whitespace-nowrap min-w-max">
             <TabsTrigger value="notes" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
               <FileText className="w-3 h-3 mr-1.5" /> 貼文管理
             </TabsTrigger>
@@ -296,6 +413,7 @@ export default function AdminPage() {
               <Gift className="w-3 h-3 mr-1.5" /> 贊助徽章
             </TabsTrigger>
           </TabsList>
+        </div>
 
           <TabsContent value="notes" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between mb-6 px-2">
@@ -525,6 +643,89 @@ export default function AdminPage() {
                 </div>
                 {cleanResult && (
                   <div className="text-[10px] font-bold text-green-400 bg-green-400/10 rounded-xl px-3 py-2">{cleanResult}</div>
+                )}
+              </div>
+
+              {/* 相似銘柄偵測 */}
+              <div>
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary mb-1">相似銘柄偵測</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  分析所有貼文的銘柄，找出拼法相近（多字、少字、漢字差異）的疑似重複銘柄，由管理者確認是否合併。
+                </p>
+              </div>
+              <div className="bg-white/5 rounded-2xl border border-white/10 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold">Step 2：偵測相似銘柄</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">比對 {notes?.length || 0} 筆紀錄的銘柄相似度，列出疑似重複的群組</p>
+                  </div>
+                  <Button className="rounded-full text-[10px] font-bold uppercase" disabled={isFindingSimilar || isNotesLoading} onClick={handleFindSimilar}>
+                    {isFindingSimilar ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />分析中...</> : <><AlertCircle className="w-3 h-3 mr-1.5" />開始分析</>}
+                  </Button>
+                </div>
+
+                {similarGroups.length === 0 && !isFindingSimilar && (
+                  <p className="text-[10px] text-muted-foreground italic text-center py-2">點擊「開始分析」以偵測相似銘柄</p>
+                )}
+
+                {similarGroups.map(group => {
+                  const uniqueNames = [...new Set(group.entries.map(e => e.brandName))];
+                  const selectedCanonical = groupCanonicals[group.key] || group.canonical;
+                  return (
+                    <div key={group.key} className="bg-white/5 rounded-2xl border border-primary/20 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                          疑似重複：{group.entries.length} 筆紀錄
+                        </p>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" className="rounded-full text-[9px] font-bold uppercase h-7 px-3" disabled={mergingKey === group.key}>
+                              {mergingKey === group.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Check className="w-3 h-3 mr-1" />確認合併</>}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem]">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-primary uppercase tracking-widest font-bold">確認合併？</AlertDialogTitle>
+                              <AlertDialogDescription className="text-xs leading-relaxed">
+                                將此群組所有變體統一改為「{selectedCanonical}」，共更新 {group.entries.filter(e => e.brandName !== selectedCanonical).length} 筆紀錄。此操作不可復原。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleMergeGroup(group)} className="rounded-full text-[10px] font-bold uppercase">確認合併</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+
+                      {/* 各變體選擇 canonical */}
+                      <div className="space-y-1.5">
+                        {uniqueNames.map(name => {
+                          const count = group.entries.filter(e => e.brandName === name).length;
+                          const isSelected = selectedCanonical === name;
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => setGroupCanonicals(prev => ({ ...prev, [group.key]: name }))}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-left transition-all text-[10px] font-bold ${isSelected ? 'bg-primary/20 border-primary/60 text-primary' : 'bg-white/5 border-white/10 text-muted-foreground hover:border-white/30'}`}
+                            >
+                              <span>{name}</span>
+                              <span className="flex items-center gap-2">
+                                <span className="opacity-60">{count} 筆</span>
+                                {isSelected && <Check className="w-3 h-3" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">點選正確寫法作為合併目標（橘色 = 已選）</p>
+                    </div>
+                  );
+                })}
+
+                {similarGroups.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center">共 {similarGroups.length} 組疑似重複銘柄</p>
                 )}
               </div>
             </div>
