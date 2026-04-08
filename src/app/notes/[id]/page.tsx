@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useUser, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, orderBy, updateDoc } from 'firebase/firestore';
@@ -60,6 +59,113 @@ const RatingDots = ({ value }: { value: number }) => {
         />
       ))}
     </div>
+  );
+};
+
+const NoteHeroImage = ({
+  imageUrls,
+  imageOriginals,
+  imageTransforms,
+  imageSplitRatio,
+  alt,
+}: {
+  imageUrls?: string[];
+  imageOriginals?: string[];
+  imageTransforms?: Array<{ x: number; y: number; scale: number }>;
+  imageSplitRatio?: number;
+  alt: string;
+}) => {
+  const sources = React.useMemo(
+    () => (imageOriginals && imageOriginals.length > 0 ? imageOriginals : (imageUrls || [])),
+    [imageOriginals, imageUrls]
+  );
+  const [imgRatios, setImgRatios] = React.useState<number[]>([1, 1]);
+
+  React.useEffect(() => {
+    if (!sources.length) return;
+    let cancelled = false;
+    sources.forEach((src, idx) => {
+      const img = new window.Image();
+      img.onload = () => {
+        if (cancelled) return;
+        const ratio = img.width && img.height ? img.width / img.height : 1;
+        setImgRatios(prev => {
+          const next = [...prev];
+          next[idx] = ratio;
+          return next;
+        });
+      };
+      img.onerror = () => {
+        if (cancelled) return;
+        setImgRatios(prev => {
+          const next = [...prev];
+          next[idx] = 1;
+          return next;
+        });
+      };
+      img.src = src;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sources]);
+
+  if (!sources[0]) {
+    return (
+      <div className="flex items-center justify-center w-full h-full text-muted-foreground/30 text-[10px] font-bold">
+        NO PHOTO
+      </div>
+    );
+  }
+
+  const transforms = imageTransforms || sources.map(() => ({ x: 0, y: 0, scale: 1 }));
+
+  return (
+    <>
+      {sources.length === 2 ? (
+        <>
+          <div className="h-full relative overflow-hidden" style={{ width: `${imageSplitRatio || 50}%` }}>
+            <img
+              src={sources[0]}
+              alt={`${alt}-1`}
+              className="w-full h-full object-cover pointer-events-none"
+              style={{
+                transform: `translate(${transforms[0]?.x || 0}px, ${transforms[0]?.y || 0}px) scale(${transforms[0]?.scale || 1})`,
+                transformOrigin: 'center center',
+              }}
+            />
+          </div>
+          <div className="h-full w-px bg-white/20 z-10" />
+          <div className="h-full relative overflow-hidden" style={{ width: `${100 - (imageSplitRatio || 50)}%` }}>
+            <img
+              src={sources[1]}
+              alt={`${alt}-2`}
+              className="w-full h-full object-cover pointer-events-none"
+              style={{
+                transform: `translate(${transforms[1]?.x || 0}px, ${transforms[1]?.y || 0}px) scale(${transforms[1]?.scale || 1})`,
+                transformOrigin: 'center center',
+              }}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="w-full h-full relative overflow-hidden">
+          <img
+            src={sources[0]}
+            alt={alt}
+            className="absolute pointer-events-none"
+            style={{
+              width: imgRatios[0] >= 1 ? `${imgRatios[0] * 100}%` : '100%',
+              height: imgRatios[0] < 1 ? `${(1 / imgRatios[0]) * 100}%` : '100%',
+              left: imgRatios[0] >= 1 ? `${(1 - imgRatios[0]) * 50}%` : '0%',
+              top: imgRatios[0] < 1 ? `${(1 - 1 / imgRatios[0]) * 50}%` : '0%',
+              transform: `translate(${transforms[0]?.x || 0}px, ${transforms[0]?.y || 0}px) scale(${transforms[0]?.scale || 1})`,
+              transformOrigin: 'center center',
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 };
 
@@ -81,7 +187,42 @@ export default function NoteDetailPage() {
     if (!firestore || !id) return null;
     return doc(firestore, 'sakeTastingNotes', id);
   }, [firestore, id]);
-  const { data: note, isLoading } = useDoc<SakeNote>(noteDocRef);
+  const { data: liveNote, isLoading } = useDoc<SakeNote>(noteDocRef);
+  const [cachedNote, setCachedNote] = useState<SakeNote | null>(null);
+  const snapshotKey = React.useMemo(() => (id ? `sake-note-snapshot:${id}` : null), [id]);
+
+  React.useEffect(() => {
+    if (!snapshotKey) return;
+    try {
+      const raw = localStorage.getItem(snapshotKey);
+      if (raw) setCachedNote(JSON.parse(raw));
+    } catch {
+      // ignore invalid cache
+    }
+  }, [snapshotKey]);
+
+  React.useEffect(() => {
+    if (!snapshotKey) return;
+    if (liveNote) {
+      setCachedNote(liveNote);
+      try {
+        localStorage.setItem(snapshotKey, JSON.stringify(liveNote));
+      } catch {
+        // ignore quota errors
+      }
+      return;
+    }
+    if (!isLoading && noteDocRef) {
+      setCachedNote(null);
+      try {
+        localStorage.removeItem(snapshotKey);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [snapshotKey, liveNote, isLoading, noteDocRef]);
+
+  const note = liveNote ?? cachedNote;
 
   const authorRef = useMemoFirebase(() => {
     if (!firestore || !note?.userId) return null;
@@ -243,21 +384,13 @@ export default function NoteDetailPage() {
 
         <div className="dark-glass rounded-[2rem] overflow-hidden mb-6 border border-white/10 shadow-2xl">
           <div className="relative aspect-square bg-muted/10 overflow-hidden flex">
-            {note.imageUrls && note.imageUrls.length === 2 ? (
-              <>
-                <div className="h-full relative" style={{ width: `${note.imageSplitRatio || 50}%` }}>
-                  <Image src={note.imageUrls[0]} alt="img1" fill className="object-cover" />
-                </div>
-                <div className="h-full w-px bg-white/20 z-10" />
-                <div className="h-full relative" style={{ width: `${100 - (note.imageSplitRatio || 50)}%` }}>
-                  <Image src={note.imageUrls[1]} alt="img2" fill className="object-cover" />
-                </div>
-              </>
-            ) : note.imageUrls && note.imageUrls[0] ? (
-              <Image src={note.imageUrls[0]} alt="img1" fill className="object-cover" />
-            ) : (
-              <div className="flex items-center justify-center w-full h-full text-muted-foreground/30 text-[10px] font-bold">NO PHOTO</div>
-            )}
+            <NoteHeroImage
+              imageUrls={note.imageUrls}
+              imageOriginals={note.imageOriginals}
+              imageTransforms={note.imageTransforms}
+              imageSplitRatio={note.imageSplitRatio}
+              alt={note.brandName || 'sake-note'}
+            />
           </div>
           
           <div className="p-6 md:p-8 relative">
