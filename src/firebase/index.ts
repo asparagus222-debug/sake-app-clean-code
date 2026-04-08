@@ -4,7 +4,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, Firestore } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 /**
@@ -23,7 +23,7 @@ export function initializeFirebase() {
     // Only initialize Firestore if app is ready (persistent local cache for offline/repeat visits)
     let firestore: Firestore | null = null;
     try {
-      firestore = initializeFirestore(firebaseApp, { localCache: persistentLocalCache() });
+      firestore = initializeFirestore(firebaseApp, { localCache: memoryLocalCache() });
     } catch (firestoreError) {
       console.warn("Firestore initialization failed - database may not be enabled in Firebase Console:", firestoreError);
     }
