@@ -637,7 +637,7 @@ export default function EditNotePage() {
       // 讓 top3 cache 失效，下次首頁載入時重算
       deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
       toast({ title: "修改已儲存" });
-      window.location.replace(`/notes/${id}`);
+      router.replace(`/notes/${id}`);
     } catch (err: any) {
       console.error('[EditNote] save error:', err);
       toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
@@ -657,7 +657,7 @@ export default function EditNotePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => window.location.replace(`/notes/${id}`)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => router.replace(`/notes/${id}`)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
       </div>
 
