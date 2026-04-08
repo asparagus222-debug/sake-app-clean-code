@@ -637,7 +637,7 @@ export default function EditNotePage() {
       // 讓 top3 cache 失效，下次首頁載入時重算
       deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
       toast({ title: "修改已儲存" });
-      router.push('/profile');
+      router.push(`/notes/${id}`);
     } catch (err: any) {
       console.error('[EditNote] save error:', err);
       toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
@@ -657,7 +657,7 @@ export default function EditNotePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/profile')} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => router.push(`/notes/${id}`)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
       </div>
 
@@ -727,18 +727,48 @@ export default function EditNotePage() {
               {images.length === 2 ? (
                 <>
                   <div id="container-0" className={cn("h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} style={{ width: `${splitRatio}%` }} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
-                    <img ref={imgRef0} src={images[0]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})` }} alt="img1" />
+                    {(() => {
+                      const R = imgRatios[0] || 1;
+                      const C = splitRatio / 100;
+                      const byH = R < C;
+                      return <img ref={imgRef0} src={images[0]} className="absolute pointer-events-none" style={byH ? {
+                        height: '100%', width: 'auto',
+                        top: '0', left: '50%',
+                        transform: `translateX(-50%) translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                        transformOrigin: 'center center',
+                      } : {
+                        width: '100%', height: 'auto',
+                        left: '0', top: '50%',
+                        transform: `translateY(-50%) translate(${offsets[0].x}px, ${offsets[0].y}px) scale(${zooms[0]})`,
+                        transformOrigin: 'center center',
+                      }} alt="img1" />;
+                    })()}
                     <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[0] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[0] = !next[0]; return next; })}>
                       {lockedImgs[0] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                     </button>
-                    </div>
+                  </div>
                   <div className="h-full w-px bg-white/20 z-10" />
                   <div id="container-1" className={cn("h-full relative overflow-hidden", lockedImgs[1] ? "cursor-default" : "cursor-move")} style={{ width: `${100 - splitRatio}%` }} onTouchStart={lockedImgs[1] ? undefined : (e) => onTouchStart(e, 1)} onTouchMove={lockedImgs[1] ? undefined : onTouchMove} onTouchEnd={lockedImgs[1] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[1] ? undefined : (e) => onMouseDown(e, 1)}>
-                    <img ref={imgRef1} src={images[1]} className="w-full h-full object-cover pointer-events-none" style={{ transform: `translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})` }} alt="img2" />
+                    {(() => {
+                      const R = imgRatios[1] || 1;
+                      const C = (100 - splitRatio) / 100;
+                      const byH = R < C;
+                      return <img ref={imgRef1} src={images[1]} className="absolute pointer-events-none" style={byH ? {
+                        height: '100%', width: 'auto',
+                        top: '0', left: '50%',
+                        transform: `translateX(-50%) translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                        transformOrigin: 'center center',
+                      } : {
+                        width: '100%', height: 'auto',
+                        left: '0', top: '50%',
+                        transform: `translateY(-50%) translate(${offsets[1].x}px, ${offsets[1].y}px) scale(${zooms[1]})`,
+                        transformOrigin: 'center center',
+                      }} alt="img2" />;
+                    })()}
                     <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[1] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[1] = !next[1]; return next; })}>
                       {lockedImgs[1] ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
                     </button>
-                    </div>
+                  </div>
                 </>
               ) : (
                 <div id="container-0" className={cn("w-full h-full relative overflow-hidden", lockedImgs[0] ? "cursor-default" : "cursor-move")} onTouchStart={lockedImgs[0] ? undefined : (e) => onTouchStart(e, 0)} onTouchMove={lockedImgs[0] ? undefined : onTouchMove} onTouchEnd={lockedImgs[0] ? undefined : () => setDraggingIdx(null)} onMouseDown={lockedImgs[0] ? undefined : (e) => onMouseDown(e, 0)}>
