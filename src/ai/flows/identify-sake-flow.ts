@@ -102,21 +102,24 @@ export const identifySakeFlow = ai.defineFlow(
     const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
 
     // ── Step 0: Cloud Vision 快速預檢（OCR + WEB_DETECTION，約 0.5-1.5 秒）──
-    // 背標與正標並行送 Vision：背標取規格、正標補銘柄，合併使用
-    const primaryDataUri = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
-    const primaryBase64 = primaryDataUri.split(',')[1] || '';
-    const frontBase64 = hasBackLabel ? (input.photoDataUri?.split(',')[1] || '') : '';
-    const [{ ocrText: vOcr, webEntities: vWebEntities }, { ocrText: frontOcr }] = await Promise.all([
-      callCloudVision(primaryBase64),
-      frontBase64 ? callCloudVision(frontBase64) : Promise.resolve({ ocrText: '', webEntities: [], bestGuessLabel: '' }),
+    // 正標送 WEB_DETECTION（外觀獨特，Google 圖片比對品牌最準）+ OCR 讀銘柄文字
+    // 背標送 OCR（印刷文字清晰，讀規格數值）
+    const frontBase64 = input.photoDataUri?.split(',')[1] || '';
+    const backBase64 = hasBackLabel ? input.backPhotoDataUri!.split(',')[1] : '';
+    const [frontVision, backVision] = await Promise.all([
+      callCloudVision(frontBase64),
+      backBase64 ? callCloudVision(backBase64) : Promise.resolve({ ocrText: '', webEntities: [], bestGuessLabel: '' }),
     ]);
+    const frontOcr = frontVision.ocrText;     // 正標 OCR：銘柄/品牌名
+    const vWebEntities = frontVision.webEntities; // 正標 WEB_DETECTION：網路圖片比對品牌
+    const vOcr = hasBackLabel ? backVision.ocrText : frontVision.ocrText; // 背標 OCR：規格數值
 
-    // 篩選高信心日文實體（score > 0.65，且含日文字元）
+    // 篩選高信心實體（score > 0.65）：正標 WEB_DETECTION 比對到的品牌/酒名
     const highConfEntities = vWebEntities
-      .filter(e => (e.score || 0) > 0.65 && e.description)
+      .filter(e => (e.score || 0) > 0.65 && e.description && (e.description as string).length > 1)
       .slice(0, 6)
       .map(e => e.description as string);
-    const hasStrongWebHit = highConfEntities.some(d => /[\u3040-\u30ff\u4e00-\u9fff]/.test(d));
+    const hasStrongWebHit = highConfEntities.length > 0;
 
     console.log(`[AI辨識] Vision 預檢 ─ OCR:${vOcr.length}字, 高信心:${highConfEntities.join('|') || '無'}`);
 
