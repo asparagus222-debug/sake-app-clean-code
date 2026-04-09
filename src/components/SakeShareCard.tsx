@@ -267,11 +267,11 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
     text: isDark ? 'white' : '#1a1812',
     textSoft: isDark ? 'rgba(255,255,255,0.8)' : '#2a2420',
     textMuted: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.42)',
-    textDesc: isDark ? 'rgba(255,255,255,0.58)' : 'rgba(0,0,0,0.7)',
+    textDesc: isDark ? 'rgba(255,255,255,0.82)' : 'rgba(20,16,12,0.88)',
     divider: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)',
     brandLabel: rgba(primaryColor, 0.9),
-    primaryDesc: rgba(primaryColor, 0.65),
-    primaryLabel: rgba(primaryColor, 0.4),
+    primaryDesc: isDark ? 'rgba(255,214,184,0.92)' : 'rgba(126,47,0,0.9)',
+    primaryLabel: isDark ? 'rgba(255,184,123,0.82)' : 'rgba(146,64,14,0.78)',
     primarySite: rgba(primaryColor, 0.5),
     imageBg: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.08)',
   };
@@ -514,19 +514,19 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                     {userDesc && (
                       <>
                         <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: tc.textMuted, letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>作者描述</div>
-                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: tc.textDesc, margin: '0 0 8px' }}>{userDesc}</p>
+                        <p style={{ display: 'block', fontSize: 10.5, lineHeight: 1.7, color: tc.textDesc, margin: '0 0 8px', fontWeight: 500 }}>{userDesc}</p>
                       </>
                     )}
                     {aiDesc && (
                       <>
                         {userDesc && <div style={{ height: 1, background: tc.divider, marginBottom: 8 }} />}
                         <div style={{ display: 'block', fontSize: 7, fontWeight: 700, color: tc.primaryLabel, letterSpacing: '0.12em', marginBottom: 3, lineHeight: 1.3 }}>AI 品鑑</div>
-                        <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: tc.primaryDesc, margin: 0 }}>{aiDesc}</p>
+                        <p style={{ display: 'block', fontSize: 10.5, lineHeight: 1.7, color: tc.primaryDesc, margin: 0, fontWeight: 500 }}>{aiDesc}</p>
                       </>
                     )}
                   </>
                 ) : (
-                  <p style={{ display: 'block', fontSize: 10, lineHeight: 1.65, color: descMode === 'ai' ? tc.primaryDesc : tc.textDesc, margin: 0 }}>
+                  <p style={{ display: 'block', fontSize: 10.5, lineHeight: 1.7, color: descMode === 'ai' ? tc.primaryDesc : tc.textDesc, margin: 0, fontWeight: 500 }}>
                     {descMode === 'ai' ? aiDesc : userDesc}
                   </p>
                 )}
