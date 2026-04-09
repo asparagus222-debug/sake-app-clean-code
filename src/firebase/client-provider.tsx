@@ -6,6 +6,7 @@ import { FirebaseProvider, useFirebase } from '@/firebase/provider';
 import { initializeFirebase, initiateAnonymousSignIn } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DailyAnnouncementDialog } from '@/components/DailyAnnouncementDialog';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -101,6 +102,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     >
       <AuthInitializer />
       <UserProfileBootstrapper />
+      <DailyAnnouncementDialog />
       {children}
     </FirebaseProvider>
   );
