@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -14,6 +15,9 @@ const STYLE_PROMPTS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuthenticatedUser(req);
+    await requireVerifiedAppCheck(req);
+    await enforceRateLimit({ key: `ai:transform-avatar:${user.uid}`, limit: 6, windowMs: 10 * 60 * 1000 });
     const { imageBase64, mimeType = 'image/jpeg', style } = await req.json();
 
     if (!imageBase64 || !style) {
@@ -60,6 +64,9 @@ Only output the styled image, no text.`
       mimeType: imagePart.inlineData.mimeType,
     });
   } catch (error: any) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Avatar transform error:', error);
     return NextResponse.json(
       { error: error?.message || 'Failed to transform image' },

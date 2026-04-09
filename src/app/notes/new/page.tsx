@@ -13,8 +13,9 @@ import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, Lock, Unlock, ArrowRight, ListChecks, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { GuidedTasting, GuidedTastingResult } from '@/components/GuidedTasting';
-import { useFirestore, useUser, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -50,6 +51,7 @@ export default function NewNotePage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   
   const [isSaving, setIsSaving] = useState(false);
@@ -112,7 +114,7 @@ export default function NewNotePage() {
   }, [firestore, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
-  const isAccountStatusPending = isUserLoading || !user || (!!userDocRef && isProfileLoading);
+  const isAccountStatusPending = isUserLoading || (!!user && !!userDocRef && isProfileLoading);
   const canCreateNote = !!profile?.username;
 
   // 使用者已存的銘柄名稱列表，用於 AI 辨識後的標準化
@@ -230,9 +232,8 @@ export default function NewNotePage() {
   setFormData(prev => ({ ...prev, activeBrain: mode }));
 
   try {
-    const response = await fetch('/api/ai/generate-note', {
+    const response = await authorizedJsonFetch(auth, '/api/ai/generate-note', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         brandName: formData.brandName,
         subBrand: formData.subBrand,
@@ -278,9 +279,8 @@ export default function NewNotePage() {
         resizeImage(photoDataUri, 1024),
         backPhotoDataUri ? resizeImage(backPhotoDataUri, 1024) : Promise.resolve(undefined),
       ]);
-      const response = await fetch('/api/ai/identify-sake', {
+      const response = await authorizedJsonFetch(auth, '/api/ai/identify-sake', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photoDataUri: optimizedPhoto, ...(optimizedBack ? { backPhotoDataUri: optimizedBack } : {}) }),
         signal: abortController.signal,
       });
@@ -653,6 +653,24 @@ const handleSave = async () => {
             <div className="flex-1 space-y-2">
               <p className="text-sm font-bold text-foreground">正在確認帳戶狀態</p>
               <p className="text-xs text-muted-foreground">稍候即可判斷是否可直接建立品飲筆記。</p>
+            </div>
+          </div>
+        </div>
+      ) : !user ? (
+        <div className="dark-glass rounded-[2rem] border border-amber-500/30 bg-amber-500/10 p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-3">
+              <p className="text-sm font-bold text-amber-100">請先登入後再建立貼文</p>
+              <p className="text-xs text-amber-100/80">目前已不再自動建立匿名帳號，建立品飲筆記前請先登入或找回帳戶。</p>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={() => router.push('/profile')} className="rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-8">
+                  前往登入／建立帳戶
+                </Button>
+                <Button onClick={() => router.push('/recover')} variant="outline" className="rounded-full text-xs font-bold h-8 border-amber-400/40 text-amber-100 bg-transparent hover:bg-amber-500/10">
+                  找回帳戶
+                </Button>
+              </div>
             </div>
           </div>
         </div>

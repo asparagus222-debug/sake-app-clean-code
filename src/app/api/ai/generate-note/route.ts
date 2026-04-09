@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuthenticatedUser(req);
+    await requireVerifiedAppCheck(req);
+    await enforceRateLimit({ key: `ai:generate-note:${user.uid}`, limit: 30, windowMs: 10 * 60 * 1000 });
     const { brandName, subBrand, brewery, origin, alcoholPercent, sakeInfoTags, ratings, userDescription, mode } = await req.json();
 
     // 組合銘柄基本資料行
@@ -39,6 +43,9 @@ export async function POST(req: NextRequest) {
     const result = await model.generateContent(prompt);
     return NextResponse.json({ text: result.response.text().trim() });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }

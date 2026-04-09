@@ -69,6 +69,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
 import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
 import Link from 'next/link';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
 const THEME_PRESETS = [
@@ -305,9 +306,8 @@ export default function ProfilePage() {
     setAvatarEditorStep('processing');
     try {
       const base64 = croppedSrc.split(',')[1];
-      const response = await fetch('/api/ai/transform-avatar', {
+      const response = await authorizedJsonFetch(auth, '/api/ai/transform-avatar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg', style: styleToUse }),
       });
       const data = await response.json();

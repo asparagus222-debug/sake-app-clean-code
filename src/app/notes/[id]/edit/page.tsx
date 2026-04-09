@@ -12,8 +12,9 @@ import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -46,6 +47,7 @@ export default function EditNotePage() {
   const params = useParams();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
@@ -249,9 +251,8 @@ export default function EditNotePage() {
     setIsGenerating(true);
     setFormData(prev => ({ ...prev, activeBrain: mode }));
     try {
-      const response = await fetch('/api/ai/generate-note', {
+      const response = await authorizedJsonFetch(auth, '/api/ai/generate-note', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandName: formData.brandName,
           ratings: {
@@ -291,9 +292,8 @@ export default function EditNotePage() {
         resizeImage(photoDataUri, 1024),
         backPhotoDataUri ? resizeImage(backPhotoDataUri, 1024) : Promise.resolve(undefined),
       ]);
-      const response = await fetch('/api/ai/identify-sake', {
+      const response = await authorizedJsonFetch(auth, '/api/ai/identify-sake', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photoDataUri: optimizedPhoto, ...(optimizedBack ? { backPhotoDataUri: optimizedBack } : {}) }),
         signal: abortController.signal,
       });

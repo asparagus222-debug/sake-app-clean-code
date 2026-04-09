@@ -3,29 +3,13 @@
 
 import React, { useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { FirebaseProvider, useFirebase } from '@/firebase/provider';
-import { initializeFirebase, initiateAnonymousSignIn } from '@/firebase';
+import { initializeFirebase } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { DailyAnnouncementDialog } from '@/components/DailyAnnouncementDialog';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
-}
-
-/**
- * 內部組件，負責在全域範圍內檢查並執行自動匿名登入。
- */
-function AuthInitializer() {
-  const { auth, user, isUserLoading } = useFirebase();
-
-  useEffect(() => {
-    // 如果讀取完成但沒有使用者，且 Auth 實例已就緒，則發起匿名登入
-    if (!isUserLoading && !user && auth) {
-      initiateAnonymousSignIn(auth);
-    }
-  }, [user, isUserLoading, auth]);
-
-  return null;
 }
 
 function UserProfileBootstrapper() {
@@ -100,7 +84,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       firestore={firebaseServices.firestore}
       storage={firebaseServices.storage}
     >
-      <AuthInitializer />
       <UserProfileBootstrapper />
       <DailyAnnouncementDialog />
       {children}

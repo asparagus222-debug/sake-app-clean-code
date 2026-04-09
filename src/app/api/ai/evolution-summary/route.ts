@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -15,6 +16,9 @@ function buildSessionText(label: string, s: {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuthenticatedUser(req);
+    await requireVerifiedAppCheck(req);
+    await enforceRateLimit({ key: `ai:evolution-summary:${user.uid}`, limit: 12, windowMs: 10 * 60 * 1000 });
     const { brandName, session0, sessions } = await req.json();
 
     const allSessions: string[] = [
@@ -37,7 +41,10 @@ ${allSessions.join('\n\n')}`;
     const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
     const result = await model.generateContent(prompt);
     return NextResponse.json({ text: result.response.text().trim() });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }

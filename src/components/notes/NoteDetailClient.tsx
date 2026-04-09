@@ -43,7 +43,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useDoc, useFirestore, useUser, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
+import { useDoc, useFirestore, useUser, useAuth, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { doc, collection, query, orderBy, updateDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
@@ -174,6 +175,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user } = useUser();
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -288,9 +290,8 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     if (!note || isGeneratingEvolution) return;
     setIsGeneratingEvolution(true);
     try {
-      const response = await fetch('/api/ai/evolution-summary', {
+      const response = await authorizedJsonFetch(auth, '/api/ai/evolution-summary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandName: note.brandName,
           session0: {

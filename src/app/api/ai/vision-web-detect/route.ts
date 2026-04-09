@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 /**
  * Cloud Vision API — TEXT_DETECTION + WEB_DETECTION（單一請求）+ Gemini 萃取
@@ -17,6 +18,9 @@ interface WebDetectionResult {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuthenticatedUser(req);
+    await requireVerifiedAppCheck(req);
+    await enforceRateLimit({ key: `ai:vision-web-detect:${user.uid}`, limit: 10, windowMs: 10 * 60 * 1000 });
     const { photoDataUri } = await req.json();
     if (!photoDataUri) {
       return NextResponse.json({ error: 'photoDataUri is required' }, { status: 400 });
@@ -121,6 +125,9 @@ ${pageTitles || '無'}
 
     return NextResponse.json({ ...visionData, extracted });
   } catch (error: any) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('[Vision API] unexpected error:', error);
     return NextResponse.json({ error: error.message || 'Vision Web Detection 失敗' }, { status: 500 });
   }

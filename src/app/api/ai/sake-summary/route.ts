@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuthenticatedUser(req);
+    await requireVerifiedAppCheck(req);
+    await enforceRateLimit({ key: `ai:sake-summary:${user.uid}`, limit: 12, windowMs: 10 * 60 * 1000 });
     const { brewery } = await req.json();
     if (!brewery) return NextResponse.json({ error: 'Missing brewery' }, { status: 400 });
 
@@ -14,7 +18,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ text: response.text?.trim() ?? '' });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }

@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, limit, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 
 type Top3Group = {
   brandName: string;
@@ -245,16 +245,6 @@ export function HomeClient({
       localStorage.setItem('home_top3_snapshot', JSON.stringify(top3Groups));
     } catch {}
   }, [top3Groups]);
-
-  useEffect(() => {
-    if (top3Written.current) return;
-    if (!firestore || !rankingNotes || !top3Groups.length) return;
-    top3Written.current = true;
-    setDoc(doc(firestore, 'meta', 'top3'), {
-      groups: top3Groups,
-      updatedAt: new Date().toISOString(),
-    }).catch(() => {});
-  }, [top3Groups, rankingNotes, firestore]);
 
   const isFormalUser = user && !user.isAnonymous;
 

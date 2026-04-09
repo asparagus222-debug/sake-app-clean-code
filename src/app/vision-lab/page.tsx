@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Camera, Upload, Search, ExternalLink, Globe, Tag, Image as ImageIcon, Sparkles, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 
 interface WebEntity { entityId: string; score: number; description: string; }
 interface MatchImage { url: string; }
@@ -38,6 +40,7 @@ async function resizeImage(base64: string, maxDimension = 1024): Promise<string>
 }
 
 export default function VisionLabPage() {
+  const auth = useAuth();
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [result, setResult] = useState<VisionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,9 +73,8 @@ export default function VisionLabPage() {
     setResult(null);
     const t0 = Date.now();
     try {
-      const res = await fetch('/api/ai/vision-web-detect', {
+      const res = await authorizedJsonFetch(auth, '/api/ai/vision-web-detect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photoDataUri }),
       });
       const data = await res.json();

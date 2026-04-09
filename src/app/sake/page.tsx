@@ -6,8 +6,9 @@ import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Sparkles, Clock, Star } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, getDoc, setDoc, query, where } from 'firebase/firestore';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
 function SakeDetailInner() {
@@ -16,6 +17,7 @@ function SakeDetailInner() {
   const brand = params.get('brand') || '';
   const brewery = params.get('brewery') || '';
   const firestore = useFirestore();
+  const auth = useAuth();
 
   const [sortMode, setSortMode] = useState<'newest' | 'score'>('newest');
   const [intro, setIntro] = useState('');
@@ -63,9 +65,8 @@ function SakeDetailInner() {
           setIntro(snap.data().intro as string);
         } else {
           // Cache miss — generate and save
-          const res = await fetch('/api/ai/sake-summary', {
+          const res = await authorizedJsonFetch(auth, '/api/ai/sake-summary', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ brewery }),
           });
           const data = await res.json();
