@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
+import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { deleteField, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 export default function EditNotePage() {
@@ -59,6 +59,7 @@ export default function EditNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
+    servingTemperatures: [] as string[],
     description: '',
   });
 
@@ -76,6 +77,7 @@ export default function EditNotePage() {
         astringency: note.astringencyRating,
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
+        servingTemperatures: note.servingTemperatures || (note.servingTemperature ? [note.servingTemperature] : []),
         description: note.description || '',
       });
       if (note.imageUrls) {
@@ -225,6 +227,8 @@ export default function EditNotePage() {
         astringencyRating: formData.astringency,
         overallRating: formData.overallRating,
         styleTags: formData.styleTags,
+        servingTemperatures: formData.servingTemperatures,
+        servingTemperature: deleteField(),
         description: formData.description,
       };
       updateDocumentNonBlocking(doc(firestore, 'sakeTastingNotes', note.id), noteData);
@@ -372,6 +376,29 @@ export default function EditNotePage() {
                 </div>
               </div>
             ))}
+            <div className="space-y-1.5">
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">適飲溫度</p>
+              <div className="flex flex-wrap gap-1.5">
+                {SERVING_TEMPERATURE_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      servingTemperatures: p.servingTemperatures.includes(option)
+                        ? p.servingTemperatures.filter(item => item !== option)
+                        : [...p.servingTemperatures, option],
+                    }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
+                      formData.servingTemperatures.includes(option) ? "bg-amber-500 text-black border-amber-400 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-2">
               <Input placeholder="自定義標籤..." value={customTag} onChange={e => setCustomTag(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomTag())} className="bg-white/5 h-8 text-[9px] rounded-xl flex-1 border-primary/40" />
               <Button onClick={addCustomTag} size="icon" className="h-8 w-8 rounded-xl"><Plus className="w-3 h-3" /></Button>

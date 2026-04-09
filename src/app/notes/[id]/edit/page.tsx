@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { SakeNote, RATING_LABELS, STYLE_TAGS_OPTIONS, TastingSession } from '@/lib/types';
+import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -116,6 +116,7 @@ export default function EditNotePage() {
     astringency: 3,
     overallRating: 7,
     styleTags: [] as string[],
+    servingTemperatures: [] as string[],
     sakeInfoTags: [] as string[],
     alcoholPercent: '',
     foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
@@ -138,6 +139,7 @@ export default function EditNotePage() {
         astringency: note.astringencyRating,
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
+        servingTemperatures: note.servingTemperatures || (note.servingTemperature ? [note.servingTemperature] : []),
         sakeInfoTags: note.sakeInfoTags || [],
         alcoholPercent: note.alcoholPercent || '',
         foodPairings: (note.foodPairings || []).map((fp: { food: string; pairing: 'yes' | 'no'; reason?: string }) => ({ food: fp.food, pairing: fp.pairing, reason: fp.reason || '' })),
@@ -623,6 +625,8 @@ export default function EditNotePage() {
         brewery: formData.brewery,
         origin: formData.origin,
         styleTags: formData.styleTags,
+        servingTemperatures: formData.servingTemperatures,
+        servingTemperature: deleteField(),
         sakeInfoTags: formData.sakeInfoTags,
         alcoholPercent: formData.alcoholPercent,
         foodPairings: formData.foodPairings,
@@ -1056,6 +1060,29 @@ export default function EditNotePage() {
                 </div>
               </div>
             ))}
+            <div className="space-y-1.5">
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">適飲溫度</p>
+              <div className="flex flex-wrap gap-1.5">
+                {SERVING_TEMPERATURE_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      servingTemperatures: p.servingTemperatures.includes(option)
+                        ? p.servingTemperatures.filter(item => item !== option)
+                        : [...p.servingTemperatures, option],
+                    }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
+                      formData.servingTemperatures.includes(option) ? "bg-amber-500 text-black border-amber-400 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-2">
               <Input placeholder="自定義標籤..." value={customTag} onChange={e => setCustomTag(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), setFormData(p => ({ ...p, styleTags: [...p.styleTags, customTag.trim()] })), setCustomTag(""))} className="bg-white/5 h-8 text-[9px] rounded-xl flex-1 border-primary/40" />
               <Button onClick={() => { if(customTag.trim()) { setFormData(p => ({ ...p, styleTags: [...p.styleTags, customTag.trim()] })); setCustomTag(""); } }} size="icon" className="h-8 w-8 rounded-xl"><Plus className="w-3 h-3" /></Button>

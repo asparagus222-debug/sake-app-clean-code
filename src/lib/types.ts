@@ -36,6 +36,8 @@ export type SakeNote = {
   astringencyRating: number;
   overallRating: number;
   styleTags?: string[];
+  servingTemperature?: string;
+  servingTemperatures?: string[];
   description: string;
   userDescription?: string;
   aiResultNote?: string;
@@ -100,6 +102,19 @@ export const STYLE_TAGS_OPTIONS = {
   style: ['Classic', 'Modern'],
   body: ['Light', 'Medium', 'Rich']
 };
+
+export const SERVING_TEMPERATURE_OPTIONS = [
+  '雪冷（5°C）',
+  '花冷（10°C）',
+  '涼冷（15°C）',
+  '常溫（20°C）',
+  '日向燗（30°C）',
+  '人肌燗（35°C）',
+  'ぬる燗（40°C）',
+  '上燗（45°C）',
+  '熱燗（50°C）',
+  '飛切燗（55°C）'
+];
 
 export const QUALIFICATION_OPTIONS = [
   'SSI 日本酒 Navigator',

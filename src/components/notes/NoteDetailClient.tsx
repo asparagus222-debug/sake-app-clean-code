@@ -26,6 +26,7 @@ import {
   Sparkles,
   Edit3,
   Camera,
+  Thermometer,
 } from 'lucide-react';
 import { SakeShareCard } from '@/components/SakeShareCard';
 import {
@@ -228,6 +229,11 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
   }, [snapshotKey, liveNote, isLoading, noteDocRef]);
 
   const note = liveNote ?? cachedNote;
+  const servingTemperatures = note?.servingTemperatures?.length
+    ? note.servingTemperatures
+    : note?.servingTemperature
+      ? [note.servingTemperature]
+      : [];
 
   const authorRef = useMemoFirebase(() => {
     if (!firestore || !note?.userId) return null;
@@ -540,18 +546,35 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                 </p>
               </div>
 
-              {note.styleTags && note.styleTags.length > 0 && (
+              {(servingTemperatures.length > 0 || (note.styleTags && note.styleTags.length > 0)) && (
                 <div className="pt-4 border-t border-white/5">
                   <div className="flex items-center gap-2 mb-2 text-primary">
                     <Tag className="w-3 h-3" />
                     <span className="text-[9px] font-bold uppercase tracking-widest">風格標籤</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {note.styleTags.map(tag => (
-                      <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
-                        {tag}
-                      </Badge>
-                    ))}
+                  <div className="flex flex-col gap-3">
+                    {servingTemperatures.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-amber-300/90">
+                          <Thermometer className="w-3 h-3" />
+                          適飲溫度
+                        </span>
+                        {servingTemperatures.map(temperature => (
+                          <Badge key={temperature} variant="secondary" className="text-[9px] h-5 px-2 bg-amber-500/15 text-amber-200 border-amber-400/30 font-bold tracking-widest">
+                            {temperature}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {note.styleTags && note.styleTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {note.styleTags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-[9px] h-5 px-2 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-widest">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
