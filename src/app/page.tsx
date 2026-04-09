@@ -7,6 +7,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, Bell, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,6 +33,28 @@ export default function Home() {
   const [cachedUsername, setCachedUsername] = useState<string | null>(() =>
     typeof window !== 'undefined' ? localStorage.getItem('cached_username') : null
   );;
+  const [cachedLatestNotes, setCachedLatestNotes] = useState<SakeNote[] | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return JSON.parse(localStorage.getItem('home_latest_notes_snapshot') || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [cachedTop3Groups, setCachedTop3Groups] = useState<Array<{
+    brandName: string;
+    brewery: string;
+    avgRating: number;
+    noteCount: number;
+    imageUrl?: string;
+  }>>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('home_top3_snapshot') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   const loadDrafts = React.useCallback(() => {
     try {
@@ -146,13 +169,24 @@ export default function Home() {
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(100));
   }, [firestore]);
   const { data: latestNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(latestNotesQuery);
+  const displayedLatestNotes = latestNotes ?? cachedLatestNotes;
 
   // 若超過 15 秒仍無資料，顯示手動重整按鈕（memoryLocalCache 直連網路，通常幾秒內就有資料）
   const [notesTimedOut, setNotesTimedOut] = useState(false);
   useEffect(() => {
-    if (latestNotes !== null) { setNotesTimedOut(false); return; }
+    if (displayedLatestNotes !== null) { setNotesTimedOut(false); return; }
     const t = setTimeout(() => setNotesTimedOut(true), 15000);
     return () => clearTimeout(t);
+  }, [displayedLatestNotes]);
+
+  useEffect(() => {
+    if (!latestNotes) return;
+    setCachedLatestNotes(latestNotes);
+    try {
+      localStorage.setItem('home_latest_notes_snapshot', JSON.stringify(latestNotes));
+    } catch {
+      // ignore storage quota errors
+    }
   }, [latestNotes]);
 
   const followingQuery = useMemoFirebase(() => {
@@ -219,6 +253,17 @@ export default function Home() {
     }
     return [];
   }, [rankingNotes, top3Cache]);
+  const displayedTop3Groups = top3Groups.length > 0 ? top3Groups : cachedTop3Groups;
+
+  useEffect(() => {
+    if (!top3Groups.length) return;
+    setCachedTop3Groups(top3Groups);
+    try {
+      localStorage.setItem('home_top3_snapshot', JSON.stringify(top3Groups));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [top3Groups]);
 
   // live data 算完後寫入 cache（供下次快取使用）
   useEffect(() => {
@@ -231,43 +276,37 @@ export default function Home() {
     }).catch(() => {});
   }, [top3Groups, rankingNotes, firestore]);
 
-  // ── Skeleton：只在 auth 尚未確定時顯示，profile 就算還在載入也勿防研頁面 ──
-  if (isUserLoading || !user) {
-    return (
-      <div className="min-h-screen notebook-texture pb-32 font-body">
-        {/* nav skeleton */}
-        <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
-          <Skeleton className="h-5 w-40 rounded-full" />
-          <Skeleton className="h-10 w-10 rounded-full" />
-        </nav>
-        <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
-          {/* top3 skeleton */}
-          <section className="space-y-4">
-            <Skeleton className="h-5 w-36 rounded-full" />
-            <div className="grid grid-cols-3 gap-2 sm:gap-6">
-              {[0, 1, 2].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />)}
-            </div>
-          </section>
-          {/* notes skeleton */}
-          <section className="space-y-4">
-            <Skeleton className="h-10 w-64 rounded-full" />
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
-            </div>
-          </section>
-        </main>
-      </div>
-    );
-  }
-
   const isFormalUser = user && !user.isAnonymous;
+  const authStageDone = !isUserLoading;
+  const profileStageDone = !user || !isProfileLoading || !!cachedUsername || !!cachedAvatar;
+  const top3StageDone = displayedTop3Groups.length > 0;
+  const latestStageDone = displayedLatestNotes !== null;
+  const homeLoadProgress =
+    (authStageDone ? 20 : 5) +
+    (profileStageDone ? 20 : 5) +
+    (top3StageDone ? 25 : 5) +
+    (latestStageDone ? 35 : 10);
 
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
-        <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words flex-1 leading-tight">
-          {(profile?.username || cachedUsername) ? `${profile?.username || cachedUsername} 的品飲筆記` : "品飲筆記"}
-        </h1>
+        {profile?.username || cachedUsername ? (
+          <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words flex-1 leading-tight">
+            {`${profile?.username || cachedUsername} 的品飲筆記`}
+          </h1>
+        ) : (
+          <div className="flex-1 space-y-2">
+            <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words leading-tight">品飲筆記</h1>
+            {(!latestStageDone || !top3StageDone || !authStageDone) && (
+              <div className="max-w-[240px] space-y-1">
+                <Progress value={homeLoadProgress} className="h-1.5 bg-white/10" />
+                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                  {!authStageDone ? '初始化帳號中' : !top3StageDone ? '載入殿堂榜單中' : !latestStageDone ? '載入最新貼文中' : '整理個人資料中'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-3 shrink-0">
           {!isFormalUser && !profile?.username && (
              <Link href="/recover">
@@ -286,7 +325,7 @@ export default function Home() {
               </p>
             </div>
             <Avatar className="w-10 h-10 border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg">
-              <AvatarImage src={profile?.avatarUrl || cachedAvatar || `https://picsum.photos/seed/${user?.uid}/100/100`} />
+              <AvatarImage src={profile?.avatarUrl || cachedAvatar || (user?.uid ? `https://picsum.photos/seed/${user.uid}/100/100` : undefined)} />
               <AvatarFallback className="bg-muted"><User className="w-5 h-5" /></AvatarFallback>
             </Avatar>
           </Link>
@@ -294,7 +333,7 @@ export default function Home() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-12">
-        {top3Groups.length > 0 && (
+        {displayedTop3Groups.length > 0 ? (
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-accent">
@@ -306,7 +345,7 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
-              {top3Groups.map((group, idx) => (
+              {displayedTop3Groups.map((group, idx) => (
                 <Link key={`${group.brandName}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
                   <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/5] dark-glass border border-white/10 hover:border-primary/50 transition-all">
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-accent text-accent-foreground font-bold rounded-full w-5 h-5 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg text-[10px] sm:text-sm">
@@ -327,6 +366,16 @@ export default function Home() {
                   </div>
                 </Link>
               ))}
+            </div>
+          </section>
+        ) : (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-accent">
+              <Trophy className="w-5 h-5" />
+              <h2 className="text-base sm:text-lg font-headline font-bold uppercase tracking-widest">銘柄殿堂 Top 3</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
+              {[0, 1, 2].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />)}
             </div>
           </section>
         )}
@@ -352,14 +401,26 @@ export default function Home() {
                     重新整理
                   </Button>
                 </div>
-              ) : (isNotesLoading || latestNotes === null) ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {[0,1,2,3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
+              ) : (isNotesLoading || displayedLatestNotes === null) ? (
+                <div className="space-y-4">
+                  <div className="dark-glass rounded-2xl border border-white/10 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">首頁資料載入中</p>
+                      <span className="text-[10px] font-bold text-primary tabular-nums">{homeLoadProgress}%</span>
+                    </div>
+                    <Progress value={homeLoadProgress} className="h-2 bg-white/10" />
+                    <p className="text-[10px] text-muted-foreground">
+                      {latestStageDone ? '已取得最新貼文快照，背景同步最新資料中。' : '正在連線資料庫並載入最新貼文。'}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[0,1,2,3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
+                  </div>
                 </div>
               ) : (() => {
-                const total = latestNotes?.length ?? 0;
+                const total = displayedLatestNotes?.length ?? 0;
                 const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-                const pageNotes = latestNotes?.slice(latestPage * PAGE_SIZE, (latestPage + 1) * PAGE_SIZE) ?? [];
+                const pageNotes = displayedLatestNotes?.slice(latestPage * PAGE_SIZE, (latestPage + 1) * PAGE_SIZE) ?? [];
                 return (
                   <>
                     <div className="grid grid-cols-2 gap-3">
@@ -398,7 +459,12 @@ export default function Home() {
             </TabsContent>
 
             <TabsContent value="following" className="mt-0">
-              {followingIds.length === 0 ? (
+              {isUserLoading ? (
+                <div className="text-center py-32 dark-glass rounded-3xl border border-dashed border-white/10 space-y-4">
+                  <Loader2 className="w-10 h-10 text-primary/30 mx-auto animate-spin" />
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">正在確認追蹤清單...</p>
+                </div>
+              ) : followingIds.length === 0 ? (
                 <div className="text-center py-32 dark-glass rounded-3xl border border-dashed border-white/10 space-y-4">
                   <Users className="w-12 h-12 text-muted-foreground/20 mx-auto" />
                   <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">目前尚未追蹤任何作者</p>
