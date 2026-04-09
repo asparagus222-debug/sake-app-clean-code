@@ -4,7 +4,7 @@
 import React, { useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { FirebaseProvider, useFirebase } from '@/firebase/provider';
 import { initializeFirebase, initiateAnonymousSignIn } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface FirebaseClientProviderProps {
@@ -36,24 +36,51 @@ function UserProfileBootstrapper() {
     if (bootstrappedUsersRef.current.has(user.uid)) return;
 
     bootstrappedUsersRef.current.add(user.uid);
-    setDocumentNonBlocking(
-      doc(firestore, 'users', user.uid),
-      {
-        id: user.uid,
-        avatarUrl: `https://picsum.photos/seed/${user.uid}/100/100`,
-        bio: '',
-        qualifications: [],
-        themeSettings: {
-          mode: 'dark',
-          fontSize: 'base',
-          customBg: '#0a0a0c',
-          customPrimary: '#f97316',
-        },
-        updatedAt: new Date().toISOString(),
-        ...(user.isAnonymous ? {} : { createdAt: new Date().toISOString() }),
-      },
-      { merge: true }
-    );
+    const userRef = doc(firestore, 'users', user.uid);
+
+    getDoc(userRef)
+      .then(snapshot => {
+        const existing = snapshot.exists() ? snapshot.data() : null;
+        const payload: Record<string, unknown> = {
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (!existing) {
+          payload.id = user.uid;
+          payload.avatarUrl = `https://picsum.photos/seed/${user.uid}/100/100`;
+          payload.bio = '';
+          payload.qualifications = [];
+          payload.themeSettings = {
+            mode: 'dark',
+            fontSize: 'base',
+            customBg: '#0a0a0c',
+            customPrimary: '#f97316',
+          };
+          if (!user.isAnonymous) {
+            payload.createdAt = new Date().toISOString();
+          }
+        } else {
+          if (!existing.id) payload.id = user.uid;
+          if (!existing.themeSettings) {
+            payload.themeSettings = {
+              mode: 'dark',
+              fontSize: 'base',
+              customBg: '#0a0a0c',
+              customPrimary: '#f97316',
+            };
+          }
+          if (!existing.createdAt && !user.isAnonymous) {
+            payload.createdAt = new Date().toISOString();
+          }
+        }
+
+        if (Object.keys(payload).length > 1 || !existing) {
+          setDocumentNonBlocking(userRef, payload, { merge: true });
+        }
+      })
+      .catch(() => {
+        bootstrappedUsersRef.current.delete(user.uid);
+      });
   }, [user, firestore]);
 
   return null;
