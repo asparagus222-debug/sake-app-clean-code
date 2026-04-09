@@ -1,14 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Info, MessageSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,7 +20,6 @@ function getTodayKey() {
 }
 
 export function DailyAnnouncementDialog() {
-  const router = useRouter();
   const { user, isUserLoading } = useFirebase();
   const [open, setOpen] = useState(false);
 
@@ -72,26 +68,6 @@ export function DailyAnnouncementDialog() {
             本 app 為個人興趣製作，主要希望可以分享跟推廣日本酒；目前尚在建構中，歡迎大家暴力測試，如有任何問題可以至個人資料頁面下方的問題回報區反應。
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="mt-2 flex-col gap-2 sm:flex-col sm:space-x-0">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full rounded-full border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
-            onClick={() => {
-              handleOpenChange(false);
-              router.push('/profile');
-            }}
-          >
-            <MessageSquare className="w-4 h-4 mr-2" /> 前往問題回報
-          </Button>
-          <Button
-            type="button"
-            className="w-full rounded-full"
-            onClick={() => handleOpenChange(false)}
-          >
-            我知道了
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
