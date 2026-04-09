@@ -113,6 +113,14 @@ export default function AdminPage() {
     return collection(firestore, 'users');
   }, [firestore, isAdmin]);
   const { data: users, isLoading: isUsersLoading } = useCollection(usersQuery);
+  const namedUsers = React.useMemo(
+    () => ((users as any[]) || []).filter((u: any) => typeof u.username === 'string' && u.username.trim().length > 0),
+    [users]
+  );
+  const blankUsernameUsers = React.useMemo(
+    () => ((users as any[]) || []).filter((u: any) => typeof u.username !== 'string' || u.username.trim().length === 0),
+    [users]
+  );
 
   // 獲取所有問題回報
   const reportsQuery = useMemoFirebase(() => {
@@ -170,6 +178,30 @@ export default function AdminPage() {
     const reportRef = doc(firestore, 'reports', reportId);
     deleteDocumentNonBlocking(reportRef);
     toast({ title: "回報紀錄已清除" });
+  };
+
+  const handleCleanupStaleUsers = async () => {
+    if (!auth || !auth.currentUser) return;
+    setIsCleaning(true);
+    setCleanResult(null);
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const res = await fetch('/api/admin/cleanup-stale-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callerIdToken: idToken }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '清理失敗');
+      const resultText = `已刪除 ${data.deleted} 筆超過 7 天的空白暫存 UID，略過 ${data.skippedCount} 筆。`;
+      setCleanResult(resultText);
+      toast({ title: '暫存 UID 清理完成', description: resultText });
+    } catch (err: any) {
+      setCleanResult(`錯誤：${err.message}`);
+      toast({ variant: 'destructive', title: '清理失敗', description: err.message });
+    } finally {
+      setIsCleaning(false);
+    }
   };
 
   const handleAddSponsorAmount = async () => {
@@ -469,9 +501,24 @@ export default function AdminPage() {
 
           <TabsContent value="users" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl overflow-hidden">
              <div className="flex items-center justify-between mb-6 px-2">
-              <h2 className="font-bold text-sm uppercase tracking-widest text-primary">帳戶管理與名稱解鎖 ({users?.length || 0})</h2>
-              <p className="text-[10px] text-muted-foreground italic font-bold">刪除紀錄即可釋放該名稱供他人申請</p>
+              <div className="space-y-1">
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary">帳戶管理與名稱解鎖 ({namedUsers.length})</h2>
+                <p className="text-[10px] text-muted-foreground italic font-bold">空白暫存 UID 已從列表隱藏，目前共 {blankUsernameUsers.length} 筆。</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCleanupStaleUsers}
+                disabled={isCleaning}
+                className="rounded-full text-[10px] font-bold uppercase border-primary/30 bg-primary/5 text-primary"
+              >
+                {isCleaning ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />清理中...</> : <><RefreshCw className="w-3 h-3 mr-1.5" />清理 7 天空白 UID</>}
+              </Button>
             </div>
+            {cleanResult && (
+              <div className="mb-4 text-[10px] font-bold text-green-400 bg-green-400/10 rounded-xl px-3 py-2">{cleanResult}</div>
+            )}
             {isUsersLoading ? (
               <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
             ) : (
@@ -486,7 +533,7 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users?.map((u: any) => (
+                    {namedUsers.map((u: any) => (
                       <TableRow key={u.id} className="border-white/5 hover:bg-white/[0.02]">
                         <TableCell className="text-xs font-bold text-primary">@{u.username}</TableCell>
                         <TableCell>
