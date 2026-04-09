@@ -637,12 +637,24 @@ export default function EditNotePage() {
       // 讓 top3 cache 失效，下次首頁載入時重算
       deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
       toast({ title: "修改已儲存" });
-      router.replace(`/notes/${id}`);
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        router.back();
+      } else {
+        router.replace(`/notes/${id}`);
+      }
     } catch (err: any) {
       console.error('[EditNote] save error:', err);
       toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
       setIsSaving(false);
     }
+  };
+
+  const handleBackToPrevious = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.replace(`/notes/${id}`);
   };
 
   if (isUserLoading || isNoteLoading) {
@@ -657,7 +669,7 @@ export default function EditNotePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.replace(`/notes/${id}`)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={handleBackToPrevious} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
       </div>
 
@@ -1060,15 +1072,6 @@ export default function EditNotePage() {
         </section>
 
         <div className="flex flex-col gap-3">
-          <Button
-            variant="outline"
-            className="w-full h-11 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
-            onClick={saveCurrentSession}
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />}
-            儲存「{activeSessionIdx === 0 ? '開瓶品飲' : extraSessions[activeSessionIdx - 1]?.label || `第${activeSessionIdx + 1}次`}」
-          </Button>
           <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存所有修改
           </Button>
