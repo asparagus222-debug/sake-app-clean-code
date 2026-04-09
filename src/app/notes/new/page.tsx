@@ -51,7 +51,7 @@ export default function NewNotePage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   
   const [isSaving, setIsSaving] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
@@ -111,7 +111,10 @@ export default function NewNotePage() {
     if (!firestore || !user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
-  const { data: profile } = useDoc(userDocRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
+
+  const isAccountStatusPending = isUserLoading || !user || (!!userDocRef && isProfileLoading);
+  const canCreateNote = !!profile?.username;
 
   // 使用者已存的銘柄名稱列表，用於 AI 辨識後的標準化
   const myNotesQuery = useMemoFirebase(() => {
@@ -632,7 +635,17 @@ const handleSave = async () => {
       </div>
 
       {/* 要求登入提示 */}
-      {!profile?.username && (
+      {isAccountStatusPending ? (
+        <div className="dark-glass rounded-[2rem] border border-white/10 bg-white/5 p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <Loader2 className="w-5 h-5 text-primary/70 flex-shrink-0 mt-0.5 animate-spin" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-bold text-foreground">正在確認帳戶狀態</p>
+              <p className="text-xs text-muted-foreground">稍候即可判斷是否可直接建立品飲筆記。</p>
+            </div>
+          </div>
+        </div>
+      ) : !canCreateNote && (
         <div className="dark-glass rounded-[2rem] border border-amber-500/30 bg-amber-500/10 p-6 mb-6">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -650,7 +663,7 @@ const handleSave = async () => {
         </div>
       )}
 
-      <div className="space-y-5" style={{ opacity: !profile?.username ? 0.5 : 1, pointerEvents: !profile?.username ? 'none' : 'auto' }}>
+      <div className="space-y-5" style={{ opacity: canCreateNote ? 1 : 0.5, pointerEvents: canCreateNote ? 'auto' : 'none' }}>
 
         {/* 照片聚焦編輯 */}
         <section className="space-y-3">
