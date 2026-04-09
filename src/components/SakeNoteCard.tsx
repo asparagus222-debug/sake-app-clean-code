@@ -76,16 +76,16 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
       </Link>
 
       {/* 底欄：作者、日期、愛心 */}
-      <CardContent className="p-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <Link href={`/users/${note.userId}`} className="flex items-center gap-1 hover:text-primary transition-colors min-w-0 group/author">
+      <CardContent className="p-3 flex items-start justify-between gap-2">
+        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+          <Link href={`/users/${note.userId}`} className="flex items-start gap-1 hover:text-primary transition-colors min-w-0 group/author">
             <User className="w-2.5 h-2.5 text-primary/60 shrink-0" />
-            <span className="text-xs text-muted-foreground font-bold truncate group-hover/author:text-primary transition-colors">
+            <span className="text-xs text-muted-foreground font-bold whitespace-normal break-all leading-tight group-hover/author:text-primary transition-colors">
               {authorProfile?.username || note.username || "匿名"}
             </span>
           </Link>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 pt-0.5">
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-tighter">
             <Calendar className="w-2.5 h-2.5 opacity-50" />
             {new Date(note.tastingDate || note.createdAt || "").toLocaleDateString('zh-TW')}
