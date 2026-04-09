@@ -1,9 +1,11 @@
 
 'use client';
 
-import React, { useMemo, useEffect, type ReactNode } from 'react';
+import React, { useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { FirebaseProvider, useFirebase } from '@/firebase/provider';
 import { initializeFirebase, initiateAnonymousSignIn } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -25,6 +27,38 @@ function AuthInitializer() {
   return null;
 }
 
+function UserProfileBootstrapper() {
+  const { user, firestore } = useFirebase();
+  const bootstrappedUsersRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user || !firestore) return;
+    if (bootstrappedUsersRef.current.has(user.uid)) return;
+
+    bootstrappedUsersRef.current.add(user.uid);
+    setDocumentNonBlocking(
+      doc(firestore, 'users', user.uid),
+      {
+        id: user.uid,
+        avatarUrl: `https://picsum.photos/seed/${user.uid}/100/100`,
+        bio: '',
+        qualifications: [],
+        themeSettings: {
+          mode: 'dark',
+          fontSize: 'base',
+          customBg: '#0a0a0c',
+          customPrimary: '#f97316',
+        },
+        updatedAt: new Date().toISOString(),
+        ...(user.isAnonymous ? {} : { createdAt: new Date().toISOString() }),
+      },
+      { merge: true }
+    );
+  }, [user, firestore]);
+
+  return null;
+}
+
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
     // Initialize Firebase on the client side, once per component mount.
@@ -39,6 +73,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       storage={firebaseServices.storage}
     >
       <AuthInitializer />
+      <UserProfileBootstrapper />
       {children}
     </FirebaseProvider>
   );
