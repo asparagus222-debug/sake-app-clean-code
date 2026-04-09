@@ -20,6 +20,8 @@ export default function Home() {
   const firestore = useFirestore();
   const [activeTab, setActiveTab] = useState("latest");
   const PAGE_SIZE = 10;
+  const INITIAL_NOTES_LIMIT = 20;
+  const INITIAL_RANKING_LIMIT = 24;
   const [latestPage, setLatestPage] = useState(0);
   const [followingPage, setFollowingPage] = useState(0);
   const router = useRouter();
@@ -166,12 +168,12 @@ export default function Home() {
 
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(100));
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(INITIAL_NOTES_LIMIT));
   }, [firestore]);
   const { data: latestNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(latestNotesQuery);
   const displayedLatestNotes = latestNotes ?? cachedLatestNotes;
 
-  // 若超過 15 秒仍無資料，顯示手動重整按鈕（memoryLocalCache 直連網路，通常幾秒內就有資料）
+  // 若超過 15 秒仍無資料，改顯示文字提示，不再放重新整理按鈕
   const [notesTimedOut, setNotesTimedOut] = useState(false);
   useEffect(() => {
     if (displayedLatestNotes !== null) { setNotesTimedOut(false); return; }
@@ -190,16 +192,16 @@ export default function Home() {
   }, [latestNotes]);
 
   const followingQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user || activeTab !== 'following') return null;
     return collection(firestore, 'users', user.uid, 'following');
-  }, [firestore, user]);
+  }, [firestore, user, activeTab]);
   const { data: followingDocs } = useCollection(followingQuery);
   const followingIds = followingDocs?.map(d => d.id) || [];
 
   const followingNotes = React.useMemo(() => {
-    if (!latestNotes || followingIds.length === 0) return [];
-    return latestNotes.filter(note => followingIds.includes(note.userId));
-  }, [latestNotes, followingIds]);
+    if (!displayedLatestNotes || followingIds.length === 0) return [];
+    return displayedLatestNotes.filter(note => followingIds.includes(note.userId));
+  }, [displayedLatestNotes, followingIds]);
 
   // ── Top3：直接讀 rankingQuery，同時讀 meta/top3 cache（有 cache 則先顯示，背景刷新）──
   const top3CacheRef = useMemoFirebase(() => {
@@ -212,9 +214,9 @@ export default function Home() {
 
   // 排名 query 永遠執行（不再依賴 useFallback），避免 cache 失效時 Top3 消失
   const rankingQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(50));
-  }, [firestore]);
+    if (!firestore || (top3Cache?.groups?.length || cachedTop3Groups.length > 0)) return null;
+    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(INITIAL_RANKING_LIMIT));
+  }, [firestore, top3Cache?.groups?.length, cachedTop3Groups.length]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
   // 以 rankingNotes 計算 top3（live data）；rankingNotes 尚未到位時先顯示 cache
@@ -395,11 +397,11 @@ export default function Home() {
 
             <TabsContent value="latest" className="mt-0">
               {notesTimedOut ? (
-                <div className="flex flex-col items-center justify-center py-24 gap-4">
-                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">載入逾時，請重新整理</p>
-                  <Button variant="outline" size="sm" className="rounded-full border-primary/40 text-primary text-[11px] font-bold" onClick={() => window.location.reload()}>
-                    重新整理
-                  </Button>
+                <div className="flex flex-col items-center justify-center py-24 gap-3">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">首頁資料載入較久</p>
+                  <p className="text-[10px] text-muted-foreground text-center max-w-xs leading-relaxed">
+                    目前仍在等待最新貼文同步，若已看到上方殿堂榜單，代表首頁骨架正常運作中。
+                  </p>
                 </div>
               ) : (isNotesLoading || displayedLatestNotes === null) ? (
                 <div className="space-y-4">
