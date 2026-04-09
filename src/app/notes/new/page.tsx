@@ -660,6 +660,16 @@ const handleSave = async () => {
               <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => setShowGuidedTasting(true)}>
                 <ListChecks className="w-2.5 h-2.5 mr-1" /> 引導品鑒
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                disabled
+                className="text-[9px] font-bold h-6 rounded-full border-white/10 bg-white/5 text-muted-foreground/55 opacity-100 cursor-not-allowed disabled:opacity-100 disabled:pointer-events-none"
+                title="專業品鑑功能建構中"
+              >
+                <ClipboardCheck className="w-2.5 h-2.5 mr-1" /> 專業品鑑（建構中）
+              </Button>
               {images.length > 0 && (
                 <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 px-2 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')} title="重選圖片">
                   <Camera className="w-3 h-3" />
