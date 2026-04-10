@@ -47,6 +47,10 @@ async function resizeImage(base64: string, maxDimension: number = 1024): Promise
   });
 }
 
+function roundDuration(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 function cachePublishedNote(note: SakeNote, limitCount = 20) {
   if (typeof window === 'undefined') return;
 
@@ -278,26 +282,67 @@ export default function NewNotePage() {
   }
 };
 
-  const triggerAIIdentification = async (photoDataUri: string, backPhotoDataUri?: string) => {
+  const prepareAiIdentifyImage = async (idx: number): Promise<{ dataUri: string; source: 'original' | 'captured' } | null> => {
+    if (!images[idx]) return null;
+
+    const original = originals[idx] || images[idx];
+    const ratio = imgRatios[idx] || 1;
+    const defaultZoom = images.length === 1 ? Math.min(ratio, 1 / ratio) : 1;
+    const zoomUnchanged = Math.abs(zooms[idx] - defaultZoom) < 0.001;
+    const offsetUnchanged = Math.abs(offsets[idx].x) < 0.5 && Math.abs(offsets[idx].y) < 0.5;
+
+    if (original && zoomUnchanged && offsetUnchanged) {
+      return { dataUri: original, source: 'original' };
+    }
+
+    const captured = await captureCurrentView(idx);
+    const optimized = await resizeImage(captured, 1024);
+    return { dataUri: optimized, source: 'captured' };
+  };
+
+  const triggerAIIdentification = async () => {
     const abortController = new AbortController();
     identifyAbortRef.current = abortController;
     setIsIdentifying(true);
     setIdentifyCountdown(20);
+    const totalStart = performance.now();
     const countdownInterval = setInterval(() => {
       setIdentifyCountdown(prev => prev - 1);
     }, 1000);
     try {
-      const [optimizedPhoto, optimizedBack] = await Promise.all([
-        resizeImage(photoDataUri, 1024),
-        backPhotoDataUri ? resizeImage(backPhotoDataUri, 1024) : Promise.resolve(undefined),
+      const preprocessStart = performance.now();
+      const [preparedFront, preparedBack] = await Promise.all([
+        prepareAiIdentifyImage(0),
+        images[1] ? prepareAiIdentifyImage(1) : Promise.resolve(null),
       ]);
+
+      if (!preparedFront?.dataUri) {
+        throw new Error('missing-identify-image');
+      }
+
+      const preprocessMs = roundDuration(performance.now() - preprocessStart);
+      const requestStart = performance.now();
       const response = await authorizedJsonFetch(auth, '/api/ai/identify-sake', {
         method: 'POST',
-        body: JSON.stringify({ photoDataUri: optimizedPhoto, ...(optimizedBack ? { backPhotoDataUri: optimizedBack } : {}) }),
+        body: JSON.stringify({
+          photoDataUri: preparedFront.dataUri,
+          ...(preparedBack?.dataUri ? { backPhotoDataUri: preparedBack.dataUri } : {}),
+        }),
         signal: abortController.signal,
       });
       if (!response.ok) throw new Error('API error');
+      const requestMs = roundDuration(performance.now() - requestStart);
       const result = await response.json();
+      const serverTimingHeader = response.headers.get('x-identify-sake-timing');
+      let serverTiming: Record<string, unknown> | null = null;
+      if (serverTimingHeader) {
+        try {
+          serverTiming = JSON.parse(serverTimingHeader) as Record<string, unknown>;
+        } catch {
+          serverTiming = null;
+        }
+      }
+
       if (result) {
         const newInfoTags: string[] = [];
         if (result.seimaibuai) newInfoTags.push(`精米${result.seimaibuai}`);
@@ -319,6 +364,14 @@ export default function NewNotePage() {
           alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
           sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
         }));
+        console.info('[AI辨識前端計時]', {
+          preprocessMs,
+          requestMs,
+          totalMs: roundDuration(performance.now() - totalStart),
+          frontImageSource: preparedFront.source,
+          backImageSource: preparedBack?.source ?? null,
+          serverTiming,
+        });
         toast({ title: "AI 辨識成功", description: "已自動填充資訊。" });
       }
     } catch (error: any) {
@@ -811,7 +864,7 @@ const handleSave = async () => {
                 {!isIdentifying && originals.length > 0 && (
                   <button
                     type="button"
-                    onClick={async () => { const photo = await captureCurrentView(0); triggerAIIdentification(photo || originals[0], originals[1]); }}
+                    onClick={triggerAIIdentification}
                     className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-black/60 hover:bg-primary/30 border border-primary/40 text-primary backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all"
                   >
                     <Sparkles className="w-3 h-3" />

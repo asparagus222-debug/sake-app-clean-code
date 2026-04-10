@@ -96,7 +96,15 @@ export const identifySakeFlow = ai.defineFlow(
     outputSchema: IdentifySakeOutputSchema,
   },
   async (input) => {
+    const flowStart = performance.now();
     const hasBackLabel = !!input.backPhotoDataUri;
+    const logTiming = (path: string, details: Record<string, unknown>) => {
+      console.info('[AI辨識後端計時]', JSON.stringify({
+        path,
+        totalMs: Math.round((performance.now() - flowStart) * 10) / 10,
+        ...details,
+      }));
+    };
 
     // 合併標籤陣列，去重（圖片標籤在前）
     const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
@@ -106,10 +114,12 @@ export const identifySakeFlow = ai.defineFlow(
     // 背標送 OCR（印刷文字清晰，讀規格數值）
     const frontBase64 = input.photoDataUri?.split(',')[1] || '';
     const backBase64 = hasBackLabel ? input.backPhotoDataUri!.split(',')[1] : '';
+    const cloudVisionStart = performance.now();
     const [frontVision, backVision] = await Promise.all([
       callCloudVision(frontBase64),
       backBase64 ? callCloudVision(backBase64) : Promise.resolve({ ocrText: '', webEntities: [], bestGuessLabel: '' }),
     ]);
+    const cloudVisionMs = Math.round((performance.now() - cloudVisionStart) * 10) / 10;
     const frontOcr = frontVision.ocrText;     // 正標 OCR：銘柄/品牌名
     const vWebEntities = frontVision.webEntities; // 正標 WEB_DETECTION：網路圖片比對品牌
     const vOcr = hasBackLabel ? backVision.ocrText : frontVision.ocrText; // 背標 OCR：規格數值
@@ -128,6 +138,7 @@ export const identifySakeFlow = ai.defineFlow(
     if (hasStrongWebHit && vOcr.length > 20) {
       console.log('[AI辨識] 快速通道：Vision 識別成功 → Gemini 文字整合（跳過 Google Search）');
       const webSummary = highConfEntities.join('、');
+      const fastPathStart = performance.now();
       const { output: fastResult } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
         output: { schema: IdentifySakeOutputSchema },
@@ -156,8 +167,10 @@ ${webSummary}
 
       // brandName === brewery 代表沒找到真正銘柄，以酒造名頂替，視為失敗
       const isBrandSameAsBrewery = fastResult?.brandName && fastResult?.brandName === fastResult?.brewery;
+      const fastPathMs = Math.round((performance.now() - fastPathStart) * 10) / 10;
       if (fastResult?.brandName && fastResult?.brewery && !isBrandSameAsBrewery) {
         console.log(`[AI辨識] 快速通道成功 ✓ ${fastResult.brandName} / ${fastResult.brewery}`);
+        logTiming('vision-fast-path', { cloudVisionMs, fastPathMs, hasBackLabel });
         return fastResult;
       }
       if (isBrandSameAsBrewery) console.log('[AI辨識] 快速通道銘柄=酒造，疑似未找到真正銘柄，回退');
@@ -170,6 +183,7 @@ ${webSummary}
       // 否則回退至傳統視覺 OCR
       const useTextOcr = vOcr.length > 50;
       console.log(`[AI辨識] 快速路徑 Step A：${useTextOcr ? 'Cloud Vision 文字版（加速）' : '視覺版'} OCR`);
+      const backOcrStart = performance.now();
       const { output: backOcr } = await ai.generate({
         model: googleAI.model('gemini-flash-latest'),
         output: { schema: IdentifySakeOutputSchema },
@@ -215,11 +229,13 @@ ${frontOcr}
         ],
       }).catch(() => ({ output: null }));
 
+      const backOcrMs = Math.round((performance.now() - backOcrStart) * 10) / 10;
       if (backOcr?.brandName && backOcr?.brewery) {
         console.log('[AI辨識] 快速路徑 Step A 成功:', backOcr.brandName, '→ Step B 補充搜尋');
 
         // Step B：搜尋這款酒的補充製法資訊，嚴格要求有搜尋結果依據才能填入
         const supplementQuery = `"${backOcr.brandName}" "${backOcr.brewery}" 日本酒`;
+        const supplementStart = performance.now();
         const { output: supplement } = await ai.generate({
           model: googleAI.model('gemini-flash-latest'),
           config: { googleSearchRetrieval: true },
@@ -246,7 +262,8 @@ ${frontOcr}
         }).catch(() => ({ output: null }));
 
         // Step B 合併：圖片數值絕對優先，specialProcess 取聯集
-        return {
+        const supplementMs = Math.round((performance.now() - supplementStart) * 10) / 10;
+        const mergedResult = {
           brandName: backOcr.brandName,
           brewery: backOcr.brewery,
           origin: backOcr.origin || supplement?.origin || '',
@@ -257,6 +274,8 @@ ${frontOcr}
           yeast: backOcr.yeast || supplement?.yeast || '',
           smv: backOcr.smv || supplement?.smv || '',
         };
+        logTiming('back-label-fast-path', { cloudVisionMs, backOcrMs, supplementMs, hasBackLabel });
+        return mergedResult;
       }
       console.log('[AI辨識] 快速路徑 OCR 未取得完整品牌資訊，回退至完整流程');
     }
@@ -266,6 +285,7 @@ ${frontOcr}
     const primaryImage = hasBackLabel ? input.backPhotoDataUri! : input.photoDataUri;
     const secondaryImage = hasBackLabel ? input.photoDataUri : null;
 
+    const step1Start = performance.now();
     const { output: geminiVision } = await ai.generate({
       model: googleAI.model('gemini-flash-latest'),
       output: { schema: VisionExtractionSchema },
@@ -287,6 +307,7 @@ ${frontOcr}
       ],
     }).catch(() => ({ output: null }));
 
+    const step1VisionMs = Math.round((performance.now() - step1Start) * 10) / 10;
     const vision = geminiVision ?? { allText: [], brandName: '', brewery: '', origin: '', alcoholPercent: '', seimaibuai: '', riceName: '', specialProcess: [], searchQuery: '', yeast: '', smv: '', visualDescription: '' };
 
     const { brandName, brewery, origin } = vision;
@@ -315,7 +336,7 @@ ${frontOcr}
 
     // 若品牌和酒造都無法辨識，直接回傳視覺結果（避免搜出無關結果）
     if (!brandName && !brewery && !isSuspiciousBrand) {
-      return {
+      const fallbackResult = {
         brandName: '',
         brewery: '',
         origin,
@@ -326,12 +347,15 @@ ${frontOcr}
         yeast: vision.yeast || '',
         smv: vision.smv || '',
       };
+      logTiming('vision-only-empty-fallback', { cloudVisionMs, step1VisionMs, hasBackLabel });
+      return fallbackResult;
     }
 
     // ── Step 2: Google Search 補齊規格 ──
     // 用 Step 1 精確提取的日文名稱去搜尋，準確度遠高於直接用圖片搜尋。
     const query = searchQuery;
 
+    const step2Start = performance.now();
     const { output: enriched } = await ai.generate({
       model: googleAI.model('gemini-flash-latest'),
       config: { googleSearchRetrieval: true },
@@ -379,8 +403,9 @@ ${frontOcr}
     }).catch(() => ({ output: null }));
 
     // Step 2 失敗時降級回傳 Step 1 結果
+    const step2SearchMs = Math.round((performance.now() - step2Start) * 10) / 10;
     if (!enriched) {
-      return {
+      const fallbackResult = {
         brandName,
         brewery,
         origin,
@@ -391,11 +416,13 @@ ${frontOcr}
         yeast: vision.yeast || '',
         smv: vision.smv || '',
       };
+      logTiming('vision-step1-fallback', { cloudVisionMs, step1VisionMs, step2SearchMs, hasBackLabel, isSuspiciousBrand });
+      return fallbackResult;
     }
 
     // 合併結果：銘柄/酒造以視覺辨識為主，規格細節以搜尋補充
     // specialProcess 取聯集；若視覺 brandName 疑為裝飾字，以搜尋結果覆蓋
-    return {
+    const finalResult = {
       ...enriched,
       brandName: (!isSuspiciousBrand && brandName) ? brandName : enriched.brandName,
       brewery: brewery || enriched.brewery,
@@ -407,5 +434,7 @@ ${frontOcr}
       yeast: vision.yeast || enriched.yeast || '',
       smv: vision.smv || enriched.smv || '',
     };
+    logTiming('full-search-path', { cloudVisionMs, step1VisionMs, step2SearchMs, hasBackLabel, isSuspiciousBrand });
+    return finalResult;
   }
 );
