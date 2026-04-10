@@ -7,6 +7,7 @@ import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { AuthBootstrapSnapshot, clearAuthBootstrap, createAuthBootstrapSnapshot, readAuthBootstrapFromStorage, writeAuthBootstrap } from '@/lib/auth-bootstrap';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -31,6 +32,7 @@ export interface FirebaseContextState {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
+  authBootstrap: AuthBootstrapSnapshot | null;
 }
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -42,11 +44,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
   storage,
 }) => {
+  const initialBootstrap = readAuthBootstrapFromStorage();
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
-    user: null,
-    isUserLoading: true,
+    user: auth?.currentUser ?? null,
+    isUserLoading: !!auth && !auth?.currentUser,
     userError: null,
   });
+  const [authBootstrap, setAuthBootstrap] = useState<AuthBootstrapSnapshot | null>(initialBootstrap);
 
   useEffect(() => {
     if (!auth) {
@@ -54,10 +58,29 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
+    if (auth.currentUser) {
+      setUserAuthState({ user: auth.currentUser, isUserLoading: false, userError: null });
+      setAuthBootstrap((prev) => {
+        const next = createAuthBootstrapSnapshot(auth.currentUser!, undefined, prev);
+        writeAuthBootstrap(next);
+        return next;
+      });
+    }
+
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        if (firebaseUser) {
+          setAuthBootstrap((prev) => {
+            const next = createAuthBootstrapSnapshot(firebaseUser, undefined, prev);
+            writeAuthBootstrap(next);
+            return next;
+          });
+        } else {
+          setAuthBootstrap(null);
+          clearAuthBootstrap();
+        }
       },
       (error) => {
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
@@ -77,8 +100,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
+      authBootstrap,
     };
-  }, [firebaseApp, firestore, auth, storage, userAuthState]);
+  }, [firebaseApp, firestore, auth, storage, userAuthState, authBootstrap]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -100,8 +124,8 @@ export const useFirestore = () => useFirebase().firestore;
 export const useAuth = () => useFirebase().auth;
 export const useStorage = () => useFirebase().storage;
 export const useUser = () => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
+  const { user, isUserLoading, userError, authBootstrap } = useFirebase();
+  return { user, isUserLoading, userError, authBootstrap };
 };
 
 /**

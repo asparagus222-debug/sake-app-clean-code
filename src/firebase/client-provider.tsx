@@ -2,11 +2,13 @@
 'use client';
 
 import React, { useMemo, useEffect, useRef, type ReactNode } from 'react';
-import { FirebaseProvider, useFirebase } from '@/firebase/provider';
+import { FirebaseProvider, useFirebase, useMemoFirebase } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { DailyAnnouncementDialog } from '@/components/DailyAnnouncementDialog';
+import { clearAuthBootstrap, createAuthBootstrapSnapshot, writeAuthBootstrap } from '@/lib/auth-bootstrap';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -15,6 +17,23 @@ interface FirebaseClientProviderProps {
 function UserProfileBootstrapper() {
   const { user, firestore } = useFirebase();
   const bootstrappedUsersRef = useRef<Set<string>>(new Set());
+  const userRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+  const { data: liveProfile } = useDoc(userRef);
+
+  useEffect(() => {
+    if (!user) {
+      clearAuthBootstrap();
+      return;
+    }
+
+    writeAuthBootstrap(createAuthBootstrapSnapshot(user, {
+      username: liveProfile?.username,
+      avatarUrl: liveProfile?.avatarUrl,
+    }));
+  }, [user, liveProfile?.username, liveProfile?.avatarUrl]);
 
   useEffect(() => {
     if (!user || !firestore) return;

@@ -1,7 +1,9 @@
 import { HomeClient } from '@/components/home/HomeClient';
+import { AUTH_BOOTSTRAP_COOKIE_NAME, readAuthBootstrapFromCookieValue } from '@/lib/auth-bootstrap';
 import { getAdminApp } from '@/lib/firebase-admin';
 import { SakeNote } from '@/lib/types';
 import { getFirestore } from 'firebase-admin/firestore';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +88,8 @@ async function getInitialTop3Groups(): Promise<Top3Group[]> {
 }
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  const initialAuthBootstrap = readAuthBootstrapFromCookieValue(cookieStore.get(AUTH_BOOTSTRAP_COOKIE_NAME)?.value);
   const [initialLatestNotes, initialTop3Groups] = await Promise.all([
     getInitialLatestNotes(),
     getInitialTop3Groups(),
@@ -93,6 +97,7 @@ export default async function HomePage() {
 
   return (
     <HomeClient
+      initialAuthBootstrap={initialAuthBootstrap}
       initialLatestNotes={initialLatestNotes}
       initialTop3Groups={initialTop3Groups}
     />

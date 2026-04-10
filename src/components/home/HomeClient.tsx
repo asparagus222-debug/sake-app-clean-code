@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
+import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
 
 type Top3Group = {
   brandName: string;
@@ -22,13 +23,15 @@ type Top3Group = {
 };
 
 export function HomeClient({
+  initialAuthBootstrap,
   initialLatestNotes,
   initialTop3Groups,
 }: {
+  initialAuthBootstrap: AuthBootstrapSnapshot | null;
   initialLatestNotes: SakeNote[];
   initialTop3Groups: Top3Group[];
 }) {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, authBootstrap } = useUser();
   const firestore = useFirestore();
   const [activeTab, setActiveTab] = useState("latest");
   const PAGE_SIZE = 10;
@@ -41,10 +44,10 @@ export function HomeClient({
   const [drafts, setDrafts] = useState<Array<{id: string; brandName: string; savedAt: string}>>([]);
 
   const [cachedAvatar, setCachedAvatar] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('cached_avatar') : null
+    typeof window !== 'undefined' ? localStorage.getItem('cached_avatar') || initialAuthBootstrap?.avatarUrl || null : initialAuthBootstrap?.avatarUrl || null
   );
   const [cachedUsername, setCachedUsername] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('cached_username') : null
+    typeof window !== 'undefined' ? localStorage.getItem('cached_username') || initialAuthBootstrap?.username || null : initialAuthBootstrap?.username || null
   );
   const [cachedLatestNotes, setCachedLatestNotes] = useState<SakeNote[] | null>(() => {
     if (typeof window === 'undefined') return initialLatestNotes;
@@ -170,7 +173,7 @@ export function HomeClient({
   }, [profile?.avatarUrl, profile?.username]);
 
   React.useEffect(() => {
-    if (user) return;
+    if (user || authBootstrap || initialAuthBootstrap || isUserLoading) return;
 
     setCachedAvatar(null);
     setCachedUsername(null);
@@ -259,16 +262,20 @@ export function HomeClient({
     } catch {}
   }, [top3Groups]);
 
-  const isFormalUser = user && !user.isAnonymous;
+  const effectiveBootstrap = authBootstrap ?? initialAuthBootstrap;
+  const displayUsername = profile?.username || cachedUsername || effectiveBootstrap?.username || null;
+  const displayAvatar = profile?.avatarUrl || cachedAvatar || effectiveBootstrap?.avatarUrl || (user?.uid || effectiveBootstrap?.uid ? `https://picsum.photos/seed/${user?.uid || effectiveBootstrap?.uid}/100/100` : undefined);
+  const isFormalUser = user ? !user.isAnonymous : !!effectiveBootstrap && !effectiveBootstrap.isAnonymous;
+  const isResolvingIdentity = isUserLoading && !!effectiveBootstrap;
 
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
         <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words flex-1 leading-tight">
-          {(user && (profile?.username || cachedUsername)) ? `${profile?.username || cachedUsername} 的品飲筆記` : "品飲筆記"}
+          {displayUsername ? `${displayUsername} 的品飲筆記` : "品飲筆記"}
         </h1>
         <div className="flex items-center gap-3 shrink-0">
-          {!isFormalUser && !profile?.username && (
+          {!isFormalUser && !displayUsername && !isResolvingIdentity && !isUserLoading && (
              <Link href="/recover">
                <Button variant="ghost" size="sm" className="rounded-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary border border-white/10 h-10 px-4">
                  <KeyRound className="w-3 h-3 mr-1" /> 找回帳戶
@@ -278,14 +285,14 @@ export function HomeClient({
           <Link href="/profile" className="flex items-center gap-4 group">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                {(user && (profile?.username || cachedUsername)) || (isFormalUser ? "恢復身分中..." : "愛好者")}
+                {displayUsername || (isResolvingIdentity || isUserLoading ? "恢復身分中..." : isFormalUser ? "已登入" : "愛好者")}
               </p>
               <p className="text-[10px] text-primary/60 group-hover:text-primary transition-colors tracking-widest uppercase font-bold">
                 個人資料
               </p>
             </div>
             <Avatar className="w-10 h-10 border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg">
-              <AvatarImage src={profile?.avatarUrl || cachedAvatar || (user?.uid ? `https://picsum.photos/seed/${user.uid}/100/100` : undefined)} />
+              <AvatarImage src={displayAvatar} />
               <AvatarFallback className="bg-muted"><User className="w-5 h-5" /></AvatarFallback>
             </Avatar>
           </Link>
