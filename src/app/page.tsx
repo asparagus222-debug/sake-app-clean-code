@@ -3,6 +3,8 @@ import { getAdminApp } from '@/lib/firebase-admin';
 import { SakeNote } from '@/lib/types';
 import { getFirestore } from 'firebase-admin/firestore';
 
+export const dynamic = 'force-dynamic';
+
 type Top3Group = {
   brandName: string;
   brewery: string;
