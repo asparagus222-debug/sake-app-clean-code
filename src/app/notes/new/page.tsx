@@ -100,6 +100,8 @@ export default function NewNotePage() {
   const [customTag, setCustomTag] = useState("");
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [aiHighlightedFields, setAiHighlightedFields] = useState<string[]>([]);
+  const aiHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 追蹤開瓶後風味變化提醒
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -178,6 +180,30 @@ export default function NewNotePage() {
     formData.alcoholPercent ||
     formData.sakeInfoTags.length > 0
   );
+
+  useEffect(() => {
+    return () => {
+      if (aiHighlightTimerRef.current) {
+        clearTimeout(aiHighlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const flashAiHighlightedFields = (fields: string[]) => {
+    if (fields.length === 0) return;
+    if (aiHighlightTimerRef.current) {
+      clearTimeout(aiHighlightTimerRef.current);
+    }
+    setAiHighlightedFields(fields);
+    aiHighlightTimerRef.current = setTimeout(() => {
+      setAiHighlightedFields([]);
+      aiHighlightTimerRef.current = null;
+    }, 2800);
+  };
+
+  const getAiHighlightClass = (field: string) => aiHighlightedFields.includes(field)
+    ? 'border-emerald-400/60 bg-emerald-400/10 shadow-[0_0_0_1px_rgba(74,222,128,0.28)] transition-all duration-300'
+    : '';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -358,14 +384,28 @@ export default function NewNotePage() {
           result.origin || '',
           knownBrands
         );
+        const nextBrandName = normalized.brandName || formData.brandName;
+        const nextBrewery = normalized.brewery || formData.brewery;
+        const nextOrigin = normalized.origin || formData.origin;
+        const nextAlcoholPercent = result.alcoholPercent || formData.alcoholPercent;
+        const nextInfoTags = newInfoTags.length > 0 ? newInfoTags : formData.sakeInfoTags;
+        const changedFields: string[] = [];
+
+        if (nextBrandName !== formData.brandName) changedFields.push('brandName');
+        if (nextBrewery !== formData.brewery) changedFields.push('brewery');
+        if (nextOrigin !== formData.origin) changedFields.push('origin');
+        if (nextAlcoholPercent !== formData.alcoholPercent) changedFields.push('alcoholPercent');
+        if (JSON.stringify(nextInfoTags) !== JSON.stringify(formData.sakeInfoTags)) changedFields.push('sakeInfoTags');
+
         setFormData(prev => ({
           ...prev,
-          brandName: normalized.brandName || prev.brandName,
-          brewery: normalized.brewery || prev.brewery,
-          origin: normalized.origin || prev.origin,
-          alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
-          sakeInfoTags: newInfoTags.length > 0 ? newInfoTags : prev.sakeInfoTags,
+          brandName: nextBrandName,
+          brewery: nextBrewery,
+          origin: nextOrigin,
+          alcoholPercent: nextAlcoholPercent,
+          sakeInfoTags: nextInfoTags,
         }));
+        flashAiHighlightedFields(changedFields);
         console.info('[AI辨識前端計時]', {
           preprocessMs,
           requestMs,
@@ -948,7 +988,7 @@ const handleSave = async () => {
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
-                <Input placeholder="例如：十四代" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
+                <Input placeholder="例如：十四代" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brandName'))} value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
               </div>
               {showSuggestions && brandSuggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
@@ -963,20 +1003,20 @@ const handleSave = async () => {
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
-              <Input placeholder="例如：高木酒造" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
+              <Input placeholder="例如：高木酒造" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brewery'))} value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label>
-              <Input placeholder="例如：山形縣" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
+              <Input placeholder="例如：山形縣" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('origin'))} value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒精濃度 (%)</Label>
-              <Input placeholder="例如：16" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.alcoholPercent} onChange={e => setFormData(p => ({ ...p, alcoholPercent: e.target.value }))} />
+              <Input placeholder="例如：16" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('alcoholPercent'))} value={formData.alcoholPercent} onChange={e => setFormData(p => ({ ...p, alcoholPercent: e.target.value }))} />
             </div>
           </div>
 
           {/* 酒鑑資訊標籤 — AI 自動填入，可手動補充/刪除 */}
-          <div className="space-y-2 pt-1">
+          <div className={cn("space-y-2 pt-1 rounded-xl transition-all duration-300", aiHighlightedFields.includes('sakeInfoTags') && 'bg-emerald-400/8 ring-1 ring-emerald-400/30 px-2.5 py-2')}>
             <div className="flex items-center justify-between">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒鑑資訊標籤</Label>
               <span className="text-[8px] text-muted-foreground/60">AI 自動辨識，可手動加刪</span>
