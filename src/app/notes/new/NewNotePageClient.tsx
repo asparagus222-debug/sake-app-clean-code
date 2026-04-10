@@ -333,8 +333,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     if (!images[idx]) return null;
 
     const original = originals[idx] || images[idx];
-    const ratio = imgRatios[idx] || 1;
-    const defaultZoom = images.length === 1 ? Math.min(ratio, 1 / ratio) : 1;
+    const defaultZoom = 1;
     const zoomUnchanged = Math.abs(zooms[idx] - defaultZoom) < 0.001;
     const offsetUnchanged = Math.abs(offsets[idx].x) < 0.5 && Math.abs(offsets[idx].y) < 0.5;
 
@@ -499,7 +498,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
           const base64 = reader.result as string;
           const resized = await resizeImage(base64, 1024);
           const ratio = await getImageRatio(resized);
-          const newZoom = (slotIdx === 0 && totalAfter === 1) ? Math.min(ratio, 1 / ratio) : 1;
+          const newZoom = 1;
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
           setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
@@ -530,9 +529,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
           const base64 = reader.result as string;
           const resized = await resizeImage(base64, 1024);
           const ratio = await getImageRatio(resized);
-          // 單圖模式：初始 zoom 設為 containZoom（顯示完整圖片）
-          // 雙圖模式：初始 zoom = 1（配合 object-cover 填滿半格）
-          const newZoom = (slotIdx === 0 && totalAfter === 1) ? Math.min(ratio, 1 / ratio) : 1;
+          const newZoom = 1;
           setImages(prev => [...prev, resized]);
           setOriginals(prev => [...prev, resized]);
           setImgRatios(prev => { const next = [...prev]; next[slotIdx] = ratio; return next; });
@@ -550,8 +547,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       const base64 = reader.result as string;
       const resized = await resizeImage(base64, 1024);
       const ratio = await getImageRatio(resized);
-      const isSingleMode = images.length === 1;
-      const newZoom = isSingleMode ? Math.min(ratio, 1 / ratio) : 1;
+      const newZoom = 1;
       setImages(prev => { const next = [...prev]; next[idx] = resized; return next; });
       setOriginals(prev => { const next = [...prev]; next[idx] = resized; return next; });
       setImgRatios(prev => { const next = [...prev]; next[idx] = ratio; return next; });
@@ -574,7 +570,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
             const base64 = reader.result as string;
             const resized = await resizeImage(base64, 1024);
             const ratio = await getImageRatio(resized);
-            const newZoom = (slotIdx === 0 && total === 1) ? Math.min(ratio, 1 / ratio) : 1;
+            const newZoom = 1;
             resolve({ slotIdx, resized, ratio, newZoom });
           };
           reader.readAsDataURL(file);
@@ -629,22 +625,38 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     const SIZE = 1200;
     canvas.width = SIZE; canvas.height = SIZE;
     const zoom = zooms[idx]; const offset = offsets[idx];
-    // object-cover 語義：短邊擐滿 SIZE
     const imgRatio = img.width / img.height;
-    let coverW, coverH;
-    if (imgRatio > 1) { coverH = SIZE; coverW = SIZE * imgRatio; }
-    else { coverW = SIZE; coverH = SIZE / imgRatio; }
-    // 基礎居中（cover 裁切為正中央）
-    const baseX = (SIZE - coverW) / 2;
-    const baseY = (SIZE - coverH) / 2;
-    // 將畫面裏的 px offset 比例導成 canvas 小數
+    let baseW = SIZE;
+    let baseH = SIZE;
+    let baseX = 0;
+    let baseY = 0;
+
+    if (images.length === 1) {
+      if (imgRatio >= 1) {
+        baseW = SIZE;
+        baseH = SIZE / imgRatio;
+        baseY = (SIZE - baseH) / 2;
+      } else {
+        baseW = SIZE * imgRatio;
+        baseH = SIZE;
+        baseX = (SIZE - baseW) / 2;
+      }
+    } else if (imgRatio > 1) {
+      baseH = SIZE;
+      baseW = SIZE * imgRatio;
+      baseX = (SIZE - baseW) / 2;
+    } else {
+      baseW = SIZE;
+      baseH = SIZE / imgRatio;
+      baseY = (SIZE - baseH) / 2;
+    }
+
     const editorWidth = window.innerWidth < 640 ? window.innerWidth - 64 : 640;
     const scaleFactor = SIZE / editorWidth;
-    const drawW = coverW * zoom;
-    const drawH = coverH * zoom;
-    // zoom 從中心漲將
-    const zoomOffX = (coverW - drawW) / 2;
-    const zoomOffY = (coverH - drawH) / 2;
+    const drawW = baseW * zoom;
+    const drawH = baseH * zoom;
+    const zoomOffX = (baseW - drawW) / 2;
+    const zoomOffY = (baseH - drawH) / 2;
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SIZE, SIZE);
     ctx.drawImage(img,
       baseX + zoomOffX + (offset.x * scaleFactor),
@@ -688,9 +700,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       });
     } else if (e.touches.length === 2 && initialDist && initialZoom) {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
-      const r = imgRatios[draggingIdx] || 1;
-      // 單圖模式允許縮小到 containZoom（顯示完整圖片）；雙圖模式最小 1
-      const minZoom = images.length === 1 ? Math.min(r, 1 / r) : 1;
+      const minZoom = 1;
       setZooms(prev => {
         const next = [...prev];
         next[draggingIdx] = Math.min(Math.max(initialZoom * scale, minZoom), 5);
@@ -744,12 +754,13 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={{
-            width: ratio >= 1 ? `${ratio * 100}%` : '100%',
-            height: ratio < 1 ? `${(1 / ratio) * 100}%` : '100%',
-            left: ratio >= 1 ? `${(1 - ratio) * 50}%` : '0%',
-            top: ratio < 1 ? `${(1 - 1 / ratio) * 50}%` : '0%',
-            transform: `translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
+          style={ratio >= 1 ? {
+            width: '100%', height: 'auto', left: '0', top: '50%',
+            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
+            transformOrigin: 'center center',
+          } : {
+            height: '100%', width: 'auto', top: '0', left: '50%',
+            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
             transformOrigin: 'center center',
           }}
           alt={`img${idx + 1}`}
@@ -802,12 +813,13 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={{
-            width: ratio >= 1 ? `${ratio * 100}%` : '100%',
-            height: ratio < 1 ? `${(1 / ratio) * 100}%` : '100%',
-            left: ratio >= 1 ? `${(1 - ratio) * 50}%` : '0%',
-            top: ratio < 1 ? `${(1 - 1 / ratio) * 50}%` : '0%',
-            transform: `translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
+          style={ratio >= 1 ? {
+            width: '100%', height: 'auto', left: '0', top: '50%',
+            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
+            transformOrigin: 'center center',
+          } : {
+            height: '100%', width: 'auto', top: '0', left: '50%',
+            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
             transformOrigin: 'center center',
           }}
           alt={`img${idx + 1}`}
