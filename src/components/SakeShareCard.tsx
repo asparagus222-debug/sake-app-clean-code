@@ -285,6 +285,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const um = note.umamiRating ?? 0;
   const as_ = note.astringencyRating ?? 0;
   const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 5);
+  const styleTags = (note.styleTags ?? []).slice(0, 4);
 
   // ── Theme-adaptive card palette ──────────────────────────────────────────
   const theme = authorProfile?.themeSettings;
@@ -371,6 +372,14 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
 
   return (
     <>
+      <input
+        ref={replaceImageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleReplacePhoto}
+      />
+
       {/* ── Image Editor Modal ── */}
       {showImgEditor && shareImageSrc && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-md">
@@ -385,7 +394,11 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
               </button>
               <button
                 className="flex items-center gap-1.5 text-white/55 text-[11px] font-bold px-2 py-1 rounded-full border border-white/10 hover:border-white/30 hover:text-white/80 transition-colors"
-                onClick={() => replaceImageInputRef.current?.click()}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  replaceImageInputRef.current?.click();
+                }}
               >
                 <Camera className="w-3 h-3" /> 重選照片
               </button>
@@ -475,13 +488,6 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
         className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
         onClick={onClose}
       >
-        <input
-          ref={replaceImageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleReplacePhoto}
-        />
         <div className="w-full max-w-sm flex flex-col items-center gap-3 py-4" onClick={e => e.stopPropagation()}>
 
           {/* ── 分享卡本體 ── */}
@@ -565,7 +571,11 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
               {!isExporting && (
                 <button
                   type="button"
-                  onClick={() => replaceImageInputRef.current?.click()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    replaceImageInputRef.current?.click();
+                  }}
                   style={{
                     position: 'absolute', top: 10, left: 10,
                     display: 'flex', alignItems: 'center', gap: 4,
@@ -623,6 +633,32 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                   <div style={{ fontSize: 11, fontWeight: 700, color: tc.textSoft }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
                 </div>
               </div>
+              {styleTags.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 4 }}>風格標籤</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {styleTags.map((tag, index) => (
+                      <span
+                        key={`${tag}-${index}`}
+                        style={{
+                          display: 'inline-block',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          lineHeight: 1.3,
+                          color: isDark ? 'rgba(255,230,205,0.88)' : 'rgba(124,45,18,0.9)',
+                          background: isDark ? rgba(primaryColor, 0.14) : rgba(primaryColor, 0.1),
+                          border: `1px solid ${isDark ? rgba(primaryColor, 0.3) : rgba(primaryColor, 0.35)}`,
+                          padding: '3px 8px',
+                          borderRadius: 999,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ height: 1, flex: 1, background: tc.divider }} />
                 <span style={{ fontSize: 9, color: tc.primarySite, letterSpacing: '0.22em', fontWeight: 700 }}>SAKEPATH.COM</span>
