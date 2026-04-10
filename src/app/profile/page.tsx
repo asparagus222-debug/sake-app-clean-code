@@ -63,7 +63,8 @@ import {
   useDoc, 
   useMemoFirebase, 
   addDocumentNonBlocking,
-  updateDocumentNonBlocking
+  updateDocumentNonBlocking,
+  initiateAnonymousSignIn
 } from '@/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
@@ -592,6 +593,52 @@ export default function ProfilePage() {
   const previewPrimary = themeMode === 'custom' ? customPrimary : '#f97316';
   const isPreviewDark = getBrightness(previewBg) < 128;
   const fontSizeIndex = FONT_SIZE_LEVELS.indexOf(themeFontSize);
+  const isAnonymousUser = !!user?.isAnonymous;
+  const isRegisteredUser = !!user && !user.isAnonymous;
+
+  const handleStartCreateAccount = () => {
+    if (!auth) {
+      toast({ variant: 'destructive', title: '登入服務尚未就緒' });
+      return;
+    }
+
+    initiateAnonymousSignIn(auth);
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen notebook-texture p-4 md:p-8 pb-32 font-body">
+        <div className="max-w-xl mx-auto space-y-4">
+          <header className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="hover:bg-primary/10 text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+            <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest uppercase">建立帳號</h1>
+            <div className="w-10" />
+          </header>
+
+          <section className="dark-glass p-6 rounded-[2.5rem] border border-primary/20 shadow-2xl text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center">
+              <User className="w-7 h-7 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-headline font-bold text-primary uppercase tracking-widest">先建立品飲帳號</h2>
+              <p className="text-xs text-muted-foreground leading-6">
+                建帳流程會先進入建立帳號表單，送出後再設定 6 位數 PIN 碼，不會直接進入正式帳戶中心。
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button onClick={handleStartCreateAccount} className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-gradient-to-r from-primary to-primary/80 uppercase tracking-widest">
+                <User className="w-4 h-4 mr-2" /> 創建帳號
+              </Button>
+              <Button variant="outline" onClick={() => router.push('/recover')} className="w-full rounded-full h-11 text-xs font-bold uppercase tracking-widest border-primary/30 bg-primary/5 hover:bg-primary/10">
+                找回既有帳號
+              </Button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen notebook-texture p-4 md:p-8 pb-32 font-body">
@@ -738,10 +785,11 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-4">
         <header className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="hover:bg-primary/10 text-primary"><ArrowLeft className="w-5 h-5" /></Button>
-          <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest uppercase">帳戶中心</h1>
+          <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest uppercase">{isAnonymousUser ? '建立帳號' : '帳戶中心'}</h1>
           <div className="w-10" />
         </header>
 
+        {isRegisteredUser && (
         <div className="flex items-center justify-center gap-2 px-1">
           <Link href="/profile/notes" className="flex-1">
             <Button variant="outline" className="w-full h-11 rounded-2xl border-primary/30 bg-primary/5 hover:bg-primary/10 shadow-lg p-2 flex items-center justify-center gap-1.5">
@@ -870,9 +918,10 @@ export default function ProfilePage() {
             </DialogContent>
           </Dialog>
         </div>
+        )}
 
         {/* 匿名用戶創建帳戶流程 */}
-        {user?.isAnonymous && (
+        {isAnonymousUser && (
         <form onSubmit={handleCreateAccountClick} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
             <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
@@ -1001,7 +1050,7 @@ export default function ProfilePage() {
           </section>
 
           <Button type="submit" className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-gradient-to-r from-primary to-primary/80 uppercase tracking-widest">
-            <Save className="w-4 h-4 mr-2" /> 建立帳戶
+            <User className="w-4 h-4 mr-2" /> 創建帳號
           </Button>
           
           {/* PIN 設置對話框 */}
@@ -1045,7 +1094,7 @@ export default function ProfilePage() {
         )}
         
         {/* 已註冊用戶個人資料表單 */}
-        {!user?.isAnonymous && (
+        {isRegisteredUser && (
         <form onSubmit={handleSave} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
           <div className="flex flex-col items-center gap-1">
             <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
