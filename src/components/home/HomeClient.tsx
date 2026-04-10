@@ -50,6 +50,7 @@ export function HomeClient({
     typeof window !== 'undefined' ? localStorage.getItem('cached_username') || initialAuthBootstrap?.username || null : initialAuthBootstrap?.username || null
   );
   const [cachedLatestNotes, setCachedLatestNotes] = useState<SakeNote[] | null>(() => {
+    if (initialLatestNotes.length > 0) return initialLatestNotes;
     if (typeof window === 'undefined') return initialLatestNotes;
     try {
       return JSON.parse(localStorage.getItem('home_latest_notes_snapshot') || 'null') || initialLatestNotes;
@@ -58,6 +59,7 @@ export function HomeClient({
     }
   });
   const [cachedTop3Groups, setCachedTop3Groups] = useState<Top3Group[]>(() => {
+    if (initialTop3Groups.length > 0) return initialTop3Groups;
     if (typeof window === 'undefined') return initialTop3Groups;
     try {
       const stored = JSON.parse(localStorage.getItem('home_top3_snapshot') || '[]');
