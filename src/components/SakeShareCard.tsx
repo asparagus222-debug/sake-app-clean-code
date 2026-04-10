@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { SakeNote, UserProfile } from '@/lib/types';
-import { Share2, X, Loader2, Pencil, RotateCcw, Check } from 'lucide-react';
+import { Share2, X, Loader2, Pencil, RotateCcw, Check, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SakeShareCardProps {
@@ -78,6 +78,7 @@ function sortInfoTags(tags: string[]): string[] {
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   type DescMode = 'none' | 'user' | 'ai' | 'both';
@@ -86,6 +87,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   // Committed image position (used in the card)
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
   const [imgZoom, setImgZoom] = useState(1);
+  const [shareImageSrc, setShareImageSrc] = useState<string | null>(note.imageUrls?.[0] || null);
 
   // Editor modal state
   const [showImgEditor, setShowImgEditor] = useState(false);
@@ -219,6 +221,56 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
     setEditorZoom(imgZoom);
     setShowImgEditor(true);
   };
+
+  const resetImageTransform = () => {
+    editorOffsetRef.current = { x: 0, y: 0 };
+    editorZoomRef.current = 1;
+    setEditorOffset({ x: 0, y: 0 });
+    setEditorZoom(1);
+    setImgOffset({ x: 0, y: 0 });
+    setImgZoom(1);
+  };
+
+  const resizeSelectedImage = async (base64: string, maxDimension = 1600): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.src = base64;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > maxDimension) {
+          height *= maxDimension / width;
+          width = maxDimension;
+        } else if (height >= width && height > maxDimension) {
+          width *= maxDimension / height;
+          height = maxDimension;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+    });
+  };
+
+  const handleReplacePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const resized = await resizeSelectedImage(base64);
+      setShareImageSrc(resized);
+      resetImageTransform();
+      setShowImgEditor(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const confirmImgEdit = () => {
     // Scale editor-space offset back down to card-space
     const downScale = cardImageSizeRef.current / previewFrameSize;
@@ -320,16 +372,24 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   return (
     <>
       {/* ── Image Editor Modal ── */}
-      {showImgEditor && note.imageUrls?.[0] && (
+      {showImgEditor && shareImageSrc && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-md">
           {/* Toolbar */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-            <button
-              className="text-white/50 text-sm font-bold px-2 py-1"
-              onClick={() => setShowImgEditor(false)}
-            >
-              取消
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="text-white/50 text-sm font-bold px-2 py-1"
+                onClick={() => setShowImgEditor(false)}
+              >
+                取消
+              </button>
+              <button
+                className="flex items-center gap-1.5 text-white/55 text-[11px] font-bold px-2 py-1 rounded-full border border-white/10 hover:border-white/30 hover:text-white/80 transition-colors"
+                onClick={() => replaceImageInputRef.current?.click()}
+              >
+                <Camera className="w-3 h-3" /> 重選照片
+              </button>
+            </div>
             <span className="text-white/40 text-[11px] tracking-widest">拖移 · 雙指縮放</span>
             <button
               className="flex items-center gap-1.5 bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full"
@@ -350,7 +410,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={note.imageUrls[0]}
+              src={shareImageSrc}
               alt=""
               crossOrigin="anonymous"
               draggable={false}
@@ -401,12 +461,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
           <div className="flex items-center justify-between px-5 py-3 border-t border-white/10 shrink-0">
             <button
               className="flex items-center gap-1.5 text-white/30 text-[11px] hover:text-white/60 transition-colors"
-              onClick={() => {
-                editorOffsetRef.current = { x: 0, y: 0 };
-                editorZoomRef.current = 1;
-                setEditorOffset({ x: 0, y: 0 });
-                setEditorZoom(1);
-              }}
+              onClick={resetImageTransform}
             >
               <RotateCcw className="w-3 h-3" /> 重置
             </button>
@@ -420,6 +475,13 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
         className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
         onClick={onClose}
       >
+        <input
+          ref={replaceImageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleReplacePhoto}
+        />
         <div className="w-full max-w-sm flex flex-col items-center gap-3 py-4" onClick={e => e.stopPropagation()}>
 
           {/* ── 分享卡本體 ── */}
@@ -472,9 +534,9 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 }}
                 onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
               >
-                {note.imageUrls?.[0] ? (
+                {shareImageSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={note.imageUrls[0]} alt="" crossOrigin="anonymous"
+                  <img src={shareImageSrc} alt="" crossOrigin="anonymous"
                     style={{
                       position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
                       objectFit: 'cover' as const,
@@ -487,7 +549,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍶</div>
                 )}
                 {/* Edit hint — hidden during export so it doesn't appear in the shared image */}
-                {note.imageUrls?.[0] && !isExporting && (
+                {shareImageSrc && !isExporting && (
                   <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
                     background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
@@ -500,6 +562,21 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                   </div>
                 )}
               </div>
+              {!isExporting && (
+                <button
+                  type="button"
+                  onClick={() => replaceImageInputRef.current?.click()}
+                  style={{
+                    position: 'absolute', top: 10, left: 10,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '5px 8px', borderRadius: 999,
+                    background: 'rgba(0,0,0,0.48)', color: 'rgba(255,255,255,0.78)',
+                    border: '1px solid rgba(255,255,255,0.14)', fontSize: 9, fontWeight: 700,
+                  }}
+                >
+                  <Camera style={{ width: 10, height: 10 }} /> 重選
+                </button>
+              )}
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <RadarSvg sw={sw} ac={ac} bi={bi} um={um} as_={as_} size={128} primaryColor={primaryColor} isDark={isDark} />
               </div>
