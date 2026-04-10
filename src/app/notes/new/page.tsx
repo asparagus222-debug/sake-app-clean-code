@@ -836,14 +836,6 @@ const handleSave = async () => {
               >
                 <ClipboardCheck className="w-2.5 h-2.5 mr-1" /> 專業品鑑（建構中）
               </Button>
-              {images.length > 0 && (
-                <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 px-2 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')} title="重選圖片">
-                  <Camera className="w-3 h-3" />
-                </Button>
-              )}
-              <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 px-2 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2} title="換位">
-                <Repeat className="w-3 h-3" />
-              </Button>
             </div>
           </div>
           <div className="dark-glass rounded-[2rem] overflow-hidden border border-primary/20 p-3 space-y-3 shadow-xl">
@@ -929,14 +921,6 @@ const handleSave = async () => {
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                     <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
                     <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
-                    <p className="text-white/75 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">
-                      辨識期間可以先往下填寫品飲筆記、評分與搭餐，完成後會自動補上基本資料。
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 px-5">
-                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先寫原始筆記</span>
-                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先拉感官評分</span>
-                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先選搭餐與溫度</span>
-                    </div>
                     <p className="text-white/40 text-[9px] font-bold mt-1 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                     <button
                       type="button"
@@ -960,10 +944,15 @@ const handleSave = async () => {
                 <Sparkles className="w-2.5 h-2.5" />加入背標可大幅加速 AI 辨識
               </p>
             )}
-            {isIdentifying && (
-              <p className="text-[9px] text-amber-200/80 text-center font-medium leading-relaxed px-3">
-                AI 辨識進行中，你可以先往下填寫評分與筆記，不需要停在這裡等。
-              </p>
+            {images.length > 0 && (
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-7 px-3 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker('replace-all')} title="重選圖片">
+                  <Camera className="w-3 h-3 mr-1" /> 重選圖片
+                </Button>
+                <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-7 px-3 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => images.length === 2 && setImages([images[1], images[0]])} disabled={images.length < 2} title="換位">
+                  <Repeat className="w-3 h-3 mr-1" /> 換位
+                </Button>
+              </div>
             )}
           </div>
         </section>
