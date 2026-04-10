@@ -29,6 +29,18 @@ export async function requireAuthenticatedUser(request: NextRequest): Promise<De
   }
 }
 
+export function hasAdminClaim(token: DecodedIdToken): boolean {
+  return token.admin === true;
+}
+
+export async function requireAdminUser(request: NextRequest): Promise<DecodedIdToken> {
+  const token = await requireAuthenticatedUser(request);
+  if (!hasAdminClaim(token)) {
+    throw new RequestAuthError('無管理員權限', 403);
+  }
+  return token;
+}
+
 export async function requireVerifiedAppCheck(request: NextRequest): Promise<void> {
   if (process.env.FIREBASE_APP_CHECK_ENFORCED !== 'true') {
     return;

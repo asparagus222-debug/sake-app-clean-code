@@ -1,14 +1,10 @@
+import path from 'node:path';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   // Removed: output: 'export',
   // Removed: distDir: 'out',
-  typescript: {
-    ignoreBuildErrors: true, // Re-enable ignoreBuildErrors
-  },
-  eslint: {
-    ignoreDuringBuilds: true, // Re-enable ignoreDuringBuilds
-  },
+  outputFileTracingRoot: path.join(__dirname),
   images: {
     remotePatterns: [
       {

@@ -61,16 +61,14 @@ import {
   initiateGoogleSignIn
 } from '@/firebase';
 import { collection, doc, updateDoc, deleteField, increment } from 'firebase/firestore';
-import { signOut, getIdToken } from 'firebase/auth';
+import { signOut, getIdTokenResult } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import {
   JanomeCupIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS,
   SakeBottleIcon, YONGO_VARIANTS,
   KodaruIcon, KODARU_GOLD_COLORS,
 } from '@/components/SponsorIcons';
-
-// 管理員名單
-const ADMIN_EMAILS = ["asparagus222@gmail.com", "admin@example.com"];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -80,6 +78,8 @@ export default function AdminPage() {
   const { user, isUserLoading } = useUser();
   const [activeTab, setActiveTab] = useState("notes");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdminLoading, setIsAdminLoading] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanResult, setCleanResult] = useState<string | null>(null);
   const [sponsorUserId, setSponsorUserId] = useState('');
@@ -97,8 +97,42 @@ export default function AdminPage() {
   const [mergingKey, setMergingKey] = useState<string | null>(null);
   const [groupCanonicals, setGroupCanonicals] = useState<Record<string, string>>({});
 
-  // 權限檢查
-  const isAdmin = user && user.email && ADMIN_EMAILS.includes(user.email);
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (isUserLoading) {
+      setIsAdminLoading(true);
+      return;
+    }
+
+    if (!user) {
+      setIsAdmin(false);
+      setIsAdminLoading(false);
+      return;
+    }
+
+    setIsAdminLoading(true);
+    getIdTokenResult(user, true)
+      .then((tokenResult) => {
+        if (!cancelled) {
+          setIsAdmin(tokenResult.claims.admin === true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsAdmin(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsAdminLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isUserLoading]);
 
   // 獲取所有貼文
   const notesQuery = useMemoFirebase(() => {
@@ -157,13 +191,11 @@ export default function AdminPage() {
   };
 
   const handleDeleteUserRecord = async (userId: string, username: string) => {
-    if (!auth || !auth.currentUser) return;
+    if (!auth) return;
     try {
-      const idToken = await getIdToken(auth.currentUser);
-      const res = await fetch('/api/admin/delete-user', {
+      const res = await authorizedJsonFetch(auth, '/api/admin/delete-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUid: userId, callerIdToken: idToken }),
+        body: JSON.stringify({ targetUid: userId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '刪除失敗');
@@ -181,15 +213,13 @@ export default function AdminPage() {
   };
 
   const handleCleanupStaleUsers = async () => {
-    if (!auth || !auth.currentUser) return;
+    if (!auth) return;
     setIsCleaning(true);
     setCleanResult(null);
     try {
-      const idToken = await getIdToken(auth.currentUser);
-      const res = await fetch('/api/admin/cleanup-stale-users', {
+      const res = await authorizedJsonFetch(auth, '/api/admin/cleanup-stale-users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callerIdToken: idToken }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '清理失敗');
@@ -372,7 +402,7 @@ export default function AdminPage() {
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isAdminLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
@@ -398,11 +428,16 @@ export default function AdminPage() {
         )}
 
         <p className="text-muted-foreground text-sm max-w-md mb-8">
-          此區域僅限系統管理員訪問。請使用指定的 Google 帳戶進行身份驗證以執行維護操作。
+          {user
+            ? '目前帳號沒有 admin custom claim，無法進入控制台。若這是管理員帳號，請先在 Firebase Admin 設定 admin claim 後重新登入。'
+            : '此區域僅限系統管理員訪問。請先登入，再使用已被賦予 admin custom claim 的帳號進入控制台。'}
         </p>
         <Button onClick={handleLogin} className="rounded-full h-14 px-10 shadow-xl bg-primary font-bold">
-          <LogIn className="w-5 h-5 mr-2" /> 使用 Google 帳戶登入
+          <LogIn className="w-5 h-5 mr-2" /> {user ? '切換 Google 帳戶' : '使用 Google 帳戶登入'}
         </Button>
+        {user && (
+          <Button variant="ghost" onClick={handleLogout} className="mt-3 text-xs opacity-70">登出目前帳戶</Button>
+        )}
         <Button variant="ghost" onClick={() => router.push('/')} className="mt-4 text-xs opacity-50">返回首頁</Button>
       </div>
     );
@@ -418,7 +453,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-xl font-headline font-bold text-primary gold-glow tracking-widest uppercase">系統控制台</h1>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">{user?.email} (ADMIN)</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">{user?.email} (ADMIN CLAIM)</p>
             </div>
           </div>
           <Button variant="ghost" onClick={handleLogout} className="rounded-full text-destructive hover:bg-destructive/10 text-xs font-bold uppercase">

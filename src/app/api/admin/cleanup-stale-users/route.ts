@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAdminApp } from '@/lib/firebase-admin';
+import { RequestAuthError, requireAdminUser } from '@/lib/server-auth';
 
-const ADMIN_EMAILS = ['asparagus222@gmail.com', 'admin@example.com'];
 const STALE_DAYS = 7;
 
 function isBlankUsername(value: unknown) {
@@ -19,26 +19,11 @@ function getCandidateTimestamp(data: Record<string, unknown>) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { callerIdToken } = await request.json();
-
-    if (!callerIdToken) {
-      return NextResponse.json({ error: '缺少管理員驗證資訊' }, { status: 400 });
-    }
+    await requireAdminUser(request);
 
     const adminApp = getAdminApp();
     const adminAuth = getAuth(adminApp);
     const adminDb = getFirestore(adminApp);
-
-    let callerRecord;
-    try {
-      callerRecord = await adminAuth.verifyIdToken(callerIdToken);
-    } catch {
-      return NextResponse.json({ error: '身份驗證失敗' }, { status: 401 });
-    }
-
-    if (!callerRecord.email || !ADMIN_EMAILS.includes(callerRecord.email)) {
-      return NextResponse.json({ error: '無管理員權限' }, { status: 403 });
-    }
 
     const now = Date.now();
     const staleThreshold = now - STALE_DAYS * 24 * 60 * 60 * 1000;
@@ -109,6 +94,9 @@ export async function POST(request: NextRequest) {
       skippedCount: skipped.length,
     });
   } catch (error: any) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: error?.message || '清理失敗' }, { status: 500 });
   }
 }

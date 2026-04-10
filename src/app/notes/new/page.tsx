@@ -323,7 +323,7 @@ export default function NewNotePage() {
     }
   };
 
-  const openPicker = (type: 'new' | 'replace', idx = 0) => {
+  const openPicker = (type: 'new' | 'replace' | 'replace-all', idx = 0) => {
     setPickerTarget({ type, idx });
     setShowPicker(true);
   };
