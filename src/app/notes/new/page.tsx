@@ -47,6 +47,18 @@ async function resizeImage(base64: string, maxDimension: number = 1024): Promise
   });
 }
 
+function cachePublishedNote(note: SakeNote, limitCount = 20) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const existing = JSON.parse(localStorage.getItem('home_latest_notes_snapshot') || '[]') as SakeNote[];
+    const next = [note, ...existing.filter((item) => item.id !== note.id)].slice(0, limitCount);
+    localStorage.setItem('home_latest_notes_snapshot', JSON.stringify(next));
+  } catch {
+    // Ignore local cache failures and keep the publish flow moving.
+  }
+}
+
 export default function NewNotePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -605,6 +617,11 @@ const handleSave = async () => {
     };
     
     const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+    cachePublishedNote({
+      id: docRef.id,
+      ...noteData,
+      description: formData.userDescription || '',
+    } as SakeNote);
     // 讓 top3 cache 失效，下次首頁載入時重算
     deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
     try {
