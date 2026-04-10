@@ -1437,7 +1437,7 @@ const handleSave = async () => {
 
       {/* 相機 / 相簿選擇底部彈窗 */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowPicker(false)}>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setShowPicker(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
@@ -1467,12 +1467,11 @@ const handleSave = async () => {
       )}
 
       {isImageEditorOpen && images.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
           <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary/70">圖片編輯</p>
-                <h2 className="text-base font-headline font-bold text-white">調整完成後，主頁圖片將固定不再誤觸拖拉</h2>
               </div>
               <Button type="button" className="h-10 rounded-full px-5 text-xs font-bold uppercase tracking-widest bg-primary" onClick={finishImageEditing}>
                 <Check className="mr-2 h-3.5 w-3.5" /> 完成
