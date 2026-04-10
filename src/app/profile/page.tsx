@@ -67,7 +67,7 @@ import {
   initiateAnonymousSignIn
 } from '@/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc, writeBatch } from 'firebase/firestore';
 import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
 import Link from 'next/link';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -414,9 +414,28 @@ export default function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (!user || !firestore || !auth) return;
     try {
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), { isAccountDeleted: true, deletedAt: new Date().toISOString(), username: '' });
+      const deletedAt = new Date().toISOString();
+      const batch = writeBatch(firestore);
+      const userRef = doc(firestore, 'users', user.uid);
+      batch.set(userRef, { isAccountDeleted: true, deletedAt, username: '' }, { merge: true });
+
+      const noteSnapshot = await getDocs(query(collection(firestore, 'sakeTastingNotes'), where('userId', '==', user.uid)));
+      noteSnapshot.docs.forEach((noteDoc) => {
+        batch.set(noteDoc.ref, { username: '' }, { merge: true });
+      });
+
+      await batch.commit();
+
+      try {
+        localStorage.removeItem('cached_username');
+        localStorage.removeItem('cached_avatar');
+        localStorage.removeItem('home_latest_notes_snapshot');
+      } catch {
+        // ignore storage cleanup failures
+      }
+
       try { await deleteUser(user); } catch (authErr) { await auth.signOut(); }
-      router.push('/');
+      router.replace('/');
     } catch (err) {
       toast({ variant: "destructive", title: "刪除失敗" });
     }

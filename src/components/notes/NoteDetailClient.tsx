@@ -242,6 +242,9 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     return doc(firestore, 'users', note.userId);
   }, [firestore, note?.userId]);
   const { data: authorProfile } = useDoc<UserProfile>(authorRef);
+  const authorName = authorProfile?.isAccountDeleted
+    ? '匿名'
+    : authorProfile?.username || note?.username || '愛好者';
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -443,7 +446,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                   <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
                     <Link href={`/users/${note.userId}`} className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/5 hover:bg-primary/10 transition-colors">
                       <User className="w-2.5 h-2.5 text-primary" />
-                      <span className="text-xs font-bold text-foreground/80">{authorProfile?.username || note.username || '愛好者'}</span>
+                      <span className="text-xs font-bold text-foreground/80">{authorName}</span>
                       <UserBadge userId={note.userId} />
                     </Link>
                     <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold">
@@ -452,7 +455,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                     </div>
                   </div>
 
-                  {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
+                  {!authorProfile?.isAccountDeleted && authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
                         <Badge key={idx} variant="outline" className="text-[8px] py-0.5 border-primary/20 bg-primary/5 text-primary/80 font-bold uppercase flex items-center gap-1">

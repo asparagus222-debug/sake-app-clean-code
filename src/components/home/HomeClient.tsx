@@ -169,6 +169,19 @@ export function HomeClient({
     }
   }, [profile?.avatarUrl, profile?.username]);
 
+  React.useEffect(() => {
+    if (user) return;
+
+    setCachedAvatar(null);
+    setCachedUsername(null);
+    try {
+      localStorage.removeItem('cached_avatar');
+      localStorage.removeItem('cached_username');
+    } catch {
+      // ignore storage cleanup failures
+    }
+  }, [user]);
+
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(INITIAL_NOTES_LIMIT));
@@ -252,7 +265,7 @@ export function HomeClient({
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex justify-between items-center gap-4">
         <h1 className="text-base sm:text-xl font-headline font-bold text-primary gold-glow tracking-widest break-words flex-1 leading-tight">
-          {(profile?.username || cachedUsername) ? `${profile?.username || cachedUsername} 的品飲筆記` : "品飲筆記"}
+          {(user && (profile?.username || cachedUsername)) ? `${profile?.username || cachedUsername} 的品飲筆記` : "品飲筆記"}
         </h1>
         <div className="flex items-center gap-3 shrink-0">
           {!isFormalUser && !profile?.username && (
@@ -265,7 +278,7 @@ export function HomeClient({
           <Link href="/profile" className="flex items-center gap-4 group">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                {profile?.username || cachedUsername || (isFormalUser ? "恢復身分中..." : "愛好者")}
+                {(user && (profile?.username || cachedUsername)) || (isFormalUser ? "恢復身分中..." : "愛好者")}
               </p>
               <p className="text-[10px] text-primary/60 group-hover:text-primary transition-colors tracking-widest uppercase font-bold">
                 個人資料

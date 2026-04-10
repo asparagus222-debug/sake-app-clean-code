@@ -25,6 +25,9 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
     return doc(firestore, 'users', note.userId);
   }, [firestore, note.userId]);
   const { data: authorProfile } = useDoc<UserProfile>(authorRef);
+  const authorName = authorProfile?.isAccountDeleted
+    ? '匿名'
+    : authorProfile?.username || note.username || '匿名';
 
   const likedBy = note.likedByUserIds || [];
   const isLiked = user ? likedBy.includes(user.uid) : false;
@@ -81,7 +84,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
           <Link href={`/users/${note.userId}`} className="flex items-start gap-1 hover:text-primary transition-colors min-w-0 group/author">
             <User className="w-2.5 h-2.5 text-primary/60 shrink-0 mt-0.5" />
             <span className="text-xs text-muted-foreground font-bold whitespace-normal break-all leading-tight group-hover/author:text-primary transition-colors">
-              {authorProfile?.username || note.username || "匿名"}
+              {authorName}
             </span>
           </Link>
         </div>
@@ -103,7 +106,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
       </CardContent>
 
       {/* 作者頭銜（有才顯示） */}
-      {authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
+      {!authorProfile?.isAccountDeleted && authorProfile?.qualifications && authorProfile.qualifications.length > 0 && (
         <div className="px-3 pb-3 flex flex-wrap gap-1">
           {authorProfile.qualifications.slice(0, 3).map((q, idx) => (
             <Badge key={idx} variant="outline" className="text-[7px] py-0 h-4 border-primary/20 bg-primary/5 text-primary/70 font-bold flex items-center gap-0.5 uppercase whitespace-nowrap">

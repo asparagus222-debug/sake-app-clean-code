@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ function getTodayKey() {
 
 export function DailyAnnouncementDialog() {
   const { user, isUserLoading } = useFirebase();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const storageKey = useMemo(() => {
@@ -29,7 +31,7 @@ export function DailyAnnouncementDialog() {
   }, [user]);
 
   useEffect(() => {
-    if (isUserLoading || !storageKey) return;
+    if (isUserLoading || !storageKey || pathname !== '/') return;
 
     try {
       const seen = localStorage.getItem(storageKey);
@@ -39,7 +41,13 @@ export function DailyAnnouncementDialog() {
     } catch {
       setOpen(true);
     }
-  }, [isUserLoading, storageKey]);
+  }, [isUserLoading, pathname, storageKey]);
+
+  useEffect(() => {
+    if (pathname !== '/' && open) {
+      setOpen(false);
+    }
+  }, [open, pathname]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -52,7 +60,7 @@ export function DailyAnnouncementDialog() {
     }
   };
 
-  if (!user || isUserLoading) return null;
+  if (!user || isUserLoading || pathname !== '/') return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
