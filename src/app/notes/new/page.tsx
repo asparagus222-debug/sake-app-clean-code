@@ -72,7 +72,6 @@ export default function NewNotePage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
-  const [identifyCountdown, setIdentifyCountdown] = useState(0);
   const identifyAbortRef = useRef<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lockedImgs, setLockedImgs] = useState([false, false]);
@@ -172,6 +171,13 @@ export default function NewNotePage() {
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
   });
+  const hasAiIdentifiedData = Boolean(
+    formData.brandName ||
+    formData.brewery ||
+    formData.origin ||
+    formData.alcoholPercent ||
+    formData.sakeInfoTags.length > 0
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -304,11 +310,7 @@ export default function NewNotePage() {
     const abortController = new AbortController();
     identifyAbortRef.current = abortController;
     setIsIdentifying(true);
-    setIdentifyCountdown(20);
     const totalStart = performance.now();
-    const countdownInterval = setInterval(() => {
-      setIdentifyCountdown(prev => prev - 1);
-    }, 1000);
     try {
       const preprocessStart = performance.now();
       const [preparedFront, preparedBack] = await Promise.all([
@@ -381,11 +383,23 @@ export default function NewNotePage() {
         toast({ variant: "destructive", title: "AI 辨識失敗" });
       }
     } finally {
-      clearInterval(countdownInterval);
       setIsIdentifying(false);
-      setIdentifyCountdown(0);
       identifyAbortRef.current = null;
     }
+  };
+
+  const clearAiIdentifiedFields = () => {
+    setFormData((prev) => ({
+      ...prev,
+      brandName: '',
+      brewery: '',
+      origin: '',
+      alcoholPercent: '',
+      sakeInfoTags: [],
+    }));
+    setShowSuggestions(false);
+    setBrandSuggestions([]);
+    toast({ title: '已清空 AI 辨識資料', description: '品牌、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
   };
 
   const openPicker = (type: 'new' | 'replace' | 'replace-all', idx = 0) => {
@@ -875,11 +889,14 @@ const handleSave = async () => {
                   <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
                     <div className="bg-primary/20 p-4 rounded-full animate-pulse border border-primary/30 mb-4"><Sparkles className="w-8 h-8 text-primary" /></div>
                     <p className="text-white text-xs font-bold uppercase tracking-widest animate-pulse">AI 辨識酒標中...</p>
-                    {identifyCountdown > 0 ? (
-                      <p className="text-primary text-lg font-bold mt-2 tabular-nums">{identifyCountdown}<span className="text-[10px] text-white/50 ml-1">s</span></p>
-                    ) : (
-                      <p className="text-white/60 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">持續努力辨識中，期間可以先填寫筆記跟評分，感謝您耐心等待 🙇</p>
-                    )}
+                    <p className="text-white/75 text-[10px] font-medium mt-2 px-6 text-center leading-relaxed">
+                      辨識期間可以先往下填寫品飲筆記、評分與搭餐，完成後會自動補上基本資料。
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 px-5">
+                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先寫原始筆記</span>
+                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先拉感官評分</span>
+                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[8px] font-bold text-white/70">先選搭餐與溫度</span>
+                    </div>
                     <p className="text-white/40 text-[9px] font-bold mt-1 px-6 text-center">AI 可能會出錯，請查證辨識內容</p>
                     <button
                       type="button"
@@ -903,11 +920,29 @@ const handleSave = async () => {
                 <Sparkles className="w-2.5 h-2.5" />加入背標可大幅加速 AI 辨識
               </p>
             )}
+            {isIdentifying && (
+              <p className="text-[9px] text-amber-200/80 text-center font-medium leading-relaxed px-3">
+                AI 辨識進行中，你可以先往下填寫評分與筆記，不需要停在這裡等。
+              </p>
+            )}
           </div>
         </section>
 
         {/* 基礎資訊 */}
         <section className="space-y-3 relative" ref={suggestionRef}>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">基礎資訊</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!hasAiIdentifiedData}
+              onClick={clearAiIdentifiedFields}
+              className="h-7 rounded-full border-rose-500/30 bg-rose-500/5 px-3 text-[9px] font-bold text-rose-300 hover:bg-rose-500/15 disabled:opacity-40"
+            >
+              <X className="mr-1 h-3 w-3" /> 清空 AI 辨識資料
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1 relative">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
