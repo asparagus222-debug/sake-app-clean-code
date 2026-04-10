@@ -23,6 +23,10 @@ export interface UseCollectionResult<T> {
   data: WithId<T>[] | null; // Document data with ID, or null.
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
+  metadata: {
+    fromCache: boolean;
+    hasPendingWrites: boolean;
+  } | null;
 }
 
 /* Internal implementation of Query:
@@ -60,12 +64,14 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [metadata, setMetadata] = useState<{ fromCache: boolean; hasPendingWrites: boolean } | null>(null);
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
+      setMetadata(null);
       return;
     }
 
@@ -81,6 +87,10 @@ export function useCollection<T = any>(
           results.push({ ...(doc.data() as T), id: doc.id });
         }
         setData(results);
+        setMetadata({
+          fromCache: snapshot.metadata.fromCache,
+          hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        });
         setError(null);
         setIsLoading(false);
       },
@@ -98,6 +108,7 @@ export function useCollection<T = any>(
 
         setError(contextualError)
         setData(null)
+        setMetadata(null)
         setIsLoading(false)
 
         // trigger global error propagation
@@ -110,5 +121,5 @@ export function useCollection<T = any>(
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
-  return { data, isLoading, error };
+  return { data, isLoading, error, metadata };
 }

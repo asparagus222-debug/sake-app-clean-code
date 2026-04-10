@@ -191,16 +191,19 @@ export function HomeClient({
     if (!firestore) return null;
     return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(INITIAL_NOTES_LIMIT));
   }, [firestore]);
-  const { data: latestNotes } = useCollection<SakeNote>(latestNotesQuery);
-  const displayedLatestNotes = latestNotes ?? cachedLatestNotes ?? initialLatestNotes;
+  const { data: latestNotes, metadata: latestNotesMetadata } = useCollection<SakeNote>(latestNotesQuery);
+  const shouldHoldSsrLatestNotes = initialLatestNotes.length > 0 && !!latestNotesMetadata?.fromCache;
+  const displayedLatestNotes = shouldHoldSsrLatestNotes
+    ? initialLatestNotes
+    : (latestNotes ?? cachedLatestNotes ?? initialLatestNotes);
 
   useEffect(() => {
-    if (!latestNotes) return;
+    if (!latestNotes || (initialLatestNotes.length > 0 && latestNotesMetadata?.fromCache)) return;
     setCachedLatestNotes(latestNotes);
     try {
       localStorage.setItem('home_latest_notes_snapshot', JSON.stringify(latestNotes));
     } catch {}
-  }, [latestNotes]);
+  }, [initialLatestNotes.length, latestNotes, latestNotesMetadata?.fromCache]);
 
   const followingQuery = useMemoFirebase(() => {
     if (!firestore || !user || activeTab !== 'following') return null;
