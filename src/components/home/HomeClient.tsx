@@ -175,7 +175,14 @@ export function HomeClient({
   }, [profile?.avatarUrl, profile?.username]);
 
   React.useEffect(() => {
-    if (user || authBootstrap || initialAuthBootstrap || isUserLoading) return;
+    if (isUserLoading) return;
+
+    const shouldClearCachedIdentity = !!user?.isAnonymous
+      || (!user && !!authBootstrap?.isAnonymous)
+      || (!user && !authBootstrap && !!initialAuthBootstrap?.isAnonymous)
+      || (!user && !authBootstrap && !initialAuthBootstrap);
+
+    if (!shouldClearCachedIdentity) return;
 
     setCachedAvatar(null);
     setCachedUsername(null);
@@ -185,7 +192,7 @@ export function HomeClient({
     } catch {
       // ignore storage cleanup failures
     }
-  }, [user]);
+  }, [authBootstrap?.isAnonymous, initialAuthBootstrap?.isAnonymous, isUserLoading, user]);
 
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -268,9 +275,12 @@ export function HomeClient({
   }, [top3Groups]);
 
   const effectiveBootstrap = authBootstrap ?? initialAuthBootstrap;
-  const displayUsername = profile?.username || cachedUsername || effectiveBootstrap?.username || null;
-  const displayAvatar = profile?.avatarUrl || cachedAvatar || effectiveBootstrap?.avatarUrl || (user?.uid || effectiveBootstrap?.uid ? `https://picsum.photos/seed/${user?.uid || effectiveBootstrap?.uid}/100/100` : undefined);
   const isFormalUser = user ? !user.isAnonymous : !!effectiveBootstrap && !effectiveBootstrap.isAnonymous;
+  const displayUsername = profile?.username
+    || (isFormalUser ? cachedUsername : null)
+    || (effectiveBootstrap?.isAnonymous ? null : effectiveBootstrap?.username)
+    || null;
+  const displayAvatar = profile?.avatarUrl || cachedAvatar || effectiveBootstrap?.avatarUrl || (user?.uid || effectiveBootstrap?.uid ? `https://picsum.photos/seed/${user?.uid || effectiveBootstrap?.uid}/100/100` : undefined);
   const isResolvingIdentity = isUserLoading && !!effectiveBootstrap;
 
   return (

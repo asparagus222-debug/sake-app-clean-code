@@ -145,12 +145,14 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       } as UserProfile
     : null;
   const effectiveProfile = profile ?? preloadedProfile;
+  const hasFormalIdentity = user ? !user.isAnonymous : !!effectiveBootstrap && !effectiveBootstrap.isAnonymous;
 
   const isRestoringKnownSession = !!effectiveBootstrap && !user;
   const isAccountStatusPending = (isUserLoading && !effectiveBootstrap)
     || isRestoringKnownSession
     || (!!user && !!userDocRef && isProfileLoading && !effectiveProfile);
-  const canCreateNote = !!effectiveProfile?.username;
+  const shouldShowLoginPrompt = !hasFormalIdentity;
+  const canCreateNote = hasFormalIdentity && !!effectiveProfile?.username;
 
   // 使用者已存的銘柄名稱列表，用於 AI 辨識後的標準化
   const myNotesQuery = useMemoFirebase(() => {
@@ -927,7 +929,7 @@ const handleSave = async () => {
             </div>
           </div>
         </div>
-      ) : !user && !effectiveBootstrap ? (
+      ) : shouldShowLoginPrompt ? (
         <div className="dark-glass rounded-[2rem] border border-amber-500/30 bg-amber-500/10 p-6 mb-6">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
