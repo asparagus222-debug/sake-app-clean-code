@@ -375,6 +375,7 @@ export default function ProfilePage() {
     if (!user || !firestore) return;
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
+    const isCompletingRegisteredAccount = !profile?.username;
     
     // 如果已有名稱，則不允許修改，直接使用現有名稱
     const username = profile?.username ? profile.username : (formData.get('username') as string || '').trim();
@@ -409,8 +410,20 @@ export default function ProfilePage() {
         instagram: ((formData.get('instagram') as string) || '').replace('@', ''),
         qualifications: selectedQuals,
       };
-      updateDocumentNonBlocking(doc(firestore, 'users', user.uid), updatedProfile);
-      toast({ title: profile?.username ? "資料已儲存" : "帳戶建立完成" });
+      await setDoc(doc(firestore, 'users', user.uid), updatedProfile, { merge: true });
+
+      try {
+        localStorage.setItem('cached_username', username);
+      } catch {
+        // Ignore local cache failures after a successful profile save.
+      }
+
+      toast({ title: isCompletingRegisteredAccount ? "帳戶建立完成" : "資料已儲存" });
+
+      if (isCompletingRegisteredAccount) {
+        window.location.replace('/profile');
+        return;
+      }
     } catch (err) {
       toast({ variant: "destructive", title: "儲存失敗" });
     } finally {
