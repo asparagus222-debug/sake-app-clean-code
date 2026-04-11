@@ -146,7 +146,10 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     : null;
   const effectiveProfile = profile ?? preloadedProfile;
 
-  const isAccountStatusPending = (isUserLoading && !effectiveBootstrap) || (!!user && !!userDocRef && isProfileLoading && !effectiveProfile);
+  const isRestoringKnownSession = !!effectiveBootstrap && !user;
+  const isAccountStatusPending = (isUserLoading && !effectiveBootstrap)
+    || isRestoringKnownSession
+    || (!!user && !!userDocRef && isProfileLoading && !effectiveProfile);
   const canCreateNote = !!effectiveProfile?.username;
 
   // 使用者已存的銘柄名稱列表，用於 AI 辨識後的標準化
@@ -932,11 +935,11 @@ const handleSave = async () => {
               <p className="text-sm font-bold text-amber-100">請先登入後再建立貼文</p>
               <p className="text-xs text-amber-100/80">目前已不再自動建立匿名帳號，建立品飲筆記前請先登入或找回帳戶。</p>
               <div className="flex gap-2 flex-wrap">
-                <Button onClick={() => router.push('/profile')} className="rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-8">
-                  前往登入／建立帳戶
+                <Button onClick={() => router.push('/recover')} className="rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-8">
+                  登入既有帳戶
                 </Button>
-                <Button onClick={() => router.push('/recover')} variant="outline" className="rounded-full text-xs font-bold h-8 border-amber-400/40 text-amber-100 bg-transparent hover:bg-amber-500/10">
-                  找回帳戶
+                <Button onClick={() => router.push('/profile')} variant="outline" className="rounded-full text-xs font-bold h-8 border-amber-400/40 text-amber-100 bg-transparent hover:bg-amber-500/10">
+                  新建帳戶
                 </Button>
               </div>
             </div>

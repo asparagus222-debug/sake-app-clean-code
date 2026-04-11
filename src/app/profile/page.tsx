@@ -104,7 +104,7 @@ export default function ProfilePage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const storage = useStorage();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, authBootstrap } = useUser();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedQuals, setSelectedQuals] = useState<string[]>([]);
   const [customQual, setCustomQual] = useState("");
@@ -599,11 +599,15 @@ export default function ProfilePage() {
     return (r * 299 + g * 587 + b * 114) / 1000;
   };
 
-  if (isUserLoading || isProfileLoading) {
+  const isRestoringKnownSession = !!authBootstrap && !user;
+
+  if (isUserLoading || isProfileLoading || isRestoringKnownSession) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center notebook-texture font-body">
         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground animate-pulse font-bold tracking-widest text-xs uppercase">載入中...</p>
+        <p className="text-muted-foreground animate-pulse font-bold tracking-widest text-xs uppercase">
+          {isRestoringKnownSession ? '正在恢復帳戶...' : '載入中...'}
+        </p>
       </div>
     );
   }

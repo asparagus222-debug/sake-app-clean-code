@@ -286,6 +286,14 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const as_ = note.astringencyRating ?? 0;
   const sortedTags = sortInfoTags(note.sakeInfoTags ?? []).slice(0, 5);
   const styleTags = (note.styleTags ?? []).slice(0, 4);
+  const servingTemperatures = (note.servingTemperatures?.filter(Boolean).length
+    ? note.servingTemperatures?.filter(Boolean)
+    : note.servingTemperature
+      ? [note.servingTemperature]
+      : []) ?? [];
+  const foodPairings = (note.foodPairings ?? [])
+    .filter((pairing) => pairing.food?.trim())
+    .slice(0, 4);
 
   // ── Theme-adaptive card palette ──────────────────────────────────────────
   const theme = authorProfile?.themeSettings;
@@ -421,26 +429,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
             onMouseLeave={onEditorMouseUp}
             onWheel={onEditorWheel}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={shareImageSrc}
-              alt=""
-              crossOrigin="anonymous"
-              draggable={false}
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: `translate(calc(-50% + ${editorOffset.x}px), calc(-50% + ${editorOffset.y}px)) scale(${editorZoom})`,
-                transformOrigin: 'center center',
-                maxWidth: '90%',
-                maxHeight: '90%',
-                objectFit: 'contain',
-                userSelect: 'none',
-                pointerEvents: 'none',
-              }}
-            />
-            {/* Preview frame: size auto-measured from the card image box at editor open time */}
+            {/* Preview frame uses the exact same cover/translate/scale model as the final share card. */}
             <div style={{
               position: 'absolute',
               top: '50%', left: '50%',
@@ -450,9 +439,30 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.52)',
               border: '1.5px solid rgba(249,115,22,0.65)',
               borderRadius: 12,
+              overflow: 'hidden',
               pointerEvents: 'none',
               zIndex: 10,
+              background: 'rgba(255,255,255,0.04)',
             }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={shareImageSrc}
+                alt=""
+                crossOrigin="anonymous"
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `translate(${editorOffset.x}px, ${editorOffset.y}px) scale(${editorZoom})`,
+                  transformOrigin: 'center center',
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                }}
+              />
               {/* Corner markers */}
               {[
                 { top: -1, left: -1, borderTop: '2.5px solid #f97316', borderLeft: '2.5px solid #f97316' },
@@ -536,9 +546,9 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                 style={{
                   width: '48%', aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden',
                   background: tc.imageBg, flexShrink: 0, position: 'relative',
-                  marginRight: 8, cursor: note.imageUrls?.[0] ? 'pointer' : 'default',
+                  marginRight: 8, cursor: shareImageSrc ? 'pointer' : 'default',
                 }}
-                onClick={note.imageUrls?.[0] ? openImgEditor : undefined}
+                onClick={shareImageSrc ? openImgEditor : undefined}
               >
                 {shareImageSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -633,6 +643,74 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                   <div style={{ fontSize: 11, fontWeight: 700, color: tc.textSoft }}>{new Date(note.tastingDate).toLocaleDateString('zh-TW')}</div>
                 </div>
               </div>
+              {(servingTemperatures.length > 0 || foodPairings.length > 0) && (
+                <div style={{ marginBottom: 10, display: 'grid', gap: 8 }}>
+                  {servingTemperatures.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 4 }}>適飲溫度</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {servingTemperatures.map((temperature, index) => (
+                          <span
+                            key={`${temperature}-${index}`}
+                            style={{
+                              display: 'inline-block',
+                              fontSize: 9,
+                              fontWeight: 700,
+                              lineHeight: 1.3,
+                              color: isDark ? 'rgba(255,244,230,0.9)' : 'rgba(120,53,15,0.92)',
+                              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,53,15,0.08)',
+                              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(120,53,15,0.14)'}`,
+                              padding: '3px 8px',
+                              borderRadius: 999,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {temperature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {foodPairings.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 4 }}>餐搭建議</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {foodPairings.map((pairing, index) => {
+                          const isPairingMatch = pairing.pairing === 'yes';
+                          return (
+                            <span
+                              key={`${pairing.food}-${index}`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                lineHeight: 1.3,
+                                color: isPairingMatch
+                                  ? (isDark ? 'rgba(220,252,231,0.92)' : 'rgba(22,101,52,0.9)')
+                                  : (isDark ? 'rgba(254,226,226,0.92)' : 'rgba(153,27,27,0.9)'),
+                                background: isPairingMatch
+                                  ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.1)')
+                                  : (isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.1)'),
+                                border: `1px solid ${isPairingMatch
+                                  ? (isDark ? 'rgba(34,197,94,0.24)' : 'rgba(34,197,94,0.28)')
+                                  : (isDark ? 'rgba(239,68,68,0.24)' : 'rgba(239,68,68,0.26)')}`,
+                                padding: '3px 8px',
+                                borderRadius: 999,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span>{isPairingMatch ? '搭' : '不搭'}</span>
+                              <span style={{ opacity: 0.92 }}>{pairing.food}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {styleTags.length > 0 && (
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 8, color: tc.textMuted, letterSpacing: '0.1em', marginBottom: 4 }}>風格標籤</div>
