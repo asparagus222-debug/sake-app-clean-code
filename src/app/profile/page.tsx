@@ -483,10 +483,21 @@ export default function ProfilePage() {
       const sanitizedUsername = pendingFormData.username.replace(/\s+/g, '').toLowerCase();
       const email = `${sanitizedUsername}@sake-note.app`;
       const credential = EmailAuthProvider.credential(email, createAccountPin);
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error('auth/no-current-user');
+      }
 
       // 將目前匿名帳戶直接升級為正式帳戶，避免產生新的 uid 與半完成資料。
-      const userCredential = await linkWithCredential(user, credential);
+      const userCredential = currentUser.isAnonymous
+        ? await linkWithCredential(currentUser, credential)
+        : { user: currentUser };
       const upgradedUser = userCredential.user;
+
+      if (upgradedUser.email && upgradedUser.email !== email) {
+        throw new Error('auth/account-state-mismatch');
+      }
       
       // 保存用戶資料（使用 setDoc 確保數據被保存）
       await setDoc(doc(firestore, 'users', upgradedUser.uid), {
@@ -494,7 +505,7 @@ export default function ProfilePage() {
         accountType: 'registered',
         username: pendingFormData.username,
         bio: pendingFormData.bio || '',
-        avatarUrl: `https://picsum.photos/seed/${upgradedUser.uid}/100/100`,
+        avatarUrl: profile?.avatarUrl || `https://picsum.photos/seed/${upgradedUser.uid}/100/100`,
         instagram: pendingFormData.instagram || '',
         twitter: pendingFormData.twitter || '',
         facebook: pendingFormData.facebook || '',
@@ -518,9 +529,14 @@ export default function ProfilePage() {
       // 刷新頁面以重新加載數據
       setTimeout(() => window.location.reload(), 800);
     } catch (err: any) {
+      console.error('create account failed', err);
       let message = "創建帳戶失敗";
       if (err.code === 'auth/email-already-in-use' || err.code === 'auth/credential-already-in-use') message = "使用者名稱已被使用";
       if (err.code === 'auth/weak-password') message = "PIN 碼需至少 6 位數字";
+      if (err.code === 'auth/network-request-failed') message = "網路連線失敗，請稍後再試";
+      if (err.code === 'auth/too-many-requests') message = "嘗試次數過多，請稍後再試";
+      if (err.code === 'auth/provider-already-linked' || err.message === 'auth/account-state-mismatch') message = "目前帳戶狀態異常，請重新整理後再試一次";
+      if (err.message === 'auth/no-current-user') message = "登入狀態已失效，請重新進入建立帳戶流程";
       toast({ variant: "destructive", title: "創建失敗", description: message });
     } finally {
       setIsCreatingAccount(false);
