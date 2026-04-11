@@ -17,7 +17,7 @@ import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemo
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
-import { cn } from '@/lib/utils';
+import { cn, formatSakeDisplayName } from '@/lib/utils';
 
 type NewNotePageClientProps = {
   initialAuthBootstrap: AuthBootstrapSnapshot | null;
@@ -908,7 +908,7 @@ const handleSave = async () => {
           reminderValue;
         const nextAt = new Date(Date.now() + intervalHours * 3600 * 1000).toISOString();
         const reminders = JSON.parse(localStorage.getItem('sake_reminders') || '[]');
-        reminders.push({ noteId: docRef.id, brandName: formData.brandName, nextReminderAt: nextAt, intervalHours });
+        reminders.push({ noteId: docRef.id, brandName: formData.brandName, subBrand: formData.subBrand, nextReminderAt: nextAt, intervalHours, displayName: formatSakeDisplayName(formData.brandName, formData.subBrand) });
         localStorage.setItem('sake_reminders', JSON.stringify(reminders));
       } catch {}
     }

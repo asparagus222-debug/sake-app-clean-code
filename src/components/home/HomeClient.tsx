@@ -13,9 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
+import { formatSakeDisplayName } from '@/lib/utils';
 
 type Top3Group = {
   brandName: string;
+  subBrand?: string;
   brewery: string;
   avgRating: number;
   noteCount: number;
@@ -114,14 +116,14 @@ export function HomeClient({
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     try {
-      const reminders: Array<{ noteId: string; brandName: string; nextReminderAt: string; intervalHours: number }> =
+      const reminders: Array<{ noteId: string; brandName: string; subBrand?: string; nextReminderAt: string; intervalHours: number }> =
         JSON.parse(localStorage.getItem('sake_reminders') || '[]');
       if (reminders.length === 0) return;
       const now = Date.now();
       const remaining = reminders.filter(r => {
         if (new Date(r.nextReminderAt).getTime() <= now) {
           if (Notification.permission === 'granted') {
-            const n = new Notification(`🍶 品飲提醒：${r.brandName}`, {
+            const n = new Notification(`🍶 品飲提醒：${formatSakeDisplayName(r.brandName, r.subBrand)}`, {
               body: '是時候再次品飲並記錄風味變化了！',
               icon: '/favicon.ico',
             });
@@ -239,11 +241,11 @@ export function HomeClient({
 
   const top3Groups = React.useMemo(() => {
     if (rankingNotes) {
-      const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
+      const map = new Map<string, { brandName: string; subBrand?: string; brewery: string; notes: SakeNote[] }>();
       for (const note of rankingNotes) {
         if (!note.brandName) continue;
-        const key = `${note.brandName}|||${note.brewery}`;
-        if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
+        const key = `${note.brandName}|||${note.subBrand || ''}|||${note.brewery}`;
+        if (!map.has(key)) map.set(key, { brandName: note.brandName, subBrand: note.subBrand || '', brewery: note.brewery, notes: [] });
         map.get(key)!.notes.push(note);
       }
       return [...map.values()]
@@ -256,7 +258,7 @@ export function HomeClient({
           const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
           const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
           const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
-          return { brandName: g.brandName, brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
+          return { brandName: g.brandName, subBrand: g.subBrand || '', brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
         })
         .sort((a, b) => b.avgRating - a.avgRating)
         .slice(0, 3);
@@ -327,18 +329,20 @@ export function HomeClient({
               </Link>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
-              {displayedTop3Groups.map((group, idx) => (
-                <Link key={`${group.brandName}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
+              {displayedTop3Groups.map((group, idx) => {
+                const displayName = formatSakeDisplayName(group.brandName, group.subBrand);
+
+                return <Link key={`${group.brandName}-${group.subBrand || ''}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
                   <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/5] dark-glass border border-white/10 hover:border-primary/50 transition-all">
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-accent text-accent-foreground font-bold rounded-full w-5 h-5 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg text-[10px] sm:text-sm">
                       {idx + 1}
                     </div>
                     {group.imageUrl && (
-                      <img src={group.imageUrl} alt={group.brandName} loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
+                      <img src={group.imageUrl} alt={displayName} loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity" />
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-6 bg-gradient-to-t from-black via-black/60 to-transparent">
                       <p className="text-white/70 font-bold text-[10px] sm:text-xs uppercase mb-1 break-words leading-tight">{group.brewery}</p>
-                      <h3 className="text-white text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{group.brandName}</h3>
+                      <h3 className="text-white text-xs sm:text-xl font-headline font-bold mb-1 break-words leading-tight">{displayName}</h3>
                       <div className="flex items-center gap-1 text-amber-400">
                         <span className="text-sm sm:text-2xl font-bold">{group.avgRating.toFixed(1)}</span>
                         <span className="text-[10px] opacity-60">/ 10</span>
@@ -346,8 +350,8 @@ export function HomeClient({
                       <div className="text-[9px] text-white/50 mt-0.5">{group.noteCount ?? 0} 篇</div>
                     </div>
                   </div>
-                </Link>
-              ))}
+                </Link>;
+              })}
             </div>
           </section>
         ) : (
