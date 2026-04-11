@@ -38,11 +38,12 @@ export function DailyAnnouncementDialog() {
   const announcementTitle = announcement?.title?.trim() || '使用公告';
   const announcementMessage = announcement?.message?.trim() || '';
   const isAnnouncementEnabled = announcement?.enabled !== false && announcementMessage.length > 0;
+  const audienceKey = user?.uid || 'guest';
 
   const storageKey = useMemo(() => {
-    if (!user || !isAnnouncementEnabled) return null;
-    return `daily-announcement:${user.uid}:${getTodayKey()}:${announcement?.updatedAt || 'default'}`;
-  }, [announcement?.updatedAt, isAnnouncementEnabled, user]);
+    if (!isAnnouncementEnabled) return null;
+    return `daily-announcement:${audienceKey}:${getTodayKey()}:${announcement?.updatedAt || 'default'}`;
+  }, [announcement?.updatedAt, audienceKey, isAnnouncementEnabled]);
 
   useEffect(() => {
     if (isUserLoading || isAnnouncementLoading || !storageKey || pathname !== '/') return;
@@ -74,7 +75,7 @@ export function DailyAnnouncementDialog() {
     }
   };
 
-  if (!user || isUserLoading || isAnnouncementLoading || pathname !== '/' || !isAnnouncementEnabled) return null;
+  if (isUserLoading || isAnnouncementLoading || pathname !== '/' || !isAnnouncementEnabled) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
