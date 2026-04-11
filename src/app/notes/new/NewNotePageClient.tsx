@@ -952,13 +952,13 @@ const handleSave = async () => {
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1 space-y-3">
-              <p className="text-sm font-bold text-amber-100">建立帳戶以開始貼文</p>
-              <p className="text-xs text-amber-100/80">您需要設置使用者名稱後才能建立品飲筆記。</p>
+              <p className="text-sm font-bold text-amber-100">完成帳戶設定以開始貼文</p>
+              <p className="text-xs text-amber-100/80">您的登入身份已建立，但尚未設定使用者名稱；完成帳戶資料後即可建立品飲筆記。</p>
               <Button 
                 onClick={() => router.push('/profile')} 
                 className="rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-8"
               >
-                前往設置個人檔案
+                前往完成帳戶設定
               </Button>
             </div>
           </div>

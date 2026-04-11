@@ -410,7 +410,7 @@ export default function ProfilePage() {
         qualifications: selectedQuals,
       };
       updateDocumentNonBlocking(doc(firestore, 'users', user.uid), updatedProfile);
-      toast({ title: "資料已儲存" });
+      toast({ title: profile?.username ? "資料已儲存" : "帳戶建立完成" });
     } catch (err) {
       toast({ variant: "destructive", title: "儲存失敗" });
     } finally {
@@ -644,6 +644,7 @@ export default function ProfilePage() {
   const fontSizeIndex = FONT_SIZE_LEVELS.indexOf(themeFontSize);
   const isAnonymousUser = !!user?.isAnonymous;
   const isRegisteredUser = !!user && !user.isAnonymous;
+  const isRegisteredAccountSetupIncomplete = isRegisteredUser && !profile?.username;
 
   const handleStartCreateAccount = () => {
     if (!auth) {
@@ -834,11 +835,11 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-4">
         <header className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="hover:bg-primary/10 text-primary"><ArrowLeft className="w-5 h-5" /></Button>
-          <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest uppercase">{isAnonymousUser ? '建立帳號' : '帳戶中心'}</h1>
+          <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest uppercase">{isAnonymousUser ? '建立帳號' : isRegisteredAccountSetupIncomplete ? '完成帳戶建立' : '帳戶中心'}</h1>
           <div className="w-10" />
         </header>
 
-        {isRegisteredUser && (
+        {isRegisteredUser && !isRegisteredAccountSetupIncomplete && (
         <div className="flex items-center justify-center gap-2 px-1">
           <Link href="/profile/notes" className="flex-1">
             <Button variant="outline" className="w-full h-11 rounded-2xl border-primary/30 bg-primary/5 hover:bg-primary/10 shadow-lg p-2 flex items-center justify-center gap-1.5">
@@ -1145,6 +1146,14 @@ export default function ProfilePage() {
         {/* 已註冊用戶個人資料表單 */}
         {isRegisteredUser && (
         <form onSubmit={handleSave} className="space-y-4 dark-glass p-5 rounded-[2.5rem] border border-primary/20 shadow-2xl">
+          {isRegisteredAccountSetupIncomplete && (
+            <div className="rounded-[1.5rem] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center">
+              <p className="text-xs font-bold text-amber-100 tracking-widest uppercase">完成最後一步</p>
+              <p className="mt-1 text-[10px] leading-5 text-amber-100/80">
+                您的登入身份已建立，但尚未設定使用者名稱。完成下方資料後，即可開始建立品飲筆記。
+              </p>
+            </div>
+          )}
           <div className="flex flex-col items-center gap-1">
             <div className="relative cursor-pointer group/avatar" onClick={() => avatarInputRef.current?.click()} title="變更頭像">
               <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-xl">
@@ -1249,9 +1258,10 @@ export default function ProfilePage() {
           </section>
 
           <Button type="submit" disabled={isSaving} className="w-full rounded-full h-11 text-xs font-bold shadow-lg bg-primary transition-opacity">
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} 儲存資料
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} {isRegisteredAccountSetupIncomplete ? '完成帳戶建立' : '儲存資料'}
           </Button>
 
+          {!isRegisteredAccountSetupIncomplete && (
           <div className="pt-4 border-t border-primary/10 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
@@ -1353,6 +1363,7 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
+          )}
         </form>
         )}
       </div>
