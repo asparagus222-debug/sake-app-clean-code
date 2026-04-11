@@ -91,25 +91,31 @@ export function normalizeSakeInfo(
   // 正規化比對用字串：全小寫、去空白、去常見分隔符
   const norm = (s: string) =>
     s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');
+  const buildBrandKeys = (s: string) => {
+    const cleaned = cleanSakeName(s);
+    const parts = cleaned.split(/[\s\u3000\/]+/).map(norm).filter(Boolean);
+    return new Set([norm(cleaned), ...parts]);
+  };
 
   const nBrand = norm(brandName);
   const nBrewery = norm(brewery);
+  const brandKeys = buildBrandKeys(brandName);
 
   // ① 先比對使用者已存的銘柄（優先使用已有的書寫方式）
   for (const known of knownBrands) {
-    const nk = norm(known.brandName);
-    if (nk.length < 2) continue;
-    if (nBrand === nk || (nBrand.length >= 2 && (nBrand.includes(nk) || nk.includes(nBrand)))) {
+    const knownKeys = buildBrandKeys(known.brandName);
+    const brandMatch = [...knownKeys].some(key => key.length >= 2 && brandKeys.has(key));
+    if (brandMatch) {
       return { brandName: known.brandName, brewery: known.brewery, origin: known.origin || origin };
     }
   }
 
   // ② 比對 SAKE_DATABASE
   for (const entry of SAKE_DATABASE) {
-    const ne = norm(entry.brand);
-    if (ne.length < 2) continue;
-    const brandMatch = nBrand === ne || (nBrand.length >= 2 && (nBrand.includes(ne) || ne.includes(nBrand)));
-    const breweryMatch = nBrewery.length >= 2 && (nBrewery.includes(norm(entry.brewery)) || norm(entry.brewery).includes(nBrewery));
+    const entryKeys = buildBrandKeys(entry.brand);
+    const brandMatch = [...entryKeys].some(key => key.length >= 2 && brandKeys.has(key));
+    const entryBrewery = norm(entry.brewery);
+    const breweryMatch = nBrewery.length >= 2 && nBrewery === entryBrewery;
     if (brandMatch || (breweryMatch && brandMatch)) {
       return { brandName: entry.brand, brewery: entry.brewery, origin: entry.location };
     }
