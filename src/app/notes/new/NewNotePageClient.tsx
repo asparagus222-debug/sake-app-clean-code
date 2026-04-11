@@ -198,6 +198,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   });
   const hasAiIdentifiedData = Boolean(
     formData.brandName ||
+    formData.subBrand ||
     formData.brewery ||
     formData.origin ||
     formData.alcoholPercent ||
@@ -407,6 +408,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
           knownBrands
         );
         const nextBrandName = normalized.brandName || formData.brandName;
+        const nextSubBrand = result.subBrand || formData.subBrand;
         const nextBrewery = normalized.brewery || formData.brewery;
         const nextOrigin = normalized.origin || formData.origin;
         const nextAlcoholPercent = result.alcoholPercent || formData.alcoholPercent;
@@ -414,6 +416,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         const changedFields: string[] = [];
 
         if (nextBrandName !== formData.brandName) changedFields.push('brandName');
+        if (nextSubBrand !== formData.subBrand) changedFields.push('subBrand');
         if (nextBrewery !== formData.brewery) changedFields.push('brewery');
         if (nextOrigin !== formData.origin) changedFields.push('origin');
         if (nextAlcoholPercent !== formData.alcoholPercent) changedFields.push('alcoholPercent');
@@ -422,6 +425,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         setFormData(prev => ({
           ...prev,
           brandName: nextBrandName,
+          subBrand: nextSubBrand,
           brewery: nextBrewery,
           origin: nextOrigin,
           alcoholPercent: nextAlcoholPercent,
@@ -454,6 +458,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     setFormData((prev) => ({
       ...prev,
       brandName: '',
+      subBrand: '',
       brewery: '',
       origin: '',
       alcoholPercent: '',
@@ -461,7 +466,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     }));
     setShowSuggestions(false);
     setBrandSuggestions([]);
-    toast({ title: '已清空 AI 辨識資料', description: '品牌、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
+    toast({ title: '已清空 AI 辨識資料', description: '品牌、副名稱、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
   };
 
   const openPicker = (type: 'new' | 'replace' | 'replace-all', idx = 0) => {
@@ -1089,6 +1094,10 @@ const handleSave = async () => {
                   ))}
                 </div>
               )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副名稱 / 系列名</Label>
+              <Input placeholder="例如：CHIMERA" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('subBrand'))} value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>

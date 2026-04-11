@@ -321,6 +321,7 @@ export default function EditNotePage() {
         setFormData(prev => ({
           ...prev,
           brandName: normalized.brandName || prev.brandName,
+          subBrand: result.subBrand || prev.subBrand,
           brewery: normalized.brewery || prev.brewery,
           origin: normalized.origin || prev.origin,
           alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
@@ -753,6 +754,7 @@ export default function EditNotePage() {
 
       const noteData = {
         brandName: formData.brandName,
+        subBrand: formData.subBrand,
         brewery: formData.brewery,
         origin: formData.origin,
         styleTags: formData.styleTags,
@@ -951,6 +953,7 @@ export default function EditNotePage() {
               </div>
             )}
           </div>
+          <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副名稱 / 系列名</Label><Input placeholder="例如：CHIMERA" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒精濃度 (%)</Label><Input placeholder="例如：16" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.alcoholPercent} onChange={e => setFormData(p => ({ ...p, alcoholPercent: e.target.value }))} /></div>

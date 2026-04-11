@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatSakeDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useUser, useAuth, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
@@ -361,6 +361,8 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     );
   }
 
+  const displayName = formatSakeDisplayName(note.brandName, note.subBrand);
+
   return (
     <div className="min-h-screen notebook-texture pb-20">
       <div className="max-w-2xl auto px-4 py-8">
@@ -410,7 +412,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
               imageOriginals={note.imageOriginals}
               imageTransforms={note.imageTransforms}
               imageSplitRatio={note.imageSplitRatio}
-              alt={note.brandName || 'sake-note'}
+              alt={displayName || 'sake-note'}
             />
           </div>
 
@@ -426,7 +428,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                     </>
                   )}
                 </div>
-                <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{note.brandName}</h1>
+                <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{displayName}</h1>
 
                 {((note.alcoholPercent) || (note.sakeInfoTags && note.sakeInfoTags.length > 0)) && (
                   <div className="flex flex-wrap gap-1.5 mt-2">

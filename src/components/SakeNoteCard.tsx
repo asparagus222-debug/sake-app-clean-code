@@ -10,7 +10,7 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { cn } from "@/lib/utils";
+import { cn, formatSakeDisplayName } from "@/lib/utils";
 
 interface SakeNoteCardProps {
   note: SakeNote;
@@ -32,6 +32,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
   const likedBy = note.likedByUserIds || [];
   const isLiked = user ? likedBy.includes(user.uid) : false;
   const likesCount = note.likesCount || 0;
+  const displayName = formatSakeDisplayName(note.brandName, note.subBrand);
 
   const handleLike = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -56,7 +57,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
       {/* 圖片區：3:4 直向比例，酒名浮在漸層上 */}
       <Link href={`/notes/${note.id}`} className="relative w-full aspect-[3/4] bg-muted/20 block overflow-hidden group/img-container">
         {note.imageUrls && note.imageUrls.length > 0 ? (
-          <Image src={note.imageUrls[0]} alt={note.brandName} fill className="object-cover group-hover/img-container:scale-105 transition-transform duration-700 ease-out" />
+          <Image src={note.imageUrls[0]} alt={displayName} fill className="object-cover group-hover/img-container:scale-105 transition-transform duration-700 ease-out" />
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground/40 text-[10px] font-bold">NO PHOTO</div>
         )}
@@ -73,7 +74,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
             {note.brewery}
           </p>
           <h3 className="font-headline text-base leading-tight drop-shadow" style={{ color: 'var(--card-overlay-text)' }}>
-            {note.brandName}
+            {displayName}
           </h3>
         </div>
       </Link>

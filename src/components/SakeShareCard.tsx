@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { SakeNote, UserProfile } from '@/lib/types';
 import { Share2, X, Loader2, Pencil, RotateCcw, Check, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatSakeDisplayName } from '@/lib/utils';
 
 interface SakeShareCardProps {
   note: SakeNote;
@@ -78,6 +79,7 @@ function sortInfoTags(tags: string[]): string[] {
 
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const displayName = formatSakeDisplayName(note.brandName, note.subBrand);
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -362,10 +364,10 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
       // Convert dataURL → Blob
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-      const fileName = `${note.brandName || 'sake'}-sakepath.png`;
+      const fileName = `${displayName || 'sake'}-sakepath.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: note.brandName });
+        await navigator.share({ files: [file], title: displayName });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
@@ -517,7 +519,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
                     {note.brewery}{note.origin ? `　${note.origin}` : ''}
                   </p>
                   <h2 style={{ fontSize: 19, fontWeight: 700, color: tc.text, lineHeight: 1.2, wordBreak: 'break-word', margin: 0 }}>
-                    {note.brandName}
+                    {displayName}
                   </h2>
                 </div>
                 <div style={{ background: primaryColor, borderRadius: 10, padding: '5px 9px', textAlign: 'center' as const, flexShrink: 0 }}>
