@@ -14,6 +14,12 @@ import { collection, getDocsFromServer, query, where } from 'firebase/firestore'
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+function isRegisteredProfileRecord(data: Record<string, unknown> | undefined) {
+  if (!data || data.isAccountDeleted) return false;
+  if (data.accountType === 'registered') return true;
+  return typeof data.createdAt === 'string';
+}
+
 export default function RecoverPage() {
   const router = useRouter();
   const auth = useAuth();
@@ -60,8 +66,12 @@ export default function RecoverPage() {
               where('username', '==', username.trim())
             );
             const querySnapshot = await getDocsFromServer(usernameQuery);
-            if (querySnapshot.docs.some((doc) => !doc.data().isAccountDeleted)) {
+            const hasRegisteredProfile = querySnapshot.docs.some((doc) => isRegisteredProfileRecord(doc.data()));
+            const hasAnonymousProfileStub = querySnapshot.docs.some((doc) => !isRegisteredProfileRecord(doc.data()) && !doc.data().isAccountDeleted);
+            if (hasAnonymousProfileStub && !hasRegisteredProfile) {
               message = '此名稱已有品飲資料，但尚未完成正式帳戶建立。請回原裝置到個人頁完成建帳。';
+            } else if (hasRegisteredProfile) {
+              message = '此名稱已有正式品飲帳戶資料，但登入帳戶不存在。請聯絡管理員協助處理。';
             } else {
               message = '找不到此使用者名稱。';
             }

@@ -51,6 +51,7 @@ function UserProfileBootstrapper() {
 
         if (!existing) {
           payload.id = user.uid;
+          payload.accountType = user.isAnonymous ? 'anonymous' : 'registered';
           payload.avatarUrl = `https://picsum.photos/seed/${user.uid}/100/100`;
           payload.bio = '';
           payload.qualifications = [];
@@ -65,6 +66,9 @@ function UserProfileBootstrapper() {
           }
         } else {
           if (!existing.id) payload.id = user.uid;
+          if (existing.accountType !== (user.isAnonymous ? 'anonymous' : 'registered')) {
+            payload.accountType = user.isAnonymous ? 'anonymous' : 'registered';
+          }
           if (!existing.themeSettings) {
             payload.themeSettings = {
               mode: 'dark',

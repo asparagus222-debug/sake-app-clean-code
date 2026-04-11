@@ -98,6 +98,12 @@ const FONT_PREVIEW_MAP = {
   '2xl': '1.4rem'
 };
 
+function isRegisteredProfileRecord(data: Record<string, unknown> | undefined) {
+  if (!data || data.isAccountDeleted) return false;
+  if (data.accountType === 'registered') return true;
+  return typeof data.createdAt === 'string';
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -385,7 +391,7 @@ export default function ProfilePage() {
         const usersRef = collection(firestore, 'users');
         const q = query(usersRef, where('username', '==', username));
         const querySnapshot = await getDocsFromServer(q);
-        if (querySnapshot.docs.some(d => d.id !== user.uid && !d.data().isAccountDeleted)) {
+        if (querySnapshot.docs.some(d => d.id !== user.uid && isRegisteredProfileRecord(d.data()))) {
           toast({ variant: "destructive", title: "名稱已被佔用" });
           setIsSaving(false);
           return;
@@ -394,6 +400,7 @@ export default function ProfilePage() {
 
       const updatedProfile: Partial<UserProfile> = {
         id: user.uid,
+        accountType: 'registered',
         username: username,
         bio: formData.get('bio') as string || '',
         facebook: ((formData.get('facebook') as string) || '').replace('@', ''),
@@ -473,6 +480,7 @@ export default function ProfilePage() {
     
     setIsCreatingAccount(true);
     try {
+      const previousAnonymousUid = user.isAnonymous ? user.uid : null;
       const sanitizedUsername = pendingFormData.username.replace(/\s+/g, '').toLowerCase();
       const email = `${sanitizedUsername}@sake-note.app`;
       
@@ -483,6 +491,7 @@ export default function ProfilePage() {
       // 保存用戶資料（使用 setDoc 確保數據被保存）
       await setDoc(doc(firestore, 'users', newUser.uid), {
         id: newUser.uid,
+        accountType: 'registered',
         username: pendingFormData.username,
         bio: pendingFormData.bio || '',
         avatarUrl: `https://picsum.photos/seed/${newUser.uid}/100/100`,
@@ -497,8 +506,20 @@ export default function ProfilePage() {
           customBg: '#0a0a0c',
           customPrimary: '#f97316'
         },
+        hasPin: true,
         createdAt: new Date().toISOString()
       });
+
+      if (previousAnonymousUid && previousAnonymousUid !== newUser.uid) {
+        await setDoc(doc(firestore, 'users', previousAnonymousUid), {
+          accountType: 'anonymous',
+          username: '',
+          hasPin: false,
+          updatedAt: new Date().toISOString(),
+          migratedToUserId: newUser.uid,
+          migratedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
       
       toast({ title: "帳戶創建成功", description: "現在可以修改個人資料了" });
       setShowCreateAccountDialog(false);
@@ -571,7 +592,7 @@ export default function ProfilePage() {
       const usersRef = collection(firestore, 'users');
       const q = query(usersRef, where('username', '==', username.trim()));
       const querySnapshot = await getDocsFromServer(q);
-      if (querySnapshot.docs.some(d => d.id !== user?.uid && !d.data().isAccountDeleted)) {
+      if (querySnapshot.docs.some(d => d.id !== user?.uid && isRegisteredProfileRecord(d.data()))) {
         toast({ variant: "destructive", title: "名稱已被佔用", description: "請選擇其他使用者名稱" });
         return;
       }

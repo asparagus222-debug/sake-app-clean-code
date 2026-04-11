@@ -74,6 +74,7 @@ export type ThemeSettings = {
 export type UserProfile = {
   id: string;
   username: string;
+  accountType?: 'anonymous' | 'registered';
   bio: string;
   avatarUrl: string;
   instagram?: string;
