@@ -38,6 +38,7 @@ export type SakeNote = {
   styleTags?: string[];
   servingTemperature?: string;
   servingTemperatures?: string[];
+  cupTypes?: string[];
   description: string;
   userDescription?: string;
   aiResultNote?: string;
@@ -115,6 +116,15 @@ export const SERVING_TEMPERATURE_OPTIONS = [
   '上燗（45°C）',
   '熱燗（50°C）',
   '飛切燗（55°C）'
+];
+
+export const CUP_TYPE_OPTIONS = [
+  '蛇目杯',
+  '葡萄酒杯',
+  '香檳杯',
+  '薄口平杯',
+  '陶杯',
+  '木杯',
 ];
 
 export const QUALIFICATION_OPTIONS = [

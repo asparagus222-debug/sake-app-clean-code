@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
+import { CUP_TYPE_OPTIONS, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck } from 'lucide-react';
@@ -125,6 +125,8 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       userDescription: result.userDescription,
       styleTags: [...new Set([...prev.styleTags, ...result.styleTags])],
       foodPairings: result.foodPairings,
+      servingTemperatures: [...new Set([...prev.servingTemperatures, ...result.servingTemperatures])],
+      cupTypes: [...new Set([...(prev.cupTypes ?? []), ...result.cupTypes])],
     }));
     setShowGuidedTasting(false);
     toast({ title: '引導品鑑完成', description: '已自動填入評分與品飲描述' });
@@ -187,6 +189,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     overallRating: 7,
     styleTags: [] as string[],
     servingTemperatures: [] as string[],
+    cupTypes: [] as string[],
     sakeInfoTags: [] as string[],
     foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
     userDescription: '',
@@ -864,6 +867,7 @@ const handleSave = async () => {
       servingTemperatures: formData.servingTemperatures,
       alcoholPercent: formData.alcoholPercent,
       foodPairings: formData.foodPairings,
+      cupTypes: formData.cupTypes,
       
       imageUrls: finalImages,
       imageOriginals: originals,
@@ -1031,7 +1035,6 @@ const handleSave = async () => {
                 <div className="flex items-center gap-1.5 mb-1"><Sparkles className="w-3 h-3 text-primary animate-pulse" /><span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">點擊上傳酒標</span></div>
               </button>
             )}
-            {images.length === 2 && <Slider value={[splitRatio]} onValueChange={v => setSplitRatio(v[0])} min={20} max={80} step={1} className="h-4" />}
             {images.length === 1 && (
               <p className="text-[9px] text-primary/50 text-center font-medium flex items-center justify-center gap-1">
                 <Sparkles className="w-2.5 h-2.5" />加入背標可大幅加速 AI 辨識
@@ -1335,6 +1338,29 @@ const handleSave = async () => {
                     className={cn(
                       "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
                       formData.servingTemperatures.includes(option) ? "bg-amber-500 text-black border-amber-400 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">推薦杯型</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CUP_TYPE_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      cupTypes: p.cupTypes.includes(option)
+                        ? p.cupTypes.filter(item => item !== option)
+                        : [...p.cupTypes, option],
+                    }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
+                      formData.cupTypes.includes(option) ? "bg-sky-400 text-black border-sky-300 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
                     )}
                   >
                     {option}

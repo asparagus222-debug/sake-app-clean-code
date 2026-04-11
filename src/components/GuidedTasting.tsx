@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CUP_TYPE_OPTIONS, SERVING_TEMPERATURE_OPTIONS } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type QType = 'single' | 'multi' | 'rating5';
@@ -30,6 +31,8 @@ export interface GuidedTastingResult {
   userDescription: string;
   styleTags: string[];
   foodPairings: { food: string; pairing: 'yes'; reason: string }[];
+  servingTemperatures: string[];
+  cupTypes: string[];
 }
 
 // ─── Question Bank ────────────────────────────────────────────────────────────
@@ -198,15 +201,25 @@ const QUESTIONS: Q[] = [
       { value: '和牛紅肉', label: '和牛/紅肉', emoji: '🥩' },
     ],
   },
+  {
+    id: 'servingTemperature', section: '飲用建議', sectionColor: '#f59e0b',
+    text: '建議的適飲溫度？', hint: '可多選', optional: true, type: 'multi',
+    options: SERVING_TEMPERATURE_OPTIONS.map((option) => ({ value: option, label: option, emoji: '🌡️' })),
+  },
+  {
+    id: 'cupType', section: '飲用建議', sectionColor: '#f59e0b',
+    text: '推薦的杯型？', hint: '可多選', optional: true, type: 'multi',
+    options: CUP_TYPE_OPTIONS.map((option) => ({ value: option, label: option, emoji: '🍶' })),
+  },
 ];
 
-const SECTIONS = ['外觀', '香氣', '口感', '尾韻', '風味總評', '餐搭'];
+const SECTIONS = ['外觀', '香氣', '口感', '尾韻', '風味總評', '餐搭', '飲用建議'];
 const SECTION_COLORS: Record<string, string> = {
   '外觀': '#d4af37', '香氣': '#7c3aed', '口感': '#059669',
-  '尾韻': '#0ea5e9', '風味總評': '#f97316', '餐搭': '#dc2626',
+  '尾韻': '#0ea5e9', '風味總評': '#f97316', '餐搭': '#dc2626', '飲用建議': '#f59e0b',
 };
 const SECTION_ICONS: Record<string, string> = {
-  '外觀': '👁️', '香氣': '👃', '口感': '👅', '尾韻': '🌊', '風味總評': '⭐', '餐搭': '🍽️',
+  '外觀': '👁️', '香氣': '👃', '口感': '👅', '尾韻': '🌊', '風味總評': '⭐', '餐搭': '🍽️', '飲用建議': '🍶',
 };
 
 // ─── Build result from answers ────────────────────────────────────────────────
@@ -272,12 +285,16 @@ function buildResult(answers: Record<string, string | string[]>): GuidedTastingR
 
   const foods = getArr('food');
   const foodPairings = foods.map(food => ({ food, pairing: 'yes' as const, reason: '' }));
+  const servingTemperatures = getArr('servingTemperature');
+  const cupTypes = getArr('cupType');
 
   return {
     sweetness: sw, acidity: ac, bitterness: bi, umami: um, astringency: as_,
     userDescription: parts.join('\n'),
     styleTags,
     foodPairings,
+    servingTemperatures,
+    cupTypes,
   };
 }
 
@@ -292,15 +309,27 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [autoAdvance, setAutoAdvance] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedSections, setSelectedSections] = useState<string[]>(SECTIONS);
 
-  const q = step >= 0 ? QUESTIONS[step] : null;
-  const progress = step < 0 ? 0 : ((step + 1) / QUESTIONS.length) * 100;
+  const activeQuestions = useMemo(
+    () => QUESTIONS.filter((question) => selectedSections.includes(question.section)),
+    [selectedSections]
+  );
+
+  const q = step >= 0 ? activeQuestions[step] : null;
+  const progress = step < 0 ? 0 : ((step + 1) / Math.max(activeQuestions.length, 1)) * 100;
   const answer = q ? (answers[q.id] ?? (q.type === 'multi' ? [] : '')) : '';
   const isAnswered = q
     ? (q.type === 'multi' ? (answer as string[]).length > 0 : (answer as string).length > 0)
     : false;
   const canNext = isAnswered || (q?.optional ?? false);
-  const isLast = step === QUESTIONS.length - 1;
+  const isLast = step === activeQuestions.length - 1;
+
+  const toggleSection = (section: string) => {
+    setSelectedSections((prev) =>
+      prev.includes(section) ? prev.filter((item) => item !== section) : [...prev, section]
+    );
+  };
 
   const goNext = () => {
     if (isLast) {
@@ -333,7 +362,7 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
         // auto-advance after 280ms so user sees the selection
         if (autoAdvance) clearTimeout(autoAdvance);
         const t = setTimeout(() => {
-          if (step < QUESTIONS.length - 1) setStep(s => s + 1);
+          if (step < activeQuestions.length - 1) setStep(s => s + 1);
           else onComplete(buildResult({ ...answers, [q.id]: newVal }));
         }, 280);
         setAutoAdvance(t);
@@ -361,34 +390,46 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
           <div className="text-4xl mb-2">🍶</div>
           <h1 className="text-xl font-bold text-white tracking-wide mb-1">引導式品鑒</h1>
           <p className="text-white/45 text-xs leading-relaxed mb-4 max-w-xs">
-            跟著步驟完成品評，系統自動填入評分與品飲描述，共 {QUESTIONS.length} 個問題
+            先勾選這次想補充的區塊，再跟著步驟完成品評；系統會自動填入對應欄位。
           </p>
 
           <div className="w-full grid grid-cols-2 gap-1.5 max-w-sm">
             {SECTIONS.map((s, i) => {
               const count = QUESTIONS.filter(q => q.section === s).length;
+              const selected = selectedSections.includes(s);
               return (
-                <div
+                <button
                   key={s}
+                  type="button"
+                  onClick={() => toggleSection(s)}
                   className="flex items-center gap-2 rounded-xl px-3 py-2"
-                  style={{ background: `${SECTION_COLORS[s]}14`, border: `1px solid ${SECTION_COLORS[s]}28` }}
+                  style={{
+                    background: selected ? `${SECTION_COLORS[s]}22` : `${SECTION_COLORS[s]}10`,
+                    border: `1px solid ${selected ? SECTION_COLORS[s] : `${SECTION_COLORS[s]}28`}`,
+                    boxShadow: selected ? `0 0 0 1px ${SECTION_COLORS[s]}40 inset` : 'none',
+                  }}
                 >
                   <span className="text-sm shrink-0">{SECTION_ICONS[s]}</span>
                   <span className="text-xs font-bold text-white/80 flex-1 text-left">{s}</span>
                   <span className="text-[9px] font-bold text-white/30">{count}</span>
-                </div>
+                  {selected && <Check className="w-3.5 h-3.5 text-white/70" />}
+                </button>
               );
             })}
           </div>
+          <p className="mt-3 text-[10px] text-white/35 leading-relaxed max-w-sm">
+            可只補答漏填的區塊，例如只補餐搭、適飲溫度或杯型。
+          </p>
         </div>
 
         <div className="px-6 pb-10 pt-3">
           <Button
             className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest"
             style={{ background: '#f97316' }}
+            disabled={selectedSections.length === 0}
             onClick={() => setStep(0)}
           >
-            開始品鑒 <ArrowRight className="w-4 h-4 ml-2" />
+            開始補充 {selectedSections.length > 0 ? <ArrowRight className="w-4 h-4 ml-2" /> : null}
           </Button>
         </div>
       </div>
@@ -441,7 +482,7 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
           <span className="text-[10px] text-white/25 font-bold">
             {SECTIONS.indexOf(q.section) + 1} / {SECTIONS.length} 個區塊
           </span>
-          <span className="text-[10px] text-white/25 font-bold">{step + 1} / {QUESTIONS.length}</span>
+          <span className="text-[10px] text-white/25 font-bold">{step + 1} / {activeQuestions.length}</span>
         </div>
       </div>
 
