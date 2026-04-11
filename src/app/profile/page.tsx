@@ -68,7 +68,7 @@ import {
 } from '@/firebase';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, doc, query, where, getDocs, getDocsFromServer, setDoc, writeBatch } from 'firebase/firestore';
-import { deleteUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
+import { deleteUser, EmailAuthProvider, linkWithCredential, signInWithEmailAndPassword, updatePassword, getIdToken } from 'firebase/auth';
 import Link from 'next/link';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
@@ -480,21 +480,21 @@ export default function ProfilePage() {
     
     setIsCreatingAccount(true);
     try {
-      const previousAnonymousUid = user.isAnonymous ? user.uid : null;
       const sanitizedUsername = pendingFormData.username.replace(/\s+/g, '').toLowerCase();
       const email = `${sanitizedUsername}@sake-note.app`;
-      
-      // 創建正式帳戶
-      const userCredential = await createUserWithEmailAndPassword(auth, email, createAccountPin);
-      const newUser = userCredential.user;
+      const credential = EmailAuthProvider.credential(email, createAccountPin);
+
+      // 將目前匿名帳戶直接升級為正式帳戶，避免產生新的 uid 與半完成資料。
+      const userCredential = await linkWithCredential(user, credential);
+      const upgradedUser = userCredential.user;
       
       // 保存用戶資料（使用 setDoc 確保數據被保存）
-      await setDoc(doc(firestore, 'users', newUser.uid), {
-        id: newUser.uid,
+      await setDoc(doc(firestore, 'users', upgradedUser.uid), {
+        id: upgradedUser.uid,
         accountType: 'registered',
         username: pendingFormData.username,
         bio: pendingFormData.bio || '',
-        avatarUrl: `https://picsum.photos/seed/${newUser.uid}/100/100`,
+        avatarUrl: `https://picsum.photos/seed/${upgradedUser.uid}/100/100`,
         instagram: pendingFormData.instagram || '',
         twitter: pendingFormData.twitter || '',
         facebook: pendingFormData.facebook || '',
@@ -508,18 +508,7 @@ export default function ProfilePage() {
         },
         hasPin: true,
         createdAt: new Date().toISOString()
-      });
-
-      if (previousAnonymousUid && previousAnonymousUid !== newUser.uid) {
-        await setDoc(doc(firestore, 'users', previousAnonymousUid), {
-          accountType: 'anonymous',
-          username: '',
-          hasPin: false,
-          updatedAt: new Date().toISOString(),
-          migratedToUserId: newUser.uid,
-          migratedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
+      }, { merge: true });
       
       toast({ title: "帳戶創建成功", description: "現在可以修改個人資料了" });
       setShowCreateAccountDialog(false);
@@ -530,7 +519,7 @@ export default function ProfilePage() {
       setTimeout(() => window.location.reload(), 800);
     } catch (err: any) {
       let message = "創建帳戶失敗";
-      if (err.code === 'auth/email-already-in-use') message = "使用者名稱已被使用";
+      if (err.code === 'auth/email-already-in-use' || err.code === 'auth/credential-already-in-use') message = "使用者名稱已被使用";
       if (err.code === 'auth/weak-password') message = "PIN 碼需至少 6 位數字";
       toast({ variant: "destructive", title: "創建失敗", description: message });
     } finally {
