@@ -8,14 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NumericKeypad } from '@/components/NumericKeypad';
 import { ArrowLeft, Loader2, KeyRound, User, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, getDocsFromServer, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function RecoverPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [pin, setPin] = useState("");
@@ -50,7 +52,26 @@ export default function RecoverPage() {
       
     } catch (err: any) {
       let message = "找回失敗，請檢查名稱或 PIN 碼。";
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') message = "找不到此使用者名稱。";
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        if (firestore) {
+          try {
+            const usernameQuery = query(
+              collection(firestore, 'users'),
+              where('username', '==', username.trim())
+            );
+            const querySnapshot = await getDocsFromServer(usernameQuery);
+            if (querySnapshot.docs.some((doc) => !doc.data().isAccountDeleted)) {
+              message = '此名稱已有品飲資料，但尚未完成正式帳戶建立。請回原裝置到個人頁完成建帳。';
+            } else {
+              message = '找不到此使用者名稱。';
+            }
+          } catch {
+            message = '找不到此使用者名稱。';
+          }
+        } else {
+          message = '找不到此使用者名稱。';
+        }
+      }
       if (err.code === 'auth/wrong-password') message = "PIN 碼錯誤。";
       
       toast({ variant: "destructive", title: "認證失敗", description: message });

@@ -571,7 +571,7 @@ export default function ProfilePage() {
       const usersRef = collection(firestore, 'users');
       const q = query(usersRef, where('username', '==', username.trim()));
       const querySnapshot = await getDocsFromServer(q);
-      if (querySnapshot.docs.some(d => !d.data().isAccountDeleted)) {
+      if (querySnapshot.docs.some(d => d.id !== user?.uid && !d.data().isAccountDeleted)) {
         toast({ variant: "destructive", title: "名稱已被佔用", description: "請選擇其他使用者名稱" });
         return;
       }
