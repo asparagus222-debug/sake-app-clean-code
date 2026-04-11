@@ -18,6 +18,7 @@ service cloud.firestore {
     function userEditableKeys() {
       return [
         'id',
+        'accountType',
         'username',
         'bio',
         'avatarUrl',
