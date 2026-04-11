@@ -31,6 +31,11 @@ const IdentifySakeOutputSchema = z.object({
 });
 export type IdentifySakeOutput = z.infer<typeof IdentifySakeOutputSchema>;
 
+const ExactKeywordSearchSchema = IdentifySakeOutputSchema.extend({
+  confidence: z.enum(['high', 'medium', 'low']).describe('只有在多個搜尋結果明確指向同一款酒時，才可標記為 high。'),
+  matchedKeyword: z.string().describe('本次精準搜尋採用的關鍵字。'),
+});
+
 // Gemini 視覺提取 Schema
 const VisionExtractionSchema = z.object({
   allText: z.array(z.string()).optional().describe('圖片上所有可見文字列表（用於備用搜尋）'),
@@ -89,6 +94,46 @@ async function callCloudVision(base64: string): Promise<{
   }
 }
 
+function extractDirectSearchCandidates(frontOcr: string, bestGuessLabel: string): string[] {
+  const candidates: Array<{ value: string; score: number }> = [];
+  const seen = new Set<string>();
+  const stopwords = new Set(['JAPAN', 'SAKE', 'NIHONSHU', 'JUNMAI', 'GINJO', 'DAIGINJO']);
+
+  const pushCandidate = (rawValue: string, score: number) => {
+    const value = rawValue.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    if (!value || seen.has(value)) return;
+    if (stopwords.has(value.toUpperCase())) return;
+    seen.add(value);
+    candidates.push({ value, score });
+  };
+
+  const inspectText = (text: string, baseScore: number) => {
+    text
+      .split(/\n+/)
+      .map(line => line.replace(/[|｜]/g, ' ').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .forEach(line => {
+        if (/^[A-Z][A-Z0-9&-]{3,24}$/.test(line)) {
+          pushCandidate(line, baseScore + 20);
+        }
+
+        line.split(/\s+/).forEach(token => {
+          if (/^[A-Z][A-Z0-9&-]{3,24}$/.test(token)) {
+            pushCandidate(token, baseScore + 10);
+          }
+        });
+      });
+  };
+
+  inspectText(frontOcr, 100);
+  inspectText(bestGuessLabel, 70);
+
+  return candidates
+    .sort((left, right) => right.score - left.score)
+    .map(candidate => candidate.value)
+    .slice(0, 3);
+}
+
 export const identifySakeFlow = ai.defineFlow(
   {
     name: 'identifySakeFlow',
@@ -130,8 +175,62 @@ export const identifySakeFlow = ai.defineFlow(
       .slice(0, 6)
       .map(e => e.description as string);
     const hasStrongWebHit = highConfEntities.length > 0;
+    const directSearchCandidates = extractDirectSearchCandidates(frontOcr, frontVision.bestGuessLabel);
 
     console.log(`[AI辨識] Vision 預檢 ─ OCR:${vOcr.length}字, 高信心:${highConfEntities.join('|') || '無'}`);
+
+    // ── Step 0.5: 前標高信心關鍵字先精準搜尋 ──
+    // 針對 CHIMERA、VEGA 這類辨識度高的文字，先用「關鍵字 + 日本酒」直搜。
+    // 若搜尋結果已高度一致，就直接採信，避免後續被電商混合摘要或知名酒造帶偏。
+    if (!hasBackLabel && directSearchCandidates.length > 0) {
+      console.log(`[AI辨識] 前置精準搜尋候選: ${directSearchCandidates.join(' | ')}`);
+      const exactKeywordStart = performance.now();
+
+      for (const candidate of directSearchCandidates.slice(0, 2)) {
+        const exactQuery = `"${candidate}" 日本酒`;
+        const { output: exactMatch } = await ai.generate({
+          model: googleAI.model('gemini-flash-latest'),
+          config: { googleSearchRetrieval: true },
+          output: { schema: ExactKeywordSearchSchema },
+          prompt: [{
+            text: `你是清酒資料庫專家。請先用 Google Search 精準搜尋「${exactQuery}」，確認這是否已足以唯一指向某一款日本酒。
+
+已知線索：
+- 正標 OCR：${frontOcr || '無'}
+- 圖像高信心比對：${highConfEntities.join('、') || '無'}
+
+判斷規則：
+1. 若多個搜尋結果明確指向同一款日本酒，confidence 才能是 high
+2. 若搜尋結果只是在電商頁同時出現多款酒，或摘要混有其他商品，confidence 必須降為 medium 或 low
+3. 若 candidate 是產品名的一部分，可回傳完整官方品名，例如「白木久 特別純米 CHIMERA」
+4. 不可把圖片上沒有的其他知名銘柄或酒造代表品牌硬接到產品名後面
+5. 若無法唯一確認，brandName / brewery / origin 可留空，confidence 請回 low
+6. 所有文字保持日文原文，不要翻譯
+
+請回傳 JSON。`,
+          }],
+        }).catch(() => ({ output: null }));
+
+        if (exactMatch?.confidence === 'high' && exactMatch.brandName && exactMatch.brewery) {
+          const exactKeywordMs = Math.round((performance.now() - exactKeywordStart) * 10) / 10;
+          console.log(`[AI辨識] 前置精準搜尋命中 ✓ ${candidate} → ${exactMatch.brandName} / ${exactMatch.brewery}`);
+          logTiming('exact-keyword-search-path', { cloudVisionMs, exactKeywordMs, candidate: exactMatch.matchedKeyword || candidate, hasBackLabel });
+          return {
+            brandName: exactMatch.brandName,
+            brewery: exactMatch.brewery,
+            origin: exactMatch.origin || '',
+            alcoholPercent: exactMatch.alcoholPercent || '',
+            seimaibuai: exactMatch.seimaibuai || '',
+            riceName: exactMatch.riceName || '',
+            specialProcess: exactMatch.specialProcess || [],
+            yeast: exactMatch.yeast || '',
+            smv: exactMatch.smv || '',
+          };
+        }
+      }
+
+      console.log('[AI辨識] 前置精準搜尋未達高信心，回退至既有流程');
+    }
 
     // ── 快速通道：WEB_DETECTION 高信心 + OCR 有文字 → 跳過 Google Search ──
     // 對常見知名清酒省下整個 ~6 秒的 Google Search 步驟
