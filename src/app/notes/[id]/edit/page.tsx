@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession } from '@/lib/types';
+import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession, CUP_TYPE_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
@@ -119,6 +119,7 @@ export default function EditNotePage() {
     overallRating: 7,
     styleTags: [] as string[],
     servingTemperatures: [] as string[],
+    cupTypes: [] as string[],
     sakeInfoTags: [] as string[],
     alcoholPercent: '',
     foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
@@ -142,6 +143,7 @@ export default function EditNotePage() {
         overallRating: note.overallRating,
         styleTags: note.styleTags || [],
         servingTemperatures: note.servingTemperatures || (note.servingTemperature ? [note.servingTemperature] : []),
+        cupTypes: note.cupTypes || [],
         sakeInfoTags: note.sakeInfoTags || [],
         alcoholPercent: note.alcoholPercent || '',
         foodPairings: (note.foodPairings || []).map((fp: { food: string; pairing: 'yes' | 'no'; reason?: string }) => ({ food: fp.food, pairing: fp.pairing, reason: fp.reason || '' })),
@@ -626,6 +628,7 @@ export default function EditNotePage() {
         origin: formData.origin,
         styleTags: formData.styleTags,
         servingTemperatures: formData.servingTemperatures,
+        cupTypes: formData.cupTypes,
         servingTemperature: deleteField(),
         sakeInfoTags: formData.sakeInfoTags,
         alcoholPercent: formData.alcoholPercent,
@@ -1076,6 +1079,29 @@ export default function EditNotePage() {
                     className={cn(
                       "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
                       formData.servingTemperatures.includes(option) ? "bg-amber-500 text-black border-amber-400 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">推薦杯型</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CUP_TYPE_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFormData(p => ({
+                      ...p,
+                      cupTypes: p.cupTypes.includes(option)
+                        ? p.cupTypes.filter(item => item !== option)
+                        : [...p.cupTypes, option],
+                    }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
+                      formData.cupTypes.includes(option) ? "bg-sky-400 text-black border-sky-300 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
                     )}
                   >
                     {option}

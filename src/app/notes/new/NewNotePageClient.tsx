@@ -872,6 +872,7 @@ const handleSave = async () => {
       imageUrls: finalImages,
       imageOriginals: originals,
       imageTransforms: images.map((_, i) => ({ x: offsets[i].x, y: offsets[i].y, scale: zooms[i] })),
+      imageSplitRatio: images.length === 2 ? splitRatio : 50,
       tastingDate: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };

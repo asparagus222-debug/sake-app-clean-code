@@ -236,6 +236,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     : note?.servingTemperature
       ? [note.servingTemperature]
       : [];
+  const cupTypes = note?.cupTypes?.filter(Boolean) || [];
 
   const authorRef = useMemoFirebase(() => {
     if (!firestore || !note?.userId) return null;
@@ -550,7 +551,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                 </p>
               </div>
 
-              {(servingTemperatures.length > 0 || (note.styleTags && note.styleTags.length > 0)) && (
+              {(servingTemperatures.length > 0 || cupTypes.length > 0 || (note.styleTags && note.styleTags.length > 0)) && (
                 <div className="pt-4 border-t border-white/5">
                   <div className="flex items-center gap-2 mb-2 text-primary">
                     <Tag className="w-3 h-3" />
@@ -566,6 +567,18 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                         {servingTemperatures.map(temperature => (
                           <Badge key={temperature} variant="secondary" className="text-[9px] h-5 px-2 bg-amber-500/15 text-amber-200 border-amber-400/30 font-bold tracking-widest">
                             {temperature}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {cupTypes.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-sky-300/90">
+                          推薦杯型
+                        </span>
+                        {cupTypes.map(cupType => (
+                          <Badge key={cupType} variant="secondary" className="text-[9px] h-5 px-2 bg-sky-500/15 text-sky-200 border-sky-400/30 font-bold tracking-widest">
+                            {cupType}
                           </Badge>
                         ))}
                       </div>
