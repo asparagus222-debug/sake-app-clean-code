@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { doc } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useFirebase } from '@/firebase/provider';
+import { useDoc, useMemoFirebase, useFirebase } from '@/firebase';
 
 function getTodayKey() {
   const now = new Date();
@@ -21,17 +22,30 @@ function getTodayKey() {
 }
 
 export function DailyAnnouncementDialog() {
-  const { user, isUserLoading } = useFirebase();
+  const { user, isUserLoading, firestore } = useFirebase();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const announcementRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'meta', 'dailyAnnouncement');
+  }, [firestore]);
+  const { data: announcement, isLoading: isAnnouncementLoading } = useDoc<{
+    title?: string;
+    message?: string;
+    enabled?: boolean;
+    updatedAt?: string;
+  }>(announcementRef);
+  const announcementTitle = announcement?.title?.trim() || '使用公告';
+  const announcementMessage = announcement?.message?.trim() || '';
+  const isAnnouncementEnabled = announcement?.enabled !== false && announcementMessage.length > 0;
 
   const storageKey = useMemo(() => {
-    if (!user) return null;
-    return `daily-announcement:${user.uid}:${getTodayKey()}`;
-  }, [user]);
+    if (!user || !isAnnouncementEnabled) return null;
+    return `daily-announcement:${user.uid}:${getTodayKey()}:${announcement?.updatedAt || 'default'}`;
+  }, [announcement?.updatedAt, isAnnouncementEnabled, user]);
 
   useEffect(() => {
-    if (isUserLoading || !storageKey || pathname !== '/') return;
+    if (isUserLoading || isAnnouncementLoading || !storageKey || pathname !== '/') return;
 
     try {
       const seen = localStorage.getItem(storageKey);
@@ -41,7 +55,7 @@ export function DailyAnnouncementDialog() {
     } catch {
       setOpen(true);
     }
-  }, [isUserLoading, pathname, storageKey]);
+  }, [isAnnouncementLoading, isUserLoading, pathname, storageKey]);
 
   useEffect(() => {
     if (pathname !== '/' && open) {
@@ -60,7 +74,7 @@ export function DailyAnnouncementDialog() {
     }
   };
 
-  if (!user || isUserLoading || pathname !== '/') return null;
+  if (!user || isUserLoading || isAnnouncementLoading || pathname !== '/' || !isAnnouncementEnabled) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -69,11 +83,11 @@ export function DailyAnnouncementDialog() {
           <div className="flex items-center gap-2 text-primary">
             <Info className="w-5 h-5" />
             <DialogTitle className="font-headline text-xl gold-glow tracking-widest uppercase">
-              使用公告
+              {announcementTitle}
             </DialogTitle>
           </div>
           <DialogDescription className="text-sm leading-7 text-foreground/80">
-            本 app 為個人興趣製作，主要希望可以分享跟推廣日本酒；目前尚在建構中，歡迎大家暴力測試，如有任何問題可以至個人資料頁面下方的問題回報區反應。
+            {announcementMessage}
           </DialogDescription>
         </DialogHeader>
       </DialogContent>

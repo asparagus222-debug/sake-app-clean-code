@@ -4,6 +4,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Table, 
   TableBody, 
@@ -28,7 +30,9 @@ import {
   Eye,
   Fingerprint,
   Gift,
-  Check
+  Check,
+  Megaphone,
+  PencilLine
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -57,10 +61,11 @@ import {
   useFirestore, 
   useCollection, 
   useMemoFirebase, 
+  useDoc,
   deleteDocumentNonBlocking,
   initiateGoogleSignIn
 } from '@/firebase';
-import { collection, doc, updateDoc, deleteField, increment } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteField, increment, setDoc } from 'firebase/firestore';
 import { signOut, getIdTokenResult } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -85,6 +90,10 @@ export default function AdminPage() {
   const [sponsorUserId, setSponsorUserId] = useState('');
   const [sponsorAmount, setSponsorAmount] = useState('');
   const [isSponsorSaving, setIsSponsorSaving] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [announcementEnabled, setAnnouncementEnabled] = useState(true);
+  const [isAnnouncementSaving, setIsAnnouncementSaving] = useState(false);
 
   // 相似銘柄偵測
   type SimilarGroup = {
@@ -162,6 +171,23 @@ export default function AdminPage() {
     return collection(firestore, 'reports');
   }, [firestore, isAdmin]);
   const { data: reports, isLoading: isReportsLoading } = useCollection(reportsQuery);
+
+  const announcementRef = useMemoFirebase(() => {
+    if (!firestore || !isAdmin) return null;
+    return doc(firestore, 'meta', 'dailyAnnouncement');
+  }, [firestore, isAdmin]);
+  const { data: announcementDoc, isLoading: isAnnouncementLoading } = useDoc<{
+    title?: string;
+    message?: string;
+    enabled?: boolean;
+    updatedAt?: string;
+  }>(announcementRef);
+
+  React.useEffect(() => {
+    setAnnouncementTitle(announcementDoc?.title || '使用公告');
+    setAnnouncementMessage(announcementDoc?.message || '');
+    setAnnouncementEnabled(announcementDoc?.enabled !== false);
+  }, [announcementDoc?.enabled, announcementDoc?.message, announcementDoc?.title]);
 
   const handleLogin = () => {
     setAuthError(null);
@@ -255,6 +281,25 @@ export default function AdminPage() {
       toast({ variant: "destructive", title: "更新失敗", description: err.message });
     } finally {
       setIsSponsorSaving(false);
+    }
+  };
+
+  const handleSaveAnnouncement = async () => {
+    if (!firestore) return;
+
+    setIsAnnouncementSaving(true);
+    try {
+      await setDoc(doc(firestore, 'meta', 'dailyAnnouncement'), {
+        title: announcementTitle.trim() || '使用公告',
+        message: announcementMessage.trim(),
+        enabled: announcementEnabled,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      toast({ title: '公告已更新' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '公告儲存失敗', description: err.message });
+    } finally {
+      setIsAnnouncementSaving(false);
     }
   };
 
@@ -478,6 +523,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="sponsor" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
               <Gift className="w-3 h-3 mr-1.5" /> 贊助徽章
+            </TabsTrigger>
+            <TabsTrigger value="announcement" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+              <Megaphone className="w-3 h-3 mr-1.5" /> 公告設定
             </TabsTrigger>
           </TabsList>
         </div>
@@ -946,6 +994,85 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="announcement" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl">
+            <div className="space-y-6 max-w-3xl">
+              <div className="space-y-1">
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary">首頁公告設定</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  修改後會套用到首頁登入使用者看到的公告彈窗；同一天內若內容有更新，已看過的使用者也會再次看到新版公告。
+                </p>
+              </div>
+
+              {isAnnouncementLoading ? (
+                <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary">公告標題</label>
+                    <Input
+                      value={announcementTitle}
+                      onChange={(event) => setAnnouncementTitle(event.target.value)}
+                      placeholder="例如：使用公告"
+                      className="bg-white/5 border-white/10 rounded-2xl h-11 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary">公告內容</label>
+                    <Textarea
+                      value={announcementMessage}
+                      onChange={(event) => setAnnouncementMessage(event.target.value)}
+                      placeholder="輸入公告內容"
+                      className="bg-white/5 border-white/10 rounded-[1.5rem] min-h-[220px] text-sm leading-7"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAnnouncementEnabled((prev) => !prev)}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${announcementEnabled ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5 text-muted-foreground'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest">公告狀態</p>
+                        <p className="text-xs mt-1">{announcementEnabled ? '目前啟用中，首頁會顯示這則公告。' : '目前已停用，首頁不會顯示公告彈窗。'}</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-current/20 px-3 py-1 text-[10px] font-bold uppercase">
+                        {announcementEnabled ? <><Check className="w-3 h-3" /> 已啟用</> : '已停用'}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <PencilLine className="w-4 h-4" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest">預覽</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-lg font-headline font-bold gold-glow tracking-widest uppercase text-primary">
+                        {announcementTitle.trim() || '使用公告'}
+                      </p>
+                      <p className="text-sm leading-7 text-foreground/80 whitespace-pre-wrap">
+                        {announcementMessage.trim() || '尚未填寫公告內容。'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSaveAnnouncement}
+                      disabled={isAnnouncementSaving}
+                      className="rounded-full h-11 px-6 text-xs font-bold uppercase"
+                    >
+                      {isAnnouncementSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />儲存中</> : <><Megaphone className="w-4 h-4 mr-2" />儲存公告</>}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
