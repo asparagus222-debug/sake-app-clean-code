@@ -354,15 +354,6 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     });
   };
 
-  const clearAnswer = (questionId: string) => {
-    setAnswers((prev) => {
-      const next = { ...prev };
-      delete next[questionId];
-      onAnswersChange?.(next);
-      return next;
-    });
-  };
-
   const returnHome = () => {
     setActiveSection(null);
     setActiveQuestionIndex(0);
@@ -403,6 +394,14 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     setActiveQuestionIndex((prev) => prev + 1);
   };
 
+  const primaryActionLabel = continuousMode
+    ? activeIsLastInSection
+      ? '完成品鑑'
+      : '確認並下一題'
+    : activeIsLastInSection
+      ? '確認並返回分組'
+      : '確認並下一題';
+
   const toggleOption = (question: Q, value: string) => {
     if (question.type === 'multi') {
       const current = (answers[question.id] as string[] | undefined) ?? [];
@@ -416,9 +415,6 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     const current = answers[question.id] as string | undefined;
     const nextValue = current === value ? '' : value;
     updateAnswer(question.id, nextValue);
-    if (question.type === 'single' && nextValue) {
-      window.setTimeout(() => moveNextInSection(), 180);
-    }
   };
 
   if (!activeQuestion) {
@@ -626,23 +622,15 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
       </div>
 
       <div className="space-y-2 px-5 pb-10 pt-3 shrink-0">
-        {activeQuestion.type !== 'single' && (
-          <Button
-            className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest transition-all"
-            style={canSave ? { background: activeQuestion.sectionColor } : undefined}
-            disabled={!canSave}
-            variant={canSave ? 'default' : 'outline'}
-            onClick={moveNextInSection}
-          >
-            {continuousMode
-              ? activeIsLastInSection 
-                ? '完成品鑑' 
-                : '確認並下一題'
-              : activeIsLastInSection 
-              ? '儲存這題並返回分組' 
-              : '儲存並下一題'} <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest transition-all"
+          style={canSave ? { background: activeQuestion.sectionColor } : undefined}
+          disabled={!canSave}
+          variant={canSave ? 'default' : 'outline'}
+          onClick={moveNextInSection}
+        >
+          {primaryActionLabel} <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
 
         {answered && continuousMode && (
           <button
@@ -650,15 +638,6 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
           >
             跳過此題 →
-          </button>
-        )}
-
-        {answered && !continuousMode && (
-          <button
-            onClick={() => clearAnswer(activeQuestion.id)}
-            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
-          >
-            清除此題答案
           </button>
         )}
 
