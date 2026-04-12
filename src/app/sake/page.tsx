@@ -5,9 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Sparkles, Clock, Star } from 'lucide-react';
+import { Loader2, ArrowLeft, Sparkles, Clock, Star, Info } from 'lucide-react';
 import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, getDoc, setDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,7 @@ function SakeDetailInner() {
   const [intro, setIntro] = useState('');
   const [isIntroLoading, setIsIntroLoading] = useState(false);
   const [introFetched, setIntroFetched] = useState(false);
+  const [introRequested, setIntroRequested] = useState(false);
 
   const notesQuery = useMemoFirebase(() => {
     if (!firestore || !brand) return null;
@@ -61,22 +62,15 @@ function SakeDetailInner() {
       try {
         const snap = await getDoc(introRef);
         if (snap.exists()) {
-          // Cache hit — no API call needed
           setIntro(snap.data().intro as string);
-        } else {
-          // Cache miss — generate and save
-          const res = await authorizedJsonFetch(auth, '/api/ai/sake-summary', {
+        } else if (auth?.currentUser) {
+          const res = await authorizedJsonFetch(auth, '/api/brewery-intros/request', {
             method: 'POST',
             body: JSON.stringify({ brewery }),
           });
-          const data = await res.json();
-          if (data.text) {
-            setIntro(data.text);
-            await setDoc(introRef, {
-              intro: data.text,
-              brewery,
-              generatedAt: new Date().toISOString(),
-            });
+          if (res.ok) {
+            const data = await res.json();
+            setIntroRequested(data.requested === true);
           }
         }
       } catch {
@@ -122,12 +116,18 @@ function SakeDetailInner() {
             {isIntroLoading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                <span className="text-[10px] text-muted-foreground">搜尋酒造資料中...</span>
+                <span className="text-[10px] text-muted-foreground">讀取酒造資料中...</span>
               </div>
             ) : intro ? (
               <p className="text-xs leading-relaxed text-foreground/90">{intro}</p>
             ) : !isIntroLoading ? (
-              <p className="text-[10px] text-muted-foreground">暫無酒造介紹</p>
+              <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-3 text-[10px] text-muted-foreground">
+                <div className="mb-1 flex items-center gap-1.5 text-foreground/80">
+                  <Info className="h-3 w-3 text-primary" />
+                  <span className="font-bold">尚無酒造介紹</span>
+                </div>
+                <p>{introRequested ? '已記錄此酒造的補充需求，待管理員確認後補齊。' : '此酒造尚未建立介紹資料，待管理員確認後補齊。'}</p>
+              </div>
             ) : null}
           </div>
         </section>

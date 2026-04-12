@@ -106,7 +106,12 @@ service cloud.firestore {
 
     match /breweryIntros/{docId} {
       allow read: if true;
-      allow write: if isAdmin() || isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /breweryIntroRequests/{docId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if false;
     }
 
     match /meta/{docId} {

@@ -32,7 +32,9 @@ import {
   Gift,
   Check,
   Megaphone,
-  PencilLine
+  PencilLine,
+  Sparkles,
+  ScrollText
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -65,7 +67,7 @@ import {
   deleteDocumentNonBlocking,
   initiateGoogleSignIn
 } from '@/firebase';
-import { collection, doc, updateDoc, deleteField, increment, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteField, increment, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { signOut, getIdTokenResult } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -171,6 +173,17 @@ export default function AdminPage() {
     return collection(firestore, 'reports');
   }, [firestore, isAdmin]);
   const { data: reports, isLoading: isReportsLoading } = useCollection(reportsQuery);
+
+  const breweryIntroRequestsQuery = useMemoFirebase(() => {
+    if (!firestore || !isAdmin) return null;
+    return query(collection(firestore, 'breweryIntroRequests'), orderBy('updatedAt', 'desc'));
+  }, [firestore, isAdmin]);
+  const { data: breweryIntroRequests, isLoading: isBreweryIntroRequestsLoading } = useCollection(breweryIntroRequestsQuery);
+  const pendingBreweryIntroRequests = React.useMemo(
+    () => ((breweryIntroRequests as any[]) || []).filter((item: any) => item.status !== 'completed'),
+    [breweryIntroRequests]
+  );
+  const [generatingBreweryKey, setGeneratingBreweryKey] = useState<string | null>(null);
 
   const announcementRef = useMemoFirebase(() => {
     if (!firestore || !isAdmin) return null;
@@ -310,6 +323,37 @@ export default function AdminPage() {
       toast({ variant: 'destructive', title: '公告儲存失敗', description: err.message });
     } finally {
       setIsAnnouncementSaving(false);
+    }
+  };
+
+  const handleGenerateBreweryIntro = async (brewery: string, breweryKey: string) => {
+    if (!auth) return;
+    setGeneratingBreweryKey(breweryKey);
+    try {
+      const res = await authorizedJsonFetch(auth, '/api/admin/brewery-intros/generate', {
+        method: 'POST',
+        body: JSON.stringify({ brewery }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '生成失敗');
+      toast({ title: `已補齊「${brewery}」的酒造介紹` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '酒造介紹生成失敗', description: err.message });
+    } finally {
+      setGeneratingBreweryKey(null);
+    }
+  };
+
+  const handleDismissBreweryIntroRequest = async (requestId: string) => {
+    if (!firestore) return;
+    try {
+      await updateDoc(doc(firestore, 'breweryIntroRequests', requestId), {
+        status: 'dismissed',
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: '已標記為暫不處理' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: '更新失敗', description: err.message });
     }
   };
 
@@ -536,6 +580,9 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="announcement" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
               <Megaphone className="w-3 h-3 mr-1.5" /> 公告設定
+            </TabsTrigger>
+            <TabsTrigger value="brewery-intros" className="rounded-full px-6 text-[10px] font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+              <ScrollText className="w-3 h-3 mr-1.5" /> 酒造介紹
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1081,6 +1128,72 @@ export default function AdminPage() {
                       {isAnnouncementSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />儲存中</> : <><Megaphone className="w-4 h-4 mr-2" />儲存公告</>}
                     </Button>
                   </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="brewery-intros" className="dark-glass rounded-[2.5rem] border border-white/10 p-6 shadow-2xl overflow-hidden">
+            <div className="space-y-4">
+              <div className="px-2">
+                <h2 className="font-bold text-sm uppercase tracking-widest text-primary">待補酒造介紹 ({pendingBreweryIntroRequests.length})</h2>
+                <p className="mt-1 text-[10px] text-muted-foreground">前台遇到尚無介紹的酒造時會建立待處理清單，由管理員確認後補齊正式資料。</p>
+              </div>
+
+              {isBreweryIntroRequestsLoading ? (
+                <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : pendingBreweryIntroRequests.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-[10px] text-muted-foreground">目前沒有待補酒造介紹。</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-white/5">
+                      <TableRow className="border-white/5 hover:bg-transparent">
+                        <TableHead className="text-[10px] uppercase font-bold">酒造</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">請求次數</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">最後請求</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">狀態</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold text-right">操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingBreweryIntroRequests.map((item: any) => {
+                        const key = item.breweryKey || item.id;
+                        return (
+                          <TableRow key={item.id} className="border-white/5 hover:bg-white/[0.02]">
+                            <TableCell className="text-xs font-bold">{item.brewery}</TableCell>
+                            <TableCell className="text-[10px] text-muted-foreground">{item.requestCount || 1}</TableCell>
+                            <TableCell className="text-[10px] text-muted-foreground">{item.lastRequestedAt ? new Date(item.lastRequestedAt).toLocaleString() : '-'}</TableCell>
+                            <TableCell>
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-bold uppercase text-muted-foreground">{item.status || 'pending'}</span>
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleGenerateBreweryIntro(item.brewery, key)}
+                                disabled={generatingBreweryKey === key}
+                                className="rounded-full text-[10px] font-bold uppercase"
+                              >
+                                {generatingBreweryKey === key
+                                  ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />生成中</>
+                                  : <><Sparkles className="w-3 h-3 mr-1.5" />AI 補齊</>}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDismissBreweryIntroRequest(item.id)}
+                                className="rounded-full text-[10px] font-bold uppercase text-muted-foreground"
+                              >
+                                暫不處理
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </div>
