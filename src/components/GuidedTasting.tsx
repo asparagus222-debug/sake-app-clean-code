@@ -328,16 +328,19 @@ interface Props {
 }
 
 export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersChange }: Props) {
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<GuidedTastingAnswers>(initialAnswers ?? {});
-  const activeQuestion = useMemo(
-    () => QUESTIONS.find((question) => question.id === activeQuestionId) ?? null,
-    [activeQuestionId]
+  const activeSectionQuestions = useMemo(
+    () => (activeSection ? QUESTIONS.filter((question) => question.section === activeSection) : []),
+    [activeSection]
   );
+  const activeQuestion = activeSection ? activeSectionQuestions[activeQuestionIndex] ?? null : null;
   const answeredCount = useMemo(
     () => QUESTIONS.filter((question) => hasAnswer(answers, question.id)).length,
     [answers]
   );
+  const activeIsLastInSection = activeSectionQuestions.length > 0 && activeQuestionIndex === activeSectionQuestions.length - 1;
 
   const updateAnswer = (questionId: string, value: GuidedAnswerValue) => {
     setAnswers((prev) => {
@@ -356,7 +359,33 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     });
   };
 
-  const returnHome = () => setActiveQuestionId(null);
+  const returnHome = () => {
+    setActiveSection(null);
+    setActiveQuestionIndex(0);
+  };
+
+  const enterSection = (section: string, startFromFirst = false) => {
+    const sectionQuestions = QUESTIONS.filter((question) => question.section === section);
+    const firstUnansweredIndex = sectionQuestions.findIndex((question) => !hasAnswer(answers, question.id));
+    setActiveSection(section);
+    if (startFromFirst || firstUnansweredIndex === -1) {
+      setActiveQuestionIndex(0);
+      return;
+    }
+    setActiveQuestionIndex(firstUnansweredIndex);
+  };
+
+  const startFromBeginning = () => {
+    enterSection(SECTIONS[0], true);
+  };
+
+  const moveNextInSection = () => {
+    if (activeIsLastInSection) {
+      returnHome();
+      return;
+    }
+    setActiveQuestionIndex((prev) => prev + 1);
+  };
 
   const toggleOption = (question: Q, value: string) => {
     if (question.type === 'multi') {
@@ -372,7 +401,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     const nextValue = current === value ? '' : value;
     updateAnswer(question.id, nextValue);
     if (question.type === 'single' && nextValue) {
-      window.setTimeout(() => returnHome(), 180);
+      window.setTimeout(() => moveNextInSection(), 180);
     }
   };
 
@@ -408,6 +437,12 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           {SECTIONS.map((section) => {
             const sectionQuestions = QUESTIONS.filter((question) => question.section === section);
             const sectionDone = sectionQuestions.filter((question) => hasAnswer(answers, question.id)).length;
+            const sectionAllDone = sectionDone === sectionQuestions.length;
+            const sectionSummary = sectionQuestions
+              .filter((question) => hasAnswer(answers, question.id))
+              .slice(0, 2)
+              .map((question) => question.shortLabel ?? question.text)
+              .join('、');
 
             return (
               <section key={section} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
@@ -423,38 +458,30 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
                     className="rounded-full px-2.5 py-1 text-[10px] font-bold"
                     style={{ background: `${SECTION_COLORS[section]}22`, color: SECTION_COLORS[section] }}
                   >
-                    {sectionDone === sectionQuestions.length ? '已完成' : '可補充'}
+                    {sectionAllDone ? '已完成' : '可補充'}
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  {sectionQuestions.map((question) => {
-                    const answered = hasAnswer(answers, question.id);
-                    return (
-                      <button
-                        key={question.id}
-                        type="button"
-                        onClick={() => setActiveQuestionId(question.id)}
-                        className={cn(
-                          'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all',
-                          answered ? 'border-emerald-400/35 bg-emerald-400/10 text-white' : 'border-white/10 bg-white/5 text-white/75 hover:bg-white/8'
-                        )}
-                      >
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                          style={{ background: answered ? '#10b981' : `${question.sectionColor}22`, color: answered ? '#052e16' : question.sectionColor }}
-                        >
-                          {answered ? <Check className="h-3.5 w-3.5" /> : SECTION_ICONS[section]}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold leading-tight">{question.shortLabel ?? question.text}</p>
-                          <p className="mt-1 text-[10px] text-white/40">{answered ? '已記錄，可再修改' : question.optional ? '選填' : '尚未填寫'}</p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-white/35" />
-                      </button>
-                    );
-                  })}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => enterSection(section)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all',
+                    sectionAllDone ? 'border-emerald-400/35 bg-emerald-400/10 text-white' : 'border-white/10 bg-white/5 text-white/75 hover:bg-white/8'
+                  )}
+                >
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{ background: sectionAllDone ? '#10b981' : `${SECTION_COLORS[section]}22`, color: sectionAllDone ? '#052e16' : SECTION_COLORS[section] }}
+                  >
+                    {sectionAllDone ? <Check className="h-3.5 w-3.5" /> : SECTION_ICONS[section]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold leading-tight">{section}（{sectionQuestions.length} 題）</p>
+                    <p className="mt-1 text-[10px] text-white/40">{sectionSummary ? `已填：${sectionSummary}` : '尚未填寫'}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-white/35" />
+                </button>
               </section>
             );
           })}
@@ -462,13 +489,20 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
 
         <div className="px-5 pb-10 pt-3 space-y-2">
           <Button
+            className="h-12 w-full rounded-full text-xs font-bold uppercase tracking-widest"
+            variant="outline"
+            onClick={startFromBeginning}
+          >
+            從頭開始品鑑 <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+          <Button
             className="h-14 w-full rounded-full text-sm font-bold uppercase tracking-widest"
             style={{ background: '#f97316' }}
             onClick={() => onComplete(buildResult(answers))}
           >
-            完成品鑑並整理到筆記 <Check className="ml-2 h-4 w-4" />
+            完成品鑑 <Check className="ml-2 h-4 w-4" />
           </Button>
-          <p className="text-center text-[10px] text-white/28">未填的題目會保留原狀，只有你已填的內容會補充到筆記。</p>
+          <p className="text-center text-[10px] text-white/28">可只補特定分組，補完後直接點「完成品鑑」整理到筆記。</p>
         </div>
       </div>
     );
@@ -499,7 +533,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           </button>
         </div>
         <div className="rounded-full bg-white/8 px-3 py-2 text-center text-[10px] font-bold text-white/35">
-          選完這一題就會回到首頁，可再挑下一題補充
+          {activeSection}：第 {activeQuestionIndex + 1} / {activeSectionQuestions.length} 題
         </div>
       </div>
 
@@ -580,9 +614,9 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             style={canSave ? { background: activeQuestion.sectionColor } : undefined}
             disabled={!canSave}
             variant={canSave ? 'default' : 'outline'}
-            onClick={returnHome}
+            onClick={moveNextInSection}
           >
-            儲存這一題並返回 <ArrowRight className="ml-2 h-4 w-4" />
+            {activeIsLastInSection ? '儲存這題並返回分組' : '儲存並下一題'} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}
 
