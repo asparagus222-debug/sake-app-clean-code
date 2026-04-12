@@ -330,12 +330,16 @@ interface Props {
 export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersChange }: Props) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [continuousMode, setContinuousMode] = useState(false);
   const [answers, setAnswers] = useState<GuidedTastingAnswers>(initialAnswers ?? {});
+  
   const activeSectionQuestions = useMemo(
-    () => (activeSection ? QUESTIONS.filter((question) => question.section === activeSection) : []),
-    [activeSection]
+    () => continuousMode ? QUESTIONS : (activeSection ? QUESTIONS.filter((question) => question.section === activeSection) : []),
+    [activeSection, continuousMode]
   );
-  const activeQuestion = activeSection ? activeSectionQuestions[activeQuestionIndex] ?? null : null;
+  const activeQuestion = continuousMode
+    ? activeSectionQuestions[activeQuestionIndex] ?? null
+    : (activeSection ? activeSectionQuestions[activeQuestionIndex] ?? null : null);
   const answeredCount = useMemo(
     () => QUESTIONS.filter((question) => hasAnswer(answers, question.id)).length,
     [answers]
@@ -362,6 +366,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
   const returnHome = () => {
     setActiveSection(null);
     setActiveQuestionIndex(0);
+    setContinuousMode(false);
   };
 
   const enterSection = (section: string, startFromFirst = false) => {
@@ -376,10 +381,21 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
   };
 
   const startFromBeginning = () => {
-    enterSection(SECTIONS[0], true);
+    setContinuousMode(true);
+    setActiveSection(null);
+    setActiveQuestionIndex(0);
   };
 
   const moveNextInSection = () => {
+    if (continuousMode) {
+      if (activeIsLastInSection) {
+        onComplete(buildResult(answers));
+        return;
+      }
+      setActiveQuestionIndex((prev) => prev + 1);
+      return;
+    }
+    
     if (activeIsLastInSection) {
       returnHome();
       return;
@@ -533,7 +549,9 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           </button>
         </div>
         <div className="rounded-full bg-white/8 px-3 py-2 text-center text-[10px] font-bold text-white/35">
-          {activeSection}：第 {activeQuestionIndex + 1} / {activeSectionQuestions.length} 題
+          {continuousMode
+            ? `第 ${activeQuestionIndex + 1} / ${activeSectionQuestions.length} 題`
+            : `${activeQuestion.section}：第 ${activeQuestionIndex + 1} / ${activeSectionQuestions.length} 題`}
         </div>
       </div>
 
@@ -616,11 +634,26 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             variant={canSave ? 'default' : 'outline'}
             onClick={moveNextInSection}
           >
-            {activeIsLastInSection ? '儲存這題並返回分組' : '儲存並下一題'} <ArrowRight className="ml-2 h-4 w-4" />
+            {continuousMode
+              ? activeIsLastInSection 
+                ? '完成品鑑' 
+                : '確認並下一題'
+              : activeIsLastInSection 
+              ? '儲存這題並返回分組' 
+              : '儲存並下一題'} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}
 
-        {answered && (
+        {answered && continuousMode && (
+          <button
+            onClick={() => moveNextInSection()}
+            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
+          >
+            跳過此題 →
+          </button>
+        )}
+
+        {answered && !continuousMode && (
           <button
             onClick={() => clearAnswer(activeQuestion.id)}
             className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
@@ -629,12 +662,21 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           </button>
         )}
 
-        {!answered && (
+        {!answered && !continuousMode && (
           <button
             onClick={returnHome}
             className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/25 py-1.5"
           >
             先跳過這題，返回首頁
+          </button>
+        )}
+
+        {!answered && continuousMode && (
+          <button
+            onClick={() => moveNextInSection()}
+            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/25 py-1.5"
+          >
+            先跳過這題 →
           </button>
         )}
       </div>
