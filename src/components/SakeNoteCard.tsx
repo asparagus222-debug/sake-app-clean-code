@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Calendar, Star, Heart, User, Award } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
+import { UserBadge } from "@/components/UserBadge";
 import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { cn, formatSakeDisplayName } from "@/lib/utils";
@@ -84,8 +85,13 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
         <div className="flex items-start gap-1.5 min-w-0">
           <Link href={`/users/${note.userId}`} className="flex items-start gap-1 hover:text-primary transition-colors min-w-0 group/author">
             <User className="w-2.5 h-2.5 text-primary/60 shrink-0 mt-0.5" />
-            <span className="text-xs text-muted-foreground font-bold whitespace-normal break-all leading-tight group-hover/author:text-primary transition-colors">
-              {authorName}
+            <span className="flex min-w-0 items-center gap-1 leading-tight">
+              <span className="text-xs text-muted-foreground font-bold whitespace-normal break-all group-hover/author:text-primary transition-colors">
+                {authorName}
+              </span>
+              {!authorProfile?.isAccountDeleted && note.userId && (
+                <UserBadge userId={note.userId} className="shrink-0 origin-left scale-[0.82] sm:scale-[0.9]" />
+              )}
             </span>
           </Link>
         </div>
