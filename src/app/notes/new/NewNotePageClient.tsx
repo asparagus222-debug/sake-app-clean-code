@@ -980,8 +980,18 @@ const handleSave = async () => {
           <div className="flex items-center justify-between gap-2 px-1">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest shrink-0">照片聚焦編輯</Label>
             <div className="flex items-center gap-1.5 shrink-0">
-              <Button variant="outline" size="sm" type="button" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => setShowGuidedTasting(true)}>
-                <ListChecks className="w-2.5 h-2.5 mr-1" /> 引導品鑒
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                className="relative h-8 overflow-hidden rounded-full border border-amber-300/45 bg-[linear-gradient(135deg,rgba(249,115,22,0.32),rgba(250,204,21,0.26))] px-4 text-[10px] font-black tracking-[0.14em] text-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_10px_24px_rgba(249,115,22,0.24)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(253,224,71,0.2),0_14px_32px_rgba(245,158,11,0.3)]"
+                onClick={() => setShowGuidedTasting(true)}
+              >
+                <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_18%,rgba(255,255,255,0.06)_34%,rgba(255,255,255,0.42)_50%,rgba(255,255,255,0.06)_66%,transparent_82%)] opacity-80 animate-pulse" />
+                <span className="pointer-events-none absolute -right-1 top-0 text-[10px] text-yellow-200/90 drop-shadow-[0_0_8px_rgba(253,224,71,0.9)] animate-pulse">✦</span>
+                <span className="relative z-10 flex items-center">
+                  <ListChecks className="mr-1.5 h-3 w-3" /> 引導品鑒
+                </span>
               </Button>
               <Button
                 variant="outline"
