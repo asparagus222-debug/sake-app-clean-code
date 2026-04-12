@@ -9,7 +9,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "backfill:author-stats": "node scripts/backfill-author-stats.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
