@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { CUP_TYPE_OPTIONS, SERVING_TEMPERATURE_OPTIONS } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type QType = 'single' | 'multi' | 'rating5';
+type QType = 'single' | 'multi' | 'rating5' | 'text';
 interface Opt { value: string; label: string; emoji?: string; }
 interface Q {
   id: string;
@@ -33,6 +33,7 @@ export interface GuidedTastingResult {
   foodPairings: { food: string; pairing: 'yes'; reason: string }[];
   servingTemperatures: string[];
   cupTypes: string[];
+  otherComments?: string;
 }
 
 // ─── Question Bank ────────────────────────────────────────────────────────────
@@ -211,6 +212,14 @@ const QUESTIONS: Q[] = [
     text: '推薦的杯型？', hint: '可多選', optional: true, type: 'multi',
     options: CUP_TYPE_OPTIONS.map((option) => ({ value: option, label: option, emoji: '🍶' })),
   },
+  // ── 其他補充 ──────────────────────────────────────────────────────────────
+  {
+    id: 'otherComments', section: '其他', sectionColor: '#64748b',
+    text: '有其他想補充的嗎？',
+    hint: '可自由填寫任何補充、感想、特殊情境、搭配經驗等',
+    type: 'text',
+    options: [], // handled as textarea
+  },
 ];
 
 const SECTIONS = ['外觀', '香氣', '口感', '尾韻', '風味總評', '餐搭', '飲用建議'];
@@ -288,6 +297,7 @@ function buildResult(answers: Record<string, string | string[]>): GuidedTastingR
   const servingTemperatures = getArr('servingTemperature');
   const cupTypes = getArr('cupType');
 
+  const otherComments = get('otherComments');
   return {
     sweetness: sw, acidity: ac, bitterness: bi, umami: um, astringency: as_,
     userDescription: parts.join('\n'),
@@ -295,6 +305,7 @@ function buildResult(answers: Record<string, string | string[]>): GuidedTastingR
     foodPairings,
     servingTemperatures,
     cupTypes,
+    otherComments: otherComments ?? '',
   };
 }
 
@@ -321,7 +332,7 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
   const isAnswered = q
     ? (q.type === 'multi' ? (answer as string[]).length > 0 : (answer as string).length > 0)
     : false;
-  const canNext = isAnswered || (q?.optional ?? false);
+  const canNext = isAnswered || (q?.optional ?? false) || q?.type === 'text';
   const isLast = step === activeQuestions.length - 1;
 
   const goToSection = (section: string) => {
@@ -517,6 +528,13 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
               })}
             </div>
           </div>
+        ) : q.type === 'text' ? (
+          <textarea
+            className="w-full min-h-[100px] rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="可自由填寫任何補充、感想、特殊情境、搭配經驗等..."
+            value={typeof answer === 'string' ? answer : ''}
+            onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+          />
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {q.options.map(opt => {

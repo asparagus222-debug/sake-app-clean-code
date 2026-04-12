@@ -127,6 +127,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       foodPairings: result.foodPairings,
       servingTemperatures: [...new Set([...prev.servingTemperatures, ...result.servingTemperatures])],
       cupTypes: [...new Set([...(prev.cupTypes ?? []), ...result.cupTypes])],
+      otherComments: result.otherComments || '',
     }));
     setShowGuidedTasting(false);
     toast({ title: '引導品鑑完成', description: '已自動填入評分與品飲描述' });
@@ -194,6 +195,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     userDescription: '',
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
+    otherComments: '',
   });
   const hasAiIdentifiedData = Boolean(
     formData.brandName ||
@@ -877,7 +879,8 @@ const handleSave = async () => {
       imageTransforms: images.map((_, i) => ({ x: offsets[i].x, y: offsets[i].y, scale: zooms[i] })),
       imageSplitRatio: images.length === 2 ? splitRatio : 50,
       tastingDate: new Date().toISOString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      otherComments: formData.otherComments,
     };
     
     const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
