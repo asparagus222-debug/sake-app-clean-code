@@ -3,9 +3,10 @@
 
 import React, { useState } from 'react';
 import { Medal, Trophy, Star } from 'lucide-react';
-import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { UserProfile } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { JanomeCupIcon, SakeBottleIcon, TokkuriIcon, TOKKURI_CLASSIC_COLORS, KodaruIcon, KODARU_GOLD_COLORS, YONGO_VARIANTS } from '@/components/SponsorIcons';
 
@@ -13,27 +14,21 @@ interface UserBadgeProps {
   userId: string;
   className?: string;
   showText?: boolean;
+  profile?: Pick<UserProfile, 'authorStats' | 'sponsorTotal'> | null;
 }
 
-export function UserBadge({ userId, className, showText = false }: UserBadgeProps) {
+export function UserBadge({ userId, className, showText = false, profile }: UserBadgeProps) {
   const firestore = useFirestore();
-
-  // 獲取該使用者的所有貼文以計算成就
-  const notesQuery = useMemoFirebase(() => {
-    if (!firestore || !userId) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), where('userId', '==', userId));
-  }, [firestore, userId]);
-
-  const { data: notes } = useCollection(notesQuery);
-  const count = notes?.length || 0;
 
   // 獲取贊助累積金額
   const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !userId) return null;
+    if (profile || !firestore || !userId) return null;
     return doc(firestore, 'users', userId);
-  }, [firestore, userId]);
+  }, [firestore, profile, userId]);
 
-  const { data: userProfile } = useDoc(userDocRef);
+  const { data: fetchedUserProfile } = useDoc<UserProfile>(userDocRef);
+  const userProfile = profile ?? fetchedUserProfile;
+  const count = userProfile?.authorStats?.noteCount ?? 0;
   const sponsorTotal: number = (userProfile?.sponsorTotal as number) || 0;
   const sponsorBadge =
     sponsorTotal >= 3000 ? 'kodaru' :

@@ -37,9 +37,9 @@ service cloud.firestore {
       ];
     }
 
-    function noteLikeOnlyUpdate() {
-      return isSignedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedByUserIds', 'likesCount']);
+    function validInitialNoteSocialState() {
+      return (!request.resource.data.keys().hasAny(['likesCount']) || request.resource.data.likesCount == 0)
+        && (!request.resource.data.keys().hasAny(['likedByUserIds']) || request.resource.data.likedByUserIds.size() == 0);
     }
 
     match /users/{userId} {
@@ -71,11 +71,13 @@ service cloud.firestore {
       allow create: if isAdmin() || (
         isSignedIn()
         && request.resource.data.userId == request.auth.uid
+        && validInitialNoteSocialState()
       );
       allow update: if isAdmin() || (
         isSignedIn()
         && resource.data.userId == request.auth.uid
-      ) || noteLikeOnlyUpdate();
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['likedByUserIds', 'likesCount'])
+      );
       allow delete: if isAdmin() || (
         isSignedIn()
         && resource.data.userId == request.auth.uid

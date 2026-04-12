@@ -92,6 +92,11 @@ export type UserProfile = {
   deletedAt?: string;
   themeSettings?: ThemeSettings;
   sponsorTotal?: number;
+  authorStats?: {
+    noteCount: number;
+    likesReceivedCount: number;
+    updatedAt: string;
+  };
 };
 
 export const RATING_LABELS = {

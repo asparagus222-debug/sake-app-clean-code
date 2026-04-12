@@ -49,12 +49,19 @@ function UserProfileBootstrapper() {
           updatedAt: new Date().toISOString(),
         };
 
+        const emptyAuthorStats = {
+          noteCount: 0,
+          likesReceivedCount: 0,
+          updatedAt: new Date().toISOString(),
+        };
+
         if (!existing) {
           payload.id = user.uid;
           payload.accountType = user.isAnonymous ? 'anonymous' : 'registered';
           payload.avatarUrl = `https://picsum.photos/seed/${user.uid}/100/100`;
           payload.bio = '';
           payload.qualifications = [];
+          payload.authorStats = emptyAuthorStats;
           payload.themeSettings = {
             mode: 'dark',
             fontSize: 'base',
@@ -76,6 +83,9 @@ function UserProfileBootstrapper() {
               customBg: '#0a0a0c',
               customPrimary: '#f97316',
             };
+          }
+          if (!existing.authorStats) {
+            payload.authorStats = emptyAuthorStats;
           }
           if (!existing.createdAt && !user.isAnonymous) {
             payload.createdAt = new Date().toISOString();

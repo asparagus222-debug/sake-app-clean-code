@@ -1,6 +1,7 @@
 
 "use client"
 
+import React from "react";
 import { SakeNote, UserProfile } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +10,9 @@ import { Calendar, Star, Heart, User, Award } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { UserBadge } from "@/components/UserBadge";
-import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useAuth, useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn, formatSakeDisplayName } from "@/lib/utils";
 
 interface SakeNoteCardProps {
@@ -19,6 +21,7 @@ interface SakeNoteCardProps {
 
 export function SakeNoteCard({ note }: SakeNoteCardProps) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user } = useUser();
 
   const authorRef = useMemoFirebase(() => {
@@ -30,26 +33,46 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
     ? '匿名'
     : authorProfile?.username || note.username || '匿名';
 
-  const likedBy = note.likedByUserIds || [];
-  const isLiked = user ? likedBy.includes(user.uid) : false;
-  const likesCount = note.likesCount || 0;
+  const [isLiking, setIsLiking] = React.useState(false);
+  const [likeState, setLikeState] = React.useState(() => {
+    const likedBy = note.likedByUserIds || [];
+    return {
+      liked: user ? likedBy.includes(user.uid) : false,
+      likesCount: note.likesCount || 0,
+    };
+  });
   const displayName = formatSakeDisplayName(note.brandName, note.subBrand);
 
-  const handleLike = (e: React.MouseEvent) => {
+  React.useEffect(() => {
+    const likedBy = note.likedByUserIds || [];
+    setLikeState({
+      liked: user ? likedBy.includes(user.uid) : false,
+      likesCount: note.likesCount || 0,
+    });
+  }, [note.likedByUserIds, note.likesCount, user]);
+
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!firestore || !user) return;
-    const noteRef = doc(firestore, 'sakeTastingNotes', note.id);
-    if (isLiked) {
-      updateDocumentNonBlocking(noteRef, {
-        likedByUserIds: arrayRemove(user.uid),
-        likesCount: Math.max(0, likesCount - 1)
+    if (!user || !auth || isLiking) return;
+
+    setIsLiking(true);
+    try {
+      const res = await authorizedJsonFetch(auth, `/api/notes/${note.id}/like`, {
+        method: 'POST',
       });
-    } else {
-      updateDocumentNonBlocking(noteRef, {
-        likedByUserIds: arrayUnion(user.uid),
-        likesCount: likesCount + 1
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '按讚失敗');
+      }
+      setLikeState({
+        liked: data.liked === true,
+        likesCount: typeof data.likesCount === 'number' ? data.likesCount : 0,
       });
+    } catch {
+      // keep the current UI state when the request fails
+    } finally {
+      setIsLiking(false);
     }
   };
 
@@ -90,7 +113,7 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
                 {authorName}
               </span>
               {!authorProfile?.isAccountDeleted && note.userId && (
-                <UserBadge userId={note.userId} className="shrink-0 origin-left scale-[0.82] sm:scale-[0.9]" />
+                <UserBadge userId={note.userId} profile={authorProfile ?? null} className="shrink-0 origin-left scale-[0.82] sm:scale-[0.9]" />
               )}
             </span>
           </Link>
@@ -103,11 +126,12 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            className={cn("h-8 px-2 rounded-full transition-all bg-transparent shadow-none border-none select-none [&]:[-webkit-tap-highlight-color:transparent] active:scale-90 active:opacity-60", isLiked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            className={cn("h-8 px-2 rounded-full transition-all bg-transparent shadow-none border-none select-none [&]:[-webkit-tap-highlight-color:transparent] active:scale-90 active:opacity-60", likeState.liked ? "text-primary" : "text-muted-foreground hover:text-foreground")}
             onClick={handleLike}
+            disabled={isLiking}
           >
-            <Heart className={cn("w-4 h-4 mr-1", isLiked && "fill-current")} />
-            <span className="text-[11px] font-bold">{likesCount}</span>
+            <Heart className={cn("w-4 h-4 mr-1", likeState.liked && "fill-current")} />
+            <span className="text-[11px] font-bold">{likeState.likesCount}</span>
           </Button>
         </div>
       </CardContent>

@@ -65,7 +65,7 @@ import {
   deleteDocumentNonBlocking,
   initiateGoogleSignIn
 } from '@/firebase';
-import { collection, doc, updateDoc, deleteField, increment, setDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteField, increment, setDoc, deleteDoc } from 'firebase/firestore';
 import { signOut, getIdTokenResult } from 'firebase/auth';
 import { cleanSakeName } from '@/lib/sake-data';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -209,11 +209,21 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteNote = (noteId: string) => {
+  const handleDeleteNote = async (noteId: string, userId: string) => {
     if (!firestore) return;
     const noteRef = doc(firestore, 'sakeTastingNotes', noteId);
-    deleteDocumentNonBlocking(noteRef);
-    toast({ title: "貼文已刪除" });
+    try {
+      await deleteDoc(noteRef);
+      if (auth) {
+        await authorizedJsonFetch(auth, '/api/users/sync-author-stats', {
+          method: 'POST',
+          body: JSON.stringify({ targetUid: userId }),
+        }).catch(() => null);
+      }
+      toast({ title: "貼文已刪除" });
+    } catch {
+      toast({ variant: "destructive", title: "刪除失敗" });
+    }
   };
 
   const handleDeleteUserRecord = async (userId: string, username: string) => {
@@ -569,7 +579,7 @@ export default function AdminPage() {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteNote(note.id)} className="rounded-full bg-destructive text-[10px] font-bold uppercase">確認刪除</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDeleteNote(note.id, note.userId)} className="rounded-full bg-destructive text-[10px] font-bold uppercase">確認刪除</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>

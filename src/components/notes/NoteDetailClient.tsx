@@ -45,7 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useUser, useAuth, deleteDocumentNonBlocking, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
-import { doc, collection, query, orderBy, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
 const RatingDots = ({ value }: { value: number }) => {
@@ -333,12 +333,21 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     }
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!firestore || !note) return;
     const noteRef = doc(firestore, 'sakeTastingNotes', note.id);
-    deleteDocumentNonBlocking(noteRef);
-    toast({ title: '正在刪除筆記...' });
-    router.replace('/');
+    try {
+      await deleteDoc(noteRef);
+      if (auth) {
+        await authorizedJsonFetch(auth, '/api/users/sync-author-stats', {
+          method: 'POST',
+        }).catch(() => null);
+      }
+      toast({ title: '正在刪除筆記...' });
+      router.replace('/');
+    } catch {
+      toast({ variant: 'destructive', title: '刪除失敗' });
+    }
   };
 
   const isWaitingForPrimaryNote = !note && (isLoading || (!firestore && !!id));
@@ -450,7 +459,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                     <Link href={`/users/${note.userId}`} className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/5 hover:bg-primary/10 transition-colors">
                       <User className="w-2.5 h-2.5 text-primary" />
                       <span className="text-xs font-bold text-foreground/80">{authorName}</span>
-                      <UserBadge userId={note.userId} />
+                      <UserBadge userId={note.userId} profile={authorProfile ?? null} />
                     </Link>
                     <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold">
                       <Calendar className="w-2.5 h-2.5 opacity-50" />

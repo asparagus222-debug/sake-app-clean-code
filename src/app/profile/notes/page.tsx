@@ -28,15 +28,17 @@ import {
 } from "@/components/ui/alert-dialog"
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore, useUser, deleteDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { useAuth, useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 
 export default function MyNotesPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
 
   const myNotesQuery = useMemoFirebase(() => {
@@ -88,11 +90,20 @@ export default function MyNotesPage() {
     return <div className="flex items-center gap-1 text-accent"><Clock className="w-2.5 h-2.5" /> {remaining}</div>;
   };
 
-  const handleDelete = (noteId: string) => {
+  const handleDelete = async (noteId: string) => {
     if (!firestore) return;
     const noteRef = doc(firestore, 'sakeTastingNotes', noteId);
-    deleteDocumentNonBlocking(noteRef);
-    toast({ title: "筆記已成功刪除" });
+    try {
+      await deleteDoc(noteRef);
+      if (auth) {
+        await authorizedJsonFetch(auth, '/api/users/sync-author-stats', {
+          method: 'POST',
+        }).catch(() => null);
+      }
+      toast({ title: "筆記已成功刪除" });
+    } catch {
+      toast({ variant: "destructive", title: "刪除失敗" });
+    }
   };
 
   if (isUserLoading || isLoading) {

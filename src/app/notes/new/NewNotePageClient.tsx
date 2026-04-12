@@ -920,6 +920,11 @@ const handleSave = async () => {
     };
     
     const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+    if (auth) {
+      await authorizedJsonFetch(auth, '/api/users/sync-author-stats', {
+        method: 'POST',
+      }).catch(() => null);
+    }
     cachePublishedNote({
       id: docRef.id,
       ...noteData,
