@@ -309,11 +309,10 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [autoAdvance, setAutoAdvance] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedSections, setSelectedSections] = useState<string[]>(SECTIONS);
-
-  const activeQuestions = useMemo(
-    () => QUESTIONS.filter((question) => selectedSections.includes(question.section)),
-    [selectedSections]
+  const activeQuestions = useMemo(() => QUESTIONS, []);
+  const sectionStartSteps = useMemo(
+    () => Object.fromEntries(SECTIONS.map((section) => [section, QUESTIONS.findIndex((question) => question.section === section)])),
+    []
   );
 
   const q = step >= 0 ? activeQuestions[step] : null;
@@ -325,10 +324,11 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
   const canNext = isAnswered || (q?.optional ?? false);
   const isLast = step === activeQuestions.length - 1;
 
-  const toggleSection = (section: string) => {
-    setSelectedSections((prev) =>
-      prev.includes(section) ? prev.filter((item) => item !== section) : [...prev, section]
-    );
+  const goToSection = (section: string) => {
+    const nextStep = sectionStartSteps[section];
+    if (typeof nextStep === 'number' && nextStep >= 0) {
+      setStep(nextStep);
+    }
   };
 
   const goNext = () => {
@@ -390,35 +390,33 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
           <div className="text-4xl mb-2">🍶</div>
           <h1 className="text-xl font-bold text-white tracking-wide mb-1">引導式品鑒</h1>
           <p className="text-white/45 text-xs leading-relaxed mb-4 max-w-xs">
-            先勾選這次想補充的區塊，再跟著步驟完成品評；系統會自動填入對應欄位。
+            點擊上方任一品鑑項目可直接前往該區塊，也可以從下方按鈕由第一題開始。
           </p>
 
           <div className="w-full grid grid-cols-2 gap-1.5 max-w-sm">
             {SECTIONS.map((s, i) => {
               const count = QUESTIONS.filter(q => q.section === s).length;
-              const selected = selectedSections.includes(s);
               return (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => toggleSection(s)}
+                  onClick={() => goToSection(s)}
                   className="flex items-center gap-2 rounded-xl px-3 py-2"
                   style={{
-                    background: selected ? `${SECTION_COLORS[s]}22` : `${SECTION_COLORS[s]}10`,
-                    border: `1px solid ${selected ? SECTION_COLORS[s] : `${SECTION_COLORS[s]}28`}`,
-                    boxShadow: selected ? `0 0 0 1px ${SECTION_COLORS[s]}40 inset` : 'none',
+                    background: `${SECTION_COLORS[s]}10`,
+                    border: `1px solid ${SECTION_COLORS[s]}28`,
                   }}
                 >
                   <span className="text-sm shrink-0">{SECTION_ICONS[s]}</span>
                   <span className="text-xs font-bold text-white/80 flex-1 text-left">{s}</span>
                   <span className="text-[9px] font-bold text-white/30">{count}</span>
-                  {selected && <Check className="w-3.5 h-3.5 text-white/70" />}
+                  <ArrowRight className="w-3.5 h-3.5 text-white/50" />
                 </button>
               );
             })}
           </div>
           <p className="mt-3 text-[10px] text-white/35 leading-relaxed max-w-sm">
-            可只補答漏填的區塊，例如只補餐搭、適飲溫度或杯型。
+            例如只想補餐搭、適飲溫度或杯型，直接點該區塊即可。
           </p>
         </div>
 
@@ -426,10 +424,9 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
           <Button
             className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest"
             style={{ background: '#f97316' }}
-            disabled={selectedSections.length === 0}
             onClick={() => setStep(0)}
           >
-            開始補充 {selectedSections.length > 0 ? <ArrowRight className="w-4 h-4 ml-2" /> : null}
+            開始品鑑 <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
       </div>
