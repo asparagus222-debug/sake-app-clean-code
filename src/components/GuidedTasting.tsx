@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -339,22 +339,19 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     [answers]
   );
 
-  useEffect(() => {
-    setAnswers(initialAnswers ?? {});
-  }, [initialAnswers]);
-
-  useEffect(() => {
-    onAnswersChange?.(answers);
-  }, [answers, onAnswersChange]);
-
   const updateAnswer = (questionId: string, value: GuidedAnswerValue) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: value };
+      onAnswersChange?.(next);
+      return next;
+    });
   };
 
   const clearAnswer = (questionId: string) => {
     setAnswers((prev) => {
       const next = { ...prev };
       delete next[questionId];
+      onAnswersChange?.(next);
       return next;
     });
   };

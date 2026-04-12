@@ -124,9 +124,11 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   const [reminderValue, setReminderValue] = useState(24);
   const [showGuidedTasting, setShowGuidedTasting] = useState(false);
 
-  const handleGuidedAnswersChange = (answers: GuidedTastingAnswers) => {
-    setFormData(prev => ({ ...prev, guidedTastingAnswers: answers }));
-  };
+  const handleGuidedAnswersChange = React.useCallback((answers: GuidedTastingAnswers) => {
+    setFormData(prev => (prev.guidedTastingAnswers === answers
+      ? prev
+      : { ...prev, guidedTastingAnswers: answers }));
+  }, []);
 
   const handleGuidedComplete = (result: GuidedTastingResult) => {
     const hasAnswer = (id: string) => {
