@@ -41,6 +41,9 @@ export type SakeNote = {
   cupTypes?: string[];
   description: string;
   userDescription?: string;
+  guidedTastingSummary?: string;
+  guidedTastingAnswers?: Record<string, string | string[]>;
+  otherComments?: string;
   aiResultNote?: string;
   activeBrain?: 'left' | 'right';
   tastingDate: string;

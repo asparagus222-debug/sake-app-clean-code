@@ -12,7 +12,7 @@ import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { GuidedTasting, GuidedTastingResult } from '@/components/GuidedTasting';
+import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -54,6 +54,16 @@ async function resizeImage(base64: string, maxDimension: number = 1024): Promise
 
 function roundDuration(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function buildComposedNoteText(authorNote: string, guidedSummary: string, otherComments: string): string {
+  const sections = [
+    authorNote.trim(),
+    guidedSummary.trim(),
+    otherComments.trim() ? `【其他補充】${otherComments.trim()}` : '',
+  ].filter(Boolean);
+
+  return sections.join('\n\n');
 }
 
 function cachePublishedNote(note: SakeNote, limitCount = 20) {
@@ -114,23 +124,34 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   const [reminderValue, setReminderValue] = useState(24);
   const [showGuidedTasting, setShowGuidedTasting] = useState(false);
 
+  const handleGuidedAnswersChange = (answers: GuidedTastingAnswers) => {
+    setFormData(prev => ({ ...prev, guidedTastingAnswers: answers }));
+  };
+
   const handleGuidedComplete = (result: GuidedTastingResult) => {
+    const hasAnswer = (id: string) => {
+      const value = result.answers[id];
+      if (Array.isArray(value)) return value.length > 0;
+      return typeof value === 'string' && value.trim().length > 0;
+    };
+
     setFormData(prev => ({
       ...prev,
-      sweetness: result.sweetness,
-      acidity: result.acidity,
-      bitterness: result.bitterness,
-      umami: result.umami,
-      astringency: result.astringency,
-      userDescription: result.userDescription,
+      sweetness: hasAnswer('sweetness') ? result.sweetness : prev.sweetness,
+      acidity: hasAnswer('acidity') ? result.acidity : prev.acidity,
+      bitterness: hasAnswer('bitterness') ? result.bitterness : prev.bitterness,
+      umami: hasAnswer('umami') ? result.umami : prev.umami,
+      astringency: hasAnswer('astringency') ? result.astringency : prev.astringency,
       styleTags: [...new Set([...prev.styleTags, ...result.styleTags])],
-      foodPairings: result.foodPairings,
+      foodPairings: hasAnswer('food') ? result.foodPairings : prev.foodPairings,
       servingTemperatures: [...new Set([...prev.servingTemperatures, ...result.servingTemperatures])],
       cupTypes: [...new Set([...(prev.cupTypes ?? []), ...result.cupTypes])],
-      otherComments: result.otherComments || '',
+      otherComments: hasAnswer('otherComments') ? (result.otherComments || '') : prev.otherComments,
+      guidedTastingSummary: result.guidedSummary,
+      guidedTastingAnswers: result.answers,
     }));
     setShowGuidedTasting(false);
-    toast({ title: '引導品鑑完成', description: '已自動填入評分與品飲描述' });
+    toast({ title: '引導品鑑完成', description: '已整理完成的品鑑內容，準備補充到筆記。' });
   };
 
   const userDocRef = useMemoFirebase(() => {
@@ -193,6 +214,8 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     sakeInfoTags: [] as string[],
     foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
     userDescription: '',
+    guidedTastingSummary: '',
+    guidedTastingAnswers: {} as GuidedTastingAnswers,
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
     otherComments: '',
@@ -308,6 +331,11 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   setFormData(prev => ({ ...prev, activeBrain: mode }));
 
   try {
+    const composedDescription = buildComposedNoteText(
+      formData.userDescription,
+      formData.guidedTastingSummary,
+      formData.otherComments
+    );
     const response = await authorizedJsonFetch(auth, '/api/ai/generate-note', {
       method: 'POST',
       body: JSON.stringify({
@@ -323,7 +351,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
           umami: formData.umami, 
           astringency: formData.astringency 
         },
-        userDescription: formData.userDescription,
+        userDescription: composedDescription,
         mode
       })
     });
@@ -854,6 +882,11 @@ const handleSave = async () => {
   setIsSaving(true);
   try {
     const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
+    const composedDescription = buildComposedNoteText(
+      formData.userDescription,
+      formData.guidedTastingSummary,
+      formData.otherComments
+    );
     
     const noteData = {
       userId: user.uid,
@@ -865,6 +898,7 @@ const handleSave = async () => {
       bitternessRating: formData.bitterness,
       umamiRating: formData.umami,
       astringencyRating: formData.astringency,
+      description: composedDescription,
       userDescription: formData.userDescription, 
       aiResultNote: formData.aiResultNote,
       activeBrain: formData.activeBrain,
@@ -887,7 +921,7 @@ const handleSave = async () => {
     cachePublishedNote({
       id: docRef.id,
       ...noteData,
-      description: formData.userDescription || '',
+      description: composedDescription,
     } as SakeNote);
     // 讓 top3 cache 失效，下次首頁載入時重算
     deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
@@ -1234,6 +1268,19 @@ const handleSave = async () => {
         onChange={e => setFormData(p => ({ ...p, userDescription: e.target.value }))}
       />
     </div>
+
+    {(formData.guidedTastingSummary || formData.otherComments) && (
+      <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+        <div className="mb-2 flex items-center gap-2 text-emerald-300/75">
+          <div className="rounded-md bg-emerald-500/10 p-1"><ListChecks size={12} /></div>
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em]">引導式品鑑整理預覽</span>
+        </div>
+        <div className="space-y-3 text-xs leading-relaxed text-white/75 whitespace-pre-wrap">
+          {formData.guidedTastingSummary && <p>{formData.guidedTastingSummary}</p>}
+          {formData.otherComments && <p>{`【其他補充】${formData.otherComments}`}</p>}
+        </div>
+      </div>
+    )}
 
     {/* 下方：AI 生成筆記 (動態變色) */}
     <div className={cn(
@@ -1589,6 +1636,8 @@ const handleSave = async () => {
       {showGuidedTasting && (
         <GuidedTasting
           onComplete={handleGuidedComplete}
+          initialAnswers={formData.guidedTastingAnswers}
+          onAnswersChange={handleGuidedAnswersChange}
           onClose={() => setShowGuidedTasting(false)}
         />
       )}

@@ -1,24 +1,27 @@
 "use client"
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CUP_TYPE_OPTIONS, SERVING_TEMPERATURE_OPTIONS } from '@/lib/types';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type QType = 'single' | 'multi' | 'rating5' | 'text';
+type GuidedAnswerValue = string | string[];
+export type GuidedTastingAnswers = Record<string, GuidedAnswerValue>;
+
 interface Opt { value: string; label: string; emoji?: string; }
 interface Q {
   id: string;
   section: string;
   sectionColor: string;
   text: string;
+  shortLabel?: string;
   hint?: string;
   optional?: boolean;
   type: QType;
-  low?: string;   // for rating5 left label
-  high?: string;  // for rating5 right label
+  low?: string;
+  high?: string;
   options: Opt[];
 }
 
@@ -29,41 +32,40 @@ export interface GuidedTastingResult {
   umami: number;
   astringency: number;
   userDescription: string;
+  guidedSummary: string;
   styleTags: string[];
   foodPairings: { food: string; pairing: 'yes'; reason: string }[];
   servingTemperatures: string[];
   cupTypes: string[];
   otherComments?: string;
+  answers: GuidedTastingAnswers;
 }
 
-// ─── Question Bank ────────────────────────────────────────────────────────────
 const QUESTIONS: Q[] = [
-  // ── 外觀 ──────────────────────────────────────────────────────────────────
   {
     id: 'color', section: '外觀', sectionColor: '#d4af37',
-    text: '酒液的顏色？', type: 'single',
+    text: '酒液的顏色？', shortLabel: '酒液顏色', type: 'single',
     options: [
       { value: '無色透明', label: '無色透明', emoji: '💧' },
-      { value: '淡黃色',   label: '淡黃色',   emoji: '🌙' },
-      { value: '金黃色',   label: '金黃色',   emoji: '⭐' },
+      { value: '淡黃色', label: '淡黃色', emoji: '🌙' },
+      { value: '金黃色', label: '金黃色', emoji: '⭐' },
       { value: '淡琥珀色', label: '淡琥珀色', emoji: '🍯' },
-      { value: '琥珀色',   label: '琥珀色',   emoji: '🌅' },
+      { value: '琥珀色', label: '琥珀色', emoji: '🌅' },
     ],
   },
   {
     id: 'clarity', section: '外觀', sectionColor: '#d4af37',
-    text: '清澈度？', type: 'single',
+    text: '清澈度？', shortLabel: '清澈度', type: 'single',
     options: [
       { value: '晶瑩剔透', label: '晶瑩剔透', emoji: '💎' },
-      { value: '清澈',     label: '清澈',     emoji: '🫙' },
+      { value: '清澈', label: '清澈', emoji: '🫙' },
       { value: '略帶濁感', label: '略帶濁感', emoji: '🫧' },
-      { value: '濁酒',     label: '濁酒（にごり）', emoji: '🌫️' },
+      { value: '濁酒', label: '濁酒（にごり）', emoji: '🌫️' },
     ],
   },
-  // ── 香氣 ──────────────────────────────────────────────────────────────────
   {
     id: 'aromaIntensity', section: '香氣', sectionColor: '#7c3aed',
-    text: '香氣的強度？', type: 'single',
+    text: '香氣的強度？', shortLabel: '香氣強度', type: 'single',
     options: [
       { value: '淡雅低調', label: '淡雅低調', emoji: '🌿' },
       { value: '適中均衡', label: '適中均衡', emoji: '🌸' },
@@ -73,10 +75,10 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'aromaType', section: '香氣', sectionColor: '#7c3aed',
-    text: '主要香氣類型？', hint: '可多選', type: 'multi',
+    text: '主要香氣類型？', shortLabel: '主要香氣', hint: '可多選', type: 'multi',
     options: [
       { value: '吟釀花香', label: '吟釀花香', emoji: '🌸' },
-      { value: '水果香',   label: '水果香',   emoji: '🍊' },
+      { value: '水果香', label: '水果香', emoji: '🍊' },
       { value: '稻米清香', label: '稻米清香', emoji: '🌾' },
       { value: '乳酸奶香', label: '乳酸奶香', emoji: '🥛' },
       { value: '木桶陳釀', label: '木桶陳釀', emoji: '🪵' },
@@ -86,48 +88,47 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'aromaDetail', section: '香氣', sectionColor: '#7c3aed',
-    text: '更細緻的香氣描述？', hint: '可多選', optional: true, type: 'multi',
+    text: '更細緻的香氣描述？', shortLabel: '細緻香氣', hint: '可多選', optional: true, type: 'multi',
     options: [
       { value: '蘋果梨子', label: '蘋果梨子', emoji: '🍎' },
-      { value: '哈密瓜',   label: '哈密瓜',   emoji: '🍈' },
+      { value: '哈密瓜', label: '哈密瓜', emoji: '🍈' },
       { value: '香蕉鳳梨', label: '香蕉鳳梨', emoji: '🍋' },
       { value: '柑橘檸檬', label: '柑橘檸檬', emoji: '🍊' },
       { value: '白桃荔枝', label: '白桃荔枝', emoji: '🍑' },
       { value: '栗子蜂蜜', label: '栗子蜂蜜', emoji: '🍯' },
       { value: '白花茉莉', label: '白花茉莉', emoji: '🌼' },
       { value: '奶油布丁', label: '奶油布丁', emoji: '🍮' },
-      { value: '辛香料',   label: '辛香料',   emoji: '🧄' },
+      { value: '辛香料', label: '辛香料', emoji: '🧄' },
     ],
   },
-  // ── 口感 ──────────────────────────────────────────────────────────────────
   {
     id: 'sweetness', section: '口感', sectionColor: '#059669',
-    text: '甜味強度？', type: 'rating5', low: '乾爽無甜', high: '濃郁甜潤',
-    options: [{value:'1',label:'1'},{value:'2',label:'2'},{value:'3',label:'3'},{value:'4',label:'4'},{value:'5',label:'5'}],
+    text: '甜味強度？', shortLabel: '甜味', type: 'rating5', low: '乾爽無甜', high: '濃郁甜潤',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
   },
   {
     id: 'acidity', section: '口感', sectionColor: '#059669',
-    text: '酸味強度？', type: 'rating5', low: '幾乎無酸', high: '高酸活潑',
-    options: [{value:'1',label:'1'},{value:'2',label:'2'},{value:'3',label:'3'},{value:'4',label:'4'},{value:'5',label:'5'}],
+    text: '酸味強度？', shortLabel: '酸味', type: 'rating5', low: '幾乎無酸', high: '高酸活潑',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
   },
   {
     id: 'bitterness', section: '口感', sectionColor: '#059669',
-    text: '苦味強度？', type: 'rating5', low: '幾乎無苦', high: '強烈苦澀',
-    options: [{value:'1',label:'1'},{value:'2',label:'2'},{value:'3',label:'3'},{value:'4',label:'4'},{value:'5',label:'5'}],
+    text: '苦味強度？', shortLabel: '苦味', type: 'rating5', low: '幾乎無苦', high: '強烈苦澀',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
   },
   {
     id: 'umami', section: '口感', sectionColor: '#059669',
-    text: '旨味（鮮味）強度？', type: 'rating5', low: '輕盈清淡', high: '濃郁旨鮮',
-    options: [{value:'1',label:'1'},{value:'2',label:'2'},{value:'3',label:'3'},{value:'4',label:'4'},{value:'5',label:'5'}],
+    text: '旨味（鮮味）強度？', shortLabel: '旨味', type: 'rating5', low: '輕盈清淡', high: '濃郁旨鮮',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
   },
   {
     id: 'astringency', section: '口感', sectionColor: '#059669',
-    text: '澀感強度？', type: 'rating5', low: '絲滑無澀', high: '強烈收澀',
-    options: [{value:'1',label:'1'},{value:'2',label:'2'},{value:'3',label:'3'},{value:'4',label:'4'},{value:'5',label:'5'}],
+    text: '澀感強度？', shortLabel: '澀感', type: 'rating5', low: '絲滑無澀', high: '強烈收澀',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
   },
   {
     id: 'tasteOverall', section: '口感', sectionColor: '#059669',
-    text: '整體口感印象？', type: 'single',
+    text: '整體口感印象？', shortLabel: '口感印象', type: 'single',
     options: [
       { value: '清爽輕盈', label: '清爽輕盈', emoji: '🌊' },
       { value: '均衡細緻', label: '均衡細緻', emoji: '⚖️' },
@@ -135,10 +136,9 @@ const QUESTIONS: Q[] = [
       { value: '濃醇厚重', label: '濃醇厚重', emoji: '🏔️' },
     ],
   },
-  // ── 尾韻 ──────────────────────────────────────────────────────────────────
   {
     id: 'finishLength', section: '尾韻', sectionColor: '#0ea5e9',
-    text: '尾韻的長度？', type: 'single',
+    text: '尾韻的長度？', shortLabel: '尾韻長度', type: 'single',
     options: [
       { value: '短暫清脆', label: '短暫清脆', emoji: '⚡' },
       { value: '適中均衡', label: '適中均衡', emoji: '🌤️' },
@@ -148,21 +148,20 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'finishChar', section: '尾韻', sectionColor: '#0ea5e9',
-    text: '尾韻的感受？', hint: '可多選', type: 'multi',
+    text: '尾韻的感受？', shortLabel: '尾韻感受', hint: '可多選', type: 'multi',
     options: [
       { value: '乾淨清爽', label: '乾淨清爽', emoji: '✨' },
       { value: '微甜收尾', label: '微甜收尾', emoji: '🍬' },
-      { value: '苦底韻',   label: '苦底韻',   emoji: '🍵' },
+      { value: '苦底韻', label: '苦底韻', emoji: '🍵' },
       { value: '旨味回甘', label: '旨味回甘', emoji: '🌿' },
       { value: '餘香持久', label: '餘香持久', emoji: '🌸' },
-      { value: '礦物感',   label: '礦物感',   emoji: '🪨' },
+      { value: '礦物感', label: '礦物感', emoji: '🪨' },
       { value: '溫暖酒感', label: '溫暖酒感', emoji: '🔥' },
     ],
   },
-  // ── 風味總評 ──────────────────────────────────────────────────────────────
   {
     id: 'style', section: '風味總評', sectionColor: '#f97316',
-    text: '整體風格定位？', type: 'single',
+    text: '整體風格定位？', shortLabel: '風格定位', type: 'single',
     options: [
       { value: '優雅細緻', label: '優雅細緻', emoji: '🎭' },
       { value: '清新輕快', label: '清新輕快', emoji: '🍃' },
@@ -173,7 +172,7 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'impression', section: '風味總評', sectionColor: '#f97316',
-    text: '對這款酒的整體印象？', hint: '可多選', optional: true, type: 'multi',
+    text: '對這款酒的整體印象？', shortLabel: '整體印象', hint: '可多選', optional: true, type: 'multi',
     options: [
       { value: '適合搭餐', label: '適合搭餐', emoji: '🍽️' },
       { value: '適合單飲', label: '適合單飲', emoji: '🥂' },
@@ -184,18 +183,17 @@ const QUESTIONS: Q[] = [
       { value: '季節限定感', label: '季節限定感', emoji: '🍂' },
     ],
   },
-  // ── 餐搭 ──────────────────────────────────────────────────────────────────
   {
     id: 'food', section: '餐搭', sectionColor: '#dc2626',
-    text: '推薦搭配的料理？', hint: '可多選', optional: true, type: 'multi',
+    text: '推薦搭配的料理？', shortLabel: '推薦餐搭', hint: '可多選', optional: true, type: 'multi',
     options: [
-      { value: '生魚片',   label: '生魚片',   emoji: '🐟' },
-      { value: '壽司',     label: '壽司',     emoji: '🍣' },
+      { value: '生魚片', label: '生魚片', emoji: '🐟' },
+      { value: '壽司', label: '壽司', emoji: '🍣' },
       { value: '貝類海鮮', label: '貝類海鮮', emoji: '🦞' },
-      { value: '天婦羅',   label: '天婦羅',   emoji: '🍤' },
-      { value: '燒鳥',     label: '燒鳥',     emoji: '🍗' },
-      { value: '豆腐',     label: '豆腐',     emoji: '🫘' },
-      { value: '起司',     label: '起司',     emoji: '🧀' },
+      { value: '天婦羅', label: '天婦羅', emoji: '🍤' },
+      { value: '燒鳥', label: '燒鳥', emoji: '🍗' },
+      { value: '豆腐', label: '豆腐', emoji: '🫘' },
+      { value: '起司', label: '起司', emoji: '🧀' },
       { value: '沙拉涼拌', label: '沙拉涼拌', emoji: '🥗' },
       { value: '白肉料理', label: '白肉料理', emoji: '🍖' },
       { value: '燉煮料理', label: '燉煮料理', emoji: '🍲' },
@@ -204,87 +202,93 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'servingTemperature', section: '飲用建議', sectionColor: '#f59e0b',
-    text: '建議的適飲溫度？', hint: '可多選', optional: true, type: 'multi',
+    text: '建議的適飲溫度？', shortLabel: '適飲溫度', hint: '可多選', optional: true, type: 'multi',
     options: SERVING_TEMPERATURE_OPTIONS.map((option) => ({ value: option, label: option, emoji: '🌡️' })),
   },
   {
     id: 'cupType', section: '飲用建議', sectionColor: '#f59e0b',
-    text: '推薦的杯型？', hint: '可多選', optional: true, type: 'multi',
+    text: '推薦的杯型？', shortLabel: '推薦杯型', hint: '可多選', optional: true, type: 'multi',
     options: CUP_TYPE_OPTIONS.map((option) => ({ value: option, label: option, emoji: '🍶' })),
   },
-  // ── 其他補充 ──────────────────────────────────────────────────────────────
   {
-    id: 'otherComments', section: '其他', sectionColor: '#64748b',
-    text: '有其他想補充的嗎？',
-    hint: '可自由填寫任何補充、感想、特殊情境、搭配經驗等',
-    type: 'text',
-    options: [], // handled as textarea
+    id: 'otherComments', section: '其他補充', sectionColor: '#64748b',
+    text: '有其他想補充的嗎？', shortLabel: '額外補充', hint: '可自由填寫補充、情境、搭配經驗等', optional: true, type: 'text',
+    options: [],
   },
 ];
 
-const SECTIONS = ['外觀', '香氣', '口感', '尾韻', '風味總評', '餐搭', '飲用建議'];
+const SECTIONS = ['外觀', '香氣', '口感', '尾韻', '風味總評', '餐搭', '飲用建議', '其他補充'];
 const SECTION_COLORS: Record<string, string> = {
-  '外觀': '#d4af37', '香氣': '#7c3aed', '口感': '#059669',
-  '尾韻': '#0ea5e9', '風味總評': '#f97316', '餐搭': '#dc2626', '飲用建議': '#f59e0b',
+  '外觀': '#d4af37',
+  '香氣': '#7c3aed',
+  '口感': '#059669',
+  '尾韻': '#0ea5e9',
+  '風味總評': '#f97316',
+  '餐搭': '#dc2626',
+  '飲用建議': '#f59e0b',
+  '其他補充': '#64748b',
 };
 const SECTION_ICONS: Record<string, string> = {
-  '外觀': '👁️', '香氣': '👃', '口感': '👅', '尾韻': '🌊', '風味總評': '⭐', '餐搭': '🍽️', '飲用建議': '🍶',
+  '外觀': '👁️',
+  '香氣': '👃',
+  '口感': '👅',
+  '尾韻': '🌊',
+  '風味總評': '⭐',
+  '餐搭': '🍽️',
+  '飲用建議': '🍶',
+  '其他補充': '📝',
 };
 
-// ─── Build result from answers ────────────────────────────────────────────────
-function buildResult(answers: Record<string, string | string[]>): GuidedTastingResult {
+function hasAnswer(answers: GuidedTastingAnswers, questionId: string) {
+  const value = answers[questionId];
+  if (Array.isArray(value)) return value.length > 0;
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function buildResult(answers: GuidedTastingAnswers): GuidedTastingResult {
   const get = (id: string) => answers[id] as string | undefined;
   const getArr = (id: string) => (answers[id] as string[] | undefined) ?? [];
   const getNum = (id: string) => parseInt((answers[id] as string) || '3', 10);
 
   const parts: string[] = [];
 
-  // 外觀
   const color = get('color');
   const clarity = get('clarity');
   if (color || clarity) {
     parts.push(`【外觀】酒液${color ?? ''}${clarity ? `，${clarity}` : ''}`);
   }
 
-  // 香氣
-  const aromaInt = get('aromaIntensity');
+  const aromaIntensity = get('aromaIntensity');
   const aromaType = getArr('aromaType');
   const aromaDetail = getArr('aromaDetail');
-  if (aromaInt || aromaType.length > 0) {
+  if (aromaIntensity || aromaType.length > 0 || aromaDetail.length > 0) {
     let line = '【香氣】';
-    if (aromaInt) line += `香氣${aromaInt}`;
-    if (aromaType.length > 0) line += `${aromaInt ? '，' : ''}帶有${aromaType.join('、')}`;
-    if (aromaDetail.length > 0) line += `；細嗅可辨${aromaDetail.join('、')}`;
+    if (aromaIntensity) line += `香氣${aromaIntensity}`;
+    if (aromaType.length > 0) line += `${aromaIntensity ? '，' : ''}帶有${aromaType.join('、')}`;
+    if (aromaDetail.length > 0) line += `${aromaIntensity || aromaType.length > 0 ? '；' : ''}細嗅可辨${aromaDetail.join('、')}`;
     parts.push(line);
   }
 
-  // 口感
-  const sw = getNum('sweetness');
-  const ac = getNum('acidity');
-  const bi = getNum('bitterness');
-  const um = getNum('umami');
-  const as_ = getNum('astringency');
   const tasteOverall = get('tasteOverall');
   if (tasteOverall) {
     parts.push(`【口感】${tasteOverall}`);
   }
 
-  // 尾韻
-  const finLen = get('finishLength');
-  const finChar = getArr('finishChar');
-  if (finLen || finChar.length > 0) {
+  const finishLength = get('finishLength');
+  const finishChar = getArr('finishChar');
+  if (finishLength || finishChar.length > 0) {
     let line = '【尾韻】';
-    if (finLen) line += finLen;
-    if (finChar.length > 0) line += `${finLen ? '，' : ''}${finChar.join('、')}`;
+    if (finishLength) line += finishLength;
+    if (finishChar.length > 0) line += `${finishLength ? '，' : ''}${finishChar.join('、')}`;
     parts.push(line);
   }
 
-  // 總評
   const style = get('style');
   const impression = getArr('impression');
-  if (style) {
-    let line = `【總評】${style}`;
-    if (impression.length > 0) line += `，${impression.join('、')}`;
+  if (style || impression.length > 0) {
+    let line = '【總評】';
+    if (style) line += style;
+    if (impression.length > 0) line += `${style ? '，' : ''}${impression.join('、')}`;
     parts.push(line);
   }
 
@@ -293,274 +297,276 @@ function buildResult(answers: Record<string, string | string[]>): GuidedTastingR
   styleTags.push(...impression);
 
   const foods = getArr('food');
-  const foodPairings = foods.map(food => ({ food, pairing: 'yes' as const, reason: '' }));
+  const foodPairings = foods.map((food) => ({ food, pairing: 'yes' as const, reason: '' }));
   const servingTemperatures = getArr('servingTemperature');
   const cupTypes = getArr('cupType');
+  const otherComments = get('otherComments') ?? '';
+  const guidedSummary = parts.join('\n');
 
-  const otherComments = get('otherComments');
   return {
-    sweetness: sw, acidity: ac, bitterness: bi, umami: um, astringency: as_,
-    userDescription: parts.join('\n'),
+    sweetness: getNum('sweetness'),
+    acidity: getNum('acidity'),
+    bitterness: getNum('bitterness'),
+    umami: getNum('umami'),
+    astringency: getNum('astringency'),
+    userDescription: guidedSummary,
+    guidedSummary,
     styleTags,
     foodPairings,
     servingTemperatures,
     cupTypes,
-    otherComments: otherComments ?? '',
+    otherComments,
+    answers,
   };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 interface Props {
   onComplete: (result: GuidedTastingResult) => void;
   onClose: () => void;
+  initialAnswers?: GuidedTastingAnswers;
+  onAnswersChange?: (answers: GuidedTastingAnswers) => void;
 }
 
-export function GuidedTasting({ onComplete, onClose }: Props) {
-  // step -1 = intro screen
-  const [step, setStep] = useState(-1);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [autoAdvance, setAutoAdvance] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const activeQuestions = useMemo(() => QUESTIONS, []);
-  const sectionStartSteps = useMemo(
-    () => Object.fromEntries(SECTIONS.map((section) => [section, QUESTIONS.findIndex((question) => question.section === section)])),
-    []
+export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersChange }: Props) {
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<GuidedTastingAnswers>(initialAnswers ?? {});
+  const activeQuestion = useMemo(
+    () => QUESTIONS.find((question) => question.id === activeQuestionId) ?? null,
+    [activeQuestionId]
+  );
+  const answeredCount = useMemo(
+    () => QUESTIONS.filter((question) => hasAnswer(answers, question.id)).length,
+    [answers]
   );
 
-  const q = step >= 0 ? activeQuestions[step] : null;
-  const progress = step < 0 ? 0 : ((step + 1) / Math.max(activeQuestions.length, 1)) * 100;
-  const answer = q ? (answers[q.id] ?? (q.type === 'multi' ? [] : '')) : '';
-  const isAnswered = q
-    ? (q.type === 'multi' ? (answer as string[]).length > 0 : (answer as string).length > 0)
-    : false;
-  const canNext = isAnswered || (q?.optional ?? false) || q?.type === 'text';
-  const isLast = step === activeQuestions.length - 1;
+  useEffect(() => {
+    setAnswers(initialAnswers ?? {});
+  }, [initialAnswers]);
 
-  const goToSection = (section: string) => {
-    const nextStep = sectionStartSteps[section];
-    if (typeof nextStep === 'number' && nextStep >= 0) {
-      setStep(nextStep);
+  useEffect(() => {
+    onAnswersChange?.(answers);
+  }, [answers, onAnswersChange]);
+
+  const updateAnswer = (questionId: string, value: GuidedAnswerValue) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+  };
+
+  const clearAnswer = (questionId: string) => {
+    setAnswers((prev) => {
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  };
+
+  const returnHome = () => setActiveQuestionId(null);
+
+  const toggleOption = (question: Q, value: string) => {
+    if (question.type === 'multi') {
+      const current = (answers[question.id] as string[] | undefined) ?? [];
+      updateAnswer(
+        question.id,
+        current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
+      );
+      return;
+    }
+
+    const current = answers[question.id] as string | undefined;
+    const nextValue = current === value ? '' : value;
+    updateAnswer(question.id, nextValue);
+    if (question.type === 'single' && nextValue) {
+      window.setTimeout(() => returnHome(), 180);
     }
   };
 
-  const goNext = () => {
-    if (isLast) {
-      onComplete(buildResult(answers));
-    } else {
-      setStep(s => s + 1);
-    }
-  };
-
-  const goBack = () => {
-    if (step <= 0) setStep(-1);
-    else setStep(s => s - 1);
-  };
-
-  const toggleOption = (value: string) => {
-    if (!q) return;
-    if (q.type === 'multi') {
-      setAnswers(prev => {
-        const prev_ = (prev[q.id] as string[]) ?? [];
-        return {
-          ...prev,
-          [q.id]: prev_.includes(value) ? prev_.filter(v => v !== value) : [...prev_, value],
-        };
-      });
-    } else {
-      // single / rating5: toggle off if same value; auto-advance for single (not rating5)
-      const newVal = answers[q.id] === value ? '' : value;
-      setAnswers(prev => ({ ...prev, [q.id]: newVal }));
-      if (q.type === 'single' && newVal) {
-        // auto-advance after 280ms so user sees the selection
-        if (autoAdvance) clearTimeout(autoAdvance);
-        const t = setTimeout(() => {
-          if (step < activeQuestions.length - 1) setStep(s => s + 1);
-          else onComplete(buildResult({ ...answers, [q.id]: newVal }));
-        }, 280);
-        setAutoAdvance(t);
-      }
-    }
-  };
-
-  // ── Intro ──────────────────────────────────────────────────────────────────
-  if (step === -1) {
+  if (!activeQuestion) {
     return (
       <div
         className="fixed inset-0 z-50 flex flex-col"
         style={{ background: 'linear-gradient(160deg, #0a0a0c 0%, #130a14 100%)' }}
       >
-        <div className="flex items-center justify-end px-5 pt-6 pb-4">
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
-          >
+        <div className="flex items-center justify-between px-5 pt-6 pb-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/35">Guided Tasting</p>
+            <h1 className="text-xl font-bold text-white tracking-wide">引導式品鑑</h1>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <X className="w-4 h-4 text-white/60" />
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center overflow-y-auto pb-4">
-          <div className="text-4xl mb-2">🍶</div>
-          <h1 className="text-xl font-bold text-white tracking-wide mb-1">引導式品鑒</h1>
-          <p className="text-white/45 text-xs leading-relaxed mb-4 max-w-xs">
-            點擊上方任一品鑑項目可直接前往該區塊，也可以從下方按鈕由第一題開始。
-          </p>
-
-          <div className="w-full grid grid-cols-2 gap-1.5 max-w-sm">
-            {SECTIONS.map((s, i) => {
-              const count = QUESTIONS.filter(q => q.section === s).length;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => goToSection(s)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2"
-                  style={{
-                    background: `${SECTION_COLORS[s]}10`,
-                    border: `1px solid ${SECTION_COLORS[s]}28`,
-                  }}
-                >
-                  <span className="text-sm shrink-0">{SECTION_ICONS[s]}</span>
-                  <span className="text-xs font-bold text-white/80 flex-1 text-left">{s}</span>
-                  <span className="text-[9px] font-bold text-white/30">{count}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-white/50" />
-                </button>
-              );
-            })}
+        <div className="px-5 pb-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-white/80">已完成 {answeredCount} / {QUESTIONS.length} 題</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-white/45">點任一題目補充後會自動回到這裡，你可以逐題慢慢補，最後再一次整理到筆記。</p>
+              </div>
+              <div className="text-3xl">🍶</div>
+            </div>
           </div>
-          <p className="mt-3 text-[10px] text-white/35 leading-relaxed max-w-sm">
-            例如只想補餐搭、適飲溫度或杯型，直接點該區塊即可。
-          </p>
         </div>
 
-        <div className="px-6 pb-10 pt-3">
+        <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+          {SECTIONS.map((section) => {
+            const sectionQuestions = QUESTIONS.filter((question) => question.section === section);
+            const sectionDone = sectionQuestions.filter((question) => hasAnswer(answers, question.id)).length;
+
+            return (
+              <section key={section} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{SECTION_ICONS[section]}</span>
+                    <div>
+                      <p className="text-xs font-bold text-white/85">{section}</p>
+                      <p className="text-[10px] text-white/35">{sectionDone} / {sectionQuestions.length} 已填寫</p>
+                    </div>
+                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                    style={{ background: `${SECTION_COLORS[section]}22`, color: SECTION_COLORS[section] }}
+                  >
+                    {sectionDone === sectionQuestions.length ? '已完成' : '可補充'}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {sectionQuestions.map((question) => {
+                    const answered = hasAnswer(answers, question.id);
+                    return (
+                      <button
+                        key={question.id}
+                        type="button"
+                        onClick={() => setActiveQuestionId(question.id)}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all',
+                          answered ? 'border-emerald-400/35 bg-emerald-400/10 text-white' : 'border-white/10 bg-white/5 text-white/75 hover:bg-white/8'
+                        )}
+                      >
+                        <div
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                          style={{ background: answered ? '#10b981' : `${question.sectionColor}22`, color: answered ? '#052e16' : question.sectionColor }}
+                        >
+                          {answered ? <Check className="h-3.5 w-3.5" /> : SECTION_ICONS[section]}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold leading-tight">{question.shortLabel ?? question.text}</p>
+                          <p className="mt-1 text-[10px] text-white/40">{answered ? '已記錄，可再修改' : question.optional ? '選填' : '尚未填寫'}</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-white/35" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        <div className="px-5 pb-10 pt-3 space-y-2">
           <Button
-            className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest"
+            className="h-14 w-full rounded-full text-sm font-bold uppercase tracking-widest"
             style={{ background: '#f97316' }}
-            onClick={() => setStep(0)}
+            onClick={() => onComplete(buildResult(answers))}
           >
-            開始品鑑 <ArrowRight className="w-4 h-4 ml-2" />
+            完成品鑑並整理到筆記 <Check className="ml-2 h-4 w-4" />
           </Button>
+          <p className="text-center text-[10px] text-white/28">未填的題目會保留原狀，只有你已填的內容會補充到筆記。</p>
         </div>
       </div>
     );
   }
 
-  if (!q) return null;
-  const sectionColor = q.sectionColor;
+  const answer = answers[activeQuestion.id] ?? (activeQuestion.type === 'multi' ? [] : '');
+  const answered = hasAnswer(answers, activeQuestion.id);
+  const canSave = answered || activeQuestion.optional;
 
-  // ── Question screen ────────────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
       style={{ background: 'linear-gradient(160deg, #0a0a0c 0%, #130a14 100%)' }}
     >
-      {/* Header */}
       <div className="px-5 pt-6 pb-3 shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={goBack}
-            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
-          >
+        <div className="mb-3 flex items-center justify-between">
+          <button onClick={returnHome} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <ArrowLeft className="w-4 h-4 text-white/60" />
           </button>
 
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-            style={{ background: `${sectionColor}20`, border: `1px solid ${sectionColor}40` }}
-          >
-            <span className="text-sm">{SECTION_ICONS[q.section]}</span>
-            <span className="text-xs font-bold" style={{ color: sectionColor }}>{q.section}</span>
+          <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: `${activeQuestion.sectionColor}20`, border: `1px solid ${activeQuestion.sectionColor}40` }}>
+            <span className="text-sm">{SECTION_ICONS[activeQuestion.section]}</span>
+            <span className="text-xs font-bold" style={{ color: activeQuestion.sectionColor }}>{activeQuestion.section}</span>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
-          >
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <X className="w-4 h-4 text-white/60" />
           </button>
         </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-400"
-            style={{ width: `${progress}%`, background: sectionColor }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="text-[10px] text-white/25 font-bold">
-            {SECTIONS.indexOf(q.section) + 1} / {SECTIONS.length} 個區塊
-          </span>
-          <span className="text-[10px] text-white/25 font-bold">{step + 1} / {activeQuestions.length}</span>
+        <div className="rounded-full bg-white/8 px-3 py-2 text-center text-[10px] font-bold text-white/35">
+          選完這一題就會回到首頁，可再挑下一題補充
         </div>
       </div>
 
-      {/* Question + Options */}
       <div className="flex-1 overflow-y-auto px-5 py-2">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-white leading-snug">{q.text}</h2>
-          {q.hint && <p className="text-xs text-white/35 mt-1.5 font-medium">{q.hint}</p>}
+          <h2 className="text-xl font-bold leading-snug text-white">{activeQuestion.text}</h2>
+          {activeQuestion.hint && <p className="mt-1.5 text-xs font-medium text-white/35">{activeQuestion.hint}</p>}
         </div>
 
-        {q.type === 'rating5' ? (
+        {activeQuestion.type === 'rating5' ? (
           <div className="space-y-4">
-            {q.low && (
-              <div className="flex justify-between text-[10px] text-white/35 font-bold">
-                <span>← {q.low}</span>
-                <span>{q.high} →</span>
+            {activeQuestion.low && (
+              <div className="flex justify-between text-[10px] font-bold text-white/35">
+                <span>← {activeQuestion.low}</span>
+                <span>{activeQuestion.high} →</span>
               </div>
             )}
             <div className="flex gap-2.5">
-              {q.options.map(opt => {
-                const selected = answer === opt.value;
+              {activeQuestion.options.map((option) => {
+                const selected = answer === option.value;
                 return (
                   <button
-                    key={opt.value}
-                    onClick={() => toggleOption(opt.value)}
+                    key={option.value}
+                    onClick={() => toggleOption(activeQuestion, option.value)}
                     className={cn(
                       'flex-1 aspect-square rounded-2xl flex items-center justify-center font-bold text-xl transition-all active:scale-95',
                       selected ? 'text-white shadow-lg scale-105' : 'bg-white/6 text-white/40'
                     )}
-                    style={selected ? { background: sectionColor, boxShadow: `0 4px 20px ${sectionColor}50` } : undefined}
+                    style={selected ? { background: activeQuestion.sectionColor, boxShadow: `0 4px 20px ${activeQuestion.sectionColor}50` } : undefined}
                   >
-                    {opt.value}
+                    {option.value}
                   </button>
                 );
               })}
             </div>
           </div>
-        ) : q.type === 'text' ? (
+        ) : activeQuestion.type === 'text' ? (
           <textarea
-            className="w-full min-h-[100px] rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="可自由填寫任何補充、感想、特殊情境、搭配經驗等..."
+            className="min-h-[160px] w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-white outline-none transition-all focus:border-white/20"
+            placeholder="例如：這支酒在回溫後米旨味更明顯、和某道料理特別搭、今天喝酒的情境感受..."
             value={typeof answer === 'string' ? answer : ''}
-            onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+            onChange={(event) => updateAnswer(activeQuestion.id, event.target.value)}
           />
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
-            {q.options.map(opt => {
-              const selected = q.type === 'multi'
-                ? (answer as string[]).includes(opt.value)
-                : answer === opt.value;
+            {activeQuestion.options.map((option) => {
+              const selected = activeQuestion.type === 'multi'
+                ? (answer as string[]).includes(option.value)
+                : answer === option.value;
               return (
                 <button
-                  key={opt.value}
-                  onClick={() => toggleOption(opt.value)}
+                  key={option.value}
+                  onClick={() => toggleOption(activeQuestion, option.value)}
                   className={cn(
-                    'relative rounded-2xl p-4 text-left transition-all border active:scale-95',
-                    selected
-                      ? 'text-white border-transparent'
-                      : 'bg-white/5 border-white/10 text-white/65 hover:bg-white/8'
+                    'relative rounded-2xl border p-4 text-left transition-all active:scale-95',
+                    selected ? 'border-transparent text-white' : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8'
                   )}
-                  style={selected ? { background: `${sectionColor}28`, borderColor: sectionColor } : undefined}
+                  style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor } : undefined}
                 >
-                  {opt.emoji && <span className="text-2xl block mb-1.5">{opt.emoji}</span>}
-                  <span className="text-xs font-bold leading-tight">{opt.label}</span>
+                  {option.emoji && <span className="mb-1.5 block text-2xl">{option.emoji}</span>}
+                  <span className="text-xs font-bold leading-tight">{option.label}</span>
                   {selected && (
-                    <div
-                      className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
-                      style={{ background: sectionColor }}
-                    >
-                      <Check className="w-2.5 h-2.5 text-white" />
+                    <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full" style={{ background: activeQuestion.sectionColor }}>
+                      <Check className="h-2.5 w-2.5 text-white" />
                     </div>
                   )}
                 </button>
@@ -570,29 +576,34 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-5 pb-10 pt-3 shrink-0 space-y-2">
-        {/* For multi/rating5 show explicit next button; single auto-advances */}
-        {q.type !== 'single' && (
+      <div className="space-y-2 px-5 pb-10 pt-3 shrink-0">
+        {activeQuestion.type !== 'single' && (
           <Button
             className="w-full h-14 rounded-full text-sm font-bold uppercase tracking-widest transition-all"
-            style={canNext ? { background: sectionColor } : undefined}
-            disabled={!canNext}
-            variant={canNext ? 'default' : 'outline'}
-            onClick={goNext}
+            style={canSave ? { background: activeQuestion.sectionColor } : undefined}
+            disabled={!canSave}
+            variant={canSave ? 'default' : 'outline'}
+            onClick={returnHome}
           >
-            {isLast
-              ? <><Check className="w-4 h-4 mr-2" /> 完成品鑒</>
-              : <>下一步 <ArrowRight className="w-4 h-4 ml-2" /></>
-            }
+            儲存這一題並返回 <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         )}
-        {!isAnswered && (
+
+        {answered && (
           <button
-            onClick={goNext}
-            className="w-full text-center text-xs text-white/25 py-1.5 font-bold uppercase tracking-widest"
+            onClick={() => clearAnswer(activeQuestion.id)}
+            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
           >
-            無法判斷，跳過此題
+            清除此題答案
+          </button>
+        )}
+
+        {!answered && (
+          <button
+            onClick={returnHome}
+            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/25 py-1.5"
+          >
+            先跳過這題，返回首頁
           </button>
         )}
       </div>
