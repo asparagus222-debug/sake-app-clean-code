@@ -1,3 +1,4 @@
+import { mergeSakeBrandName } from '@/lib/utils';
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -49,7 +50,6 @@ export default function EditNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
     sweetness: 3,
@@ -66,8 +66,7 @@ export default function EditNotePage() {
   useEffect(() => {
     if (note) {
       setFormData({
-        brandName: note.brandName,
-        subBrand: note.subBrand || '',
+        brandName: mergeSakeBrandName(note.brandName, note.subBrand),
         brewery: note.brewery,
         origin: note.origin || '',
         sweetness: note.sweetnessRating,
@@ -215,7 +214,7 @@ export default function EditNotePage() {
       const finalImages = await Promise.all(images.map((_, i) => images[i].startsWith('http') ? images[i] : captureCurrentView(i)));
       const noteData = {
         brandName: formData.brandName,
-        subBrand: formData.subBrand,
+        subBrand: deleteField(),
         brewery: formData.brewery,
         origin: formData.origin,
         imageUrls: finalImages,
@@ -314,13 +313,6 @@ export default function EditNotePage() {
                 ))}
               </div>
             )}
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副標 / 規格</Label>
-            <div className="relative">
-              <Input placeholder="例如：生原酒、越光米" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs pl-8" value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} />
-              <Info className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
-            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>

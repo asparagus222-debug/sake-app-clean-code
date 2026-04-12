@@ -21,3 +21,7 @@ export function formatSakeDisplayName(brandName?: string | null, subBrand?: stri
 
   return `${mainName} ${secondaryName}`
 }
+
+export function mergeSakeBrandName(brandName?: string | null, subBrand?: string | null) {
+  return formatSakeDisplayName(brandName, subBrand)
+}

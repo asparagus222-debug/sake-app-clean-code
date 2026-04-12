@@ -17,7 +17,7 @@ import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemo
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
-import { cn, formatSakeDisplayName } from '@/lib/utils';
+import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 type NewNotePageClientProps = {
   initialAuthBootstrap: AuthBootstrapSnapshot | null;
@@ -177,7 +177,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
     alcoholPercent: '',
@@ -198,7 +197,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   });
   const hasAiIdentifiedData = Boolean(
     formData.brandName ||
-    formData.subBrand ||
     formData.brewery ||
     formData.origin ||
     formData.alcoholPercent ||
@@ -257,6 +255,10 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         setFormData(prev => ({
           ...prev,
           ...(d.formData as Partial<typeof prev>),
+          brandName: mergeSakeBrandName(
+            (d.formData as { brandName?: string }).brandName || prev.brandName,
+            (d.formData as { subBrand?: string }).subBrand || ''
+          ),
           servingTemperatures: Array.isArray((d.formData as { servingTemperatures?: unknown }).servingTemperatures)
             ? ((d.formData as { servingTemperatures?: string[] }).servingTemperatures || []).filter(Boolean)
             : typeof (d.formData as { servingTemperature?: unknown }).servingTemperature === 'string'
@@ -308,7 +310,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       method: 'POST',
       body: JSON.stringify({
         brandName: formData.brandName,
-        subBrand: formData.subBrand,
         brewery: formData.brewery,
         origin: formData.origin,
         alcoholPercent: formData.alcoholPercent,
@@ -407,8 +408,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
           result.origin || '',
           knownBrands
         );
-        const nextBrandName = normalized.brandName || formData.brandName;
-        const nextSubBrand = result.subBrand || formData.subBrand;
+        const nextBrandName = mergeSakeBrandName(normalized.brandName || result.brandName || formData.brandName, result.subBrand || '');
         const nextBrewery = normalized.brewery || formData.brewery;
         const nextOrigin = normalized.origin || formData.origin;
         const nextAlcoholPercent = result.alcoholPercent || formData.alcoholPercent;
@@ -416,7 +416,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         const changedFields: string[] = [];
 
         if (nextBrandName !== formData.brandName) changedFields.push('brandName');
-        if (nextSubBrand !== formData.subBrand) changedFields.push('subBrand');
         if (nextBrewery !== formData.brewery) changedFields.push('brewery');
         if (nextOrigin !== formData.origin) changedFields.push('origin');
         if (nextAlcoholPercent !== formData.alcoholPercent) changedFields.push('alcoholPercent');
@@ -425,7 +424,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         setFormData(prev => ({
           ...prev,
           brandName: nextBrandName,
-          subBrand: nextSubBrand,
           brewery: nextBrewery,
           origin: nextOrigin,
           alcoholPercent: nextAlcoholPercent,
@@ -458,7 +456,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     setFormData((prev) => ({
       ...prev,
       brandName: '',
-      subBrand: '',
       brewery: '',
       origin: '',
       alcoholPercent: '',
@@ -467,6 +464,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     setShowSuggestions(false);
     setBrandSuggestions([]);
     toast({ title: '已清空 AI 辨識資料', description: '品牌、副名稱、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
+    toast({ title: '已清空 AI 辨識資料', description: '銘柄、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
   };
 
   const openPicker = (type: 'new' | 'replace' | 'replace-all', idx = 0) => {
@@ -908,7 +906,7 @@ const handleSave = async () => {
           reminderValue;
         const nextAt = new Date(Date.now() + intervalHours * 3600 * 1000).toISOString();
         const reminders = JSON.parse(localStorage.getItem('sake_reminders') || '[]');
-        reminders.push({ noteId: docRef.id, brandName: formData.brandName, subBrand: formData.subBrand, nextReminderAt: nextAt, intervalHours, displayName: formatSakeDisplayName(formData.brandName, formData.subBrand) });
+        reminders.push({ noteId: docRef.id, brandName: formData.brandName, nextReminderAt: nextAt, intervalHours, displayName: formData.brandName });
         localStorage.setItem('sake_reminders', JSON.stringify(reminders));
       } catch {}
     }
@@ -1097,9 +1095,6 @@ const handleSave = async () => {
             </div>
             <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副名稱 / 系列名</Label>
-              <Input placeholder="例如：CHIMERA" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('subBrand'))} value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} />
-            </div>
-            <div className="space-y-1">
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
               <Input placeholder="例如：高木酒造" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brewery'))} value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
             </div>

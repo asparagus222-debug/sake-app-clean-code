@@ -17,7 +17,6 @@ import { formatSakeDisplayName } from '@/lib/utils';
 
 type Top3Group = {
   brandName: string;
-  subBrand?: string;
   brewery: string;
   avgRating: number;
   noteCount: number;
@@ -116,14 +115,14 @@ export function HomeClient({
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     try {
-      const reminders: Array<{ noteId: string; brandName: string; subBrand?: string; nextReminderAt: string; intervalHours: number }> =
+      const reminders: Array<{ noteId: string; brandName: string; displayName?: string; nextReminderAt: string; intervalHours: number }> =
         JSON.parse(localStorage.getItem('sake_reminders') || '[]');
       if (reminders.length === 0) return;
       const now = Date.now();
       const remaining = reminders.filter(r => {
         if (new Date(r.nextReminderAt).getTime() <= now) {
           if (Notification.permission === 'granted') {
-            const n = new Notification(`🍶 品飲提醒：${formatSakeDisplayName(r.brandName, r.subBrand)}`, {
+            const n = new Notification(`🍶 品飲提醒：${r.displayName || r.brandName}`, {
               body: '是時候再次品飲並記錄風味變化了！',
               icon: '/favicon.ico',
             });
@@ -241,11 +240,12 @@ export function HomeClient({
 
   const top3Groups = React.useMemo(() => {
     if (rankingNotes) {
-      const map = new Map<string, { brandName: string; subBrand?: string; brewery: string; notes: SakeNote[] }>();
+      const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
       for (const note of rankingNotes) {
         if (!note.brandName) continue;
-        const key = `${note.brandName}|||${note.subBrand || ''}|||${note.brewery}`;
-        if (!map.has(key)) map.set(key, { brandName: note.brandName, subBrand: note.subBrand || '', brewery: note.brewery, notes: [] });
+        const mergedBrandName = formatSakeDisplayName(note.brandName, note.subBrand);
+        const key = `${mergedBrandName}|||${note.brewery}`;
+        if (!map.has(key)) map.set(key, { brandName: mergedBrandName, brewery: note.brewery, notes: [] });
         map.get(key)!.notes.push(note);
       }
       return [...map.values()]
@@ -258,7 +258,7 @@ export function HomeClient({
           const byLikes = [...g.notes].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
           const byDate = [...g.notes].sort((a, b) => (b.tastingDate || '').localeCompare(a.tastingDate || ''));
           const imageUrl = (byLikes.find(n => n.imageUrls?.[0]) || byDate.find(n => n.imageUrls?.[0]))?.imageUrls?.[0];
-          return { brandName: g.brandName, subBrand: g.subBrand || '', brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
+          return { brandName: g.brandName, brewery: g.brewery, avgRating, noteCount: g.notes.length, imageUrl };
         })
         .sort((a, b) => b.avgRating - a.avgRating)
         .slice(0, 3);
@@ -330,9 +330,9 @@ export function HomeClient({
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {displayedTop3Groups.map((group, idx) => {
-                const displayName = formatSakeDisplayName(group.brandName, group.subBrand);
+                const displayName = group.brandName;
 
-                return <Link key={`${group.brandName}-${group.subBrand || ''}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
+                return <Link key={`${group.brandName}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
                   <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/5] dark-glass border border-white/10 hover:border-primary/50 transition-all">
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-accent text-accent-foreground font-bold rounded-full w-5 h-5 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg text-[10px] sm:text-sm">
                       {idx + 1}

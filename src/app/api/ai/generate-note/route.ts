@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
+import { mergeSakeBrandName } from '@/lib/utils';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -10,6 +11,7 @@ export async function POST(req: NextRequest) {
     await requireVerifiedAppCheck(req);
     await enforceRateLimit({ key: `ai:generate-note:${user.uid}`, limit: 30, windowMs: 10 * 60 * 1000 });
     const { brandName, subBrand, brewery, origin, alcoholPercent, sakeInfoTags, ratings, userDescription, mode } = await req.json();
+    const mergedBrandName = mergeSakeBrandName(brandName, subBrand);
 
     // 組合銘柄基本資料行
     const basicInfo = [
@@ -28,14 +30,14 @@ export async function POST(req: NextRequest) {
 若酒款有特色標籤（如大吟醸、無濾過、生原酒、特殊酒米、日本酒度等），可自然融入描述中增加說服力。
 限制：只描述這款酒本身，絕對不可使用任何第二人稱（您、你、請您、邀請您等），不可對讀者說話；不可直接提及任何數字評分；不可提到餐搭、配食、任何食物。字數約 80 字，直接輸出文字，不要標題或 JSON。
 
-【銘柄】${brandName}${subBrand ? `　${subBrand}` : ''}
+【銘柄】${mergedBrandName}
 【基本資料】${basicInfo || '無'}
 【特色標籤】${tagsLine}
 【作者筆記】${userDescription || '（無）'}`
       : `你是一位富有文學氣質的清酒品飲師。請針對以下資訊，撰寫一段充滿畫面感的感性品飲筆記。
 可以聯想季節、風景、記憶或情境。若酒款有特殊標籤（如稀有酒米、特殊釀造法），可借助這些特色引發想像。字數約 80 字，直接輸出文字，不要標題或 JSON。
 
-【銘柄】${brandName}${subBrand ? `　${subBrand}` : ''}
+【銘柄】${mergedBrandName}
 【基本資料】${basicInfo || '無'}
 【特色標籤】${tagsLine}
 【作者筆記】${userDescription || '（無）'}`;

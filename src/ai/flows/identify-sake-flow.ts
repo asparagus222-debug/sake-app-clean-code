@@ -19,8 +19,8 @@ const IdentifySakeInputSchema = z.object({
 export type IdentifySakeInput = z.infer<typeof IdentifySakeInputSchema>;
 
 const IdentifySakeOutputSchema = z.object({
-  brandName: z.string().describe('銘柄名稱 (例如：十四代、新政、而今) 請保持日文原文。'),
-  subBrand: z.string().optional().describe('副名稱、系列名或產品名 (例如：CHIMERA、No.6 X-type)，若無則回傳空字串。保持日文原文。'),
+  brandName: z.string().describe('完整銘柄名稱 (例如：十四代、新政 No.6、産土 Colors 陸羽132号) 請保持日文原文。'),
+  subBrand: z.string().optional().describe('保留欄位。預設回傳空字串，請盡量把完整品名直接寫入 brandName。'),
   brewery: z.string().describe('酒造名稱 (例如：高木酒造) 請保持日文原文。'),
   origin: z.string().describe('產地縣市 (例如：山形県) 請保持日文原文。'),
   alcoholPercent: z.string().optional().describe('酒精濃度，格式如 "16度" 或 "16%"，若無則回傳空字串。'),
@@ -205,10 +205,11 @@ export const identifySakeFlow = ai.defineFlow(
 1. 若多個搜尋結果明確指向同一款日本酒，confidence 才能是 high
 2. 若搜尋結果只是在電商頁同時出現多款酒，或摘要混有其他商品，confidence 必須降為 medium 或 low
 3. 若 candidate 是產品名的一部分，可回傳完整官方品名，例如「白木久 特別純米 CHIMERA」
-4. 若搜尋結果顯示這款酒同時有主銘柄與副名稱，請拆成 brandName=主銘柄、subBrand=副名稱
+4. brandName 必須直接填完整品名；subBrand 預設留空，不要主動拆成兩欄
 5. 不可把圖片上沒有的其他知名銘柄或酒造代表品牌硬接到產品名後面
 6. 若無法唯一確認，brandName / brewery / origin 可留空，confidence 請回 low
 7. 所有文字保持日文原文，不要翻譯
+8. 若品名裡出現像酒米名的字樣，也不可因為它看起來像酒米就從 brandName 移除；只有在資料明確同時標示使用米時，才另外填 riceName
 
 請回傳 JSON。`,
           }],
@@ -220,7 +221,7 @@ export const identifySakeFlow = ai.defineFlow(
           logTiming('exact-keyword-search-path', { cloudVisionMs, exactKeywordMs, candidate: exactMatch.matchedKeyword || candidate, hasBackLabel });
           return {
             brandName: exactMatch.brandName,
-            subBrand: exactMatch.subBrand || '',
+            subBrand: '',
             brewery: exactMatch.brewery,
             origin: exactMatch.origin || '',
             alcoholPercent: exactMatch.alcoholPercent || '',
@@ -372,7 +373,7 @@ ${frontOcr}
         const supplementMs = Math.round((performance.now() - supplementStart) * 10) / 10;
         const mergedResult = {
           brandName: backOcr.brandName,
-          subBrand: backOcr.subBrand || supplement?.subBrand || '',
+          subBrand: '',
           brewery: backOcr.brewery,
           origin: backOcr.origin || supplement?.origin || '',
           alcoholPercent: backOcr.alcoholPercent || '',
@@ -403,13 +404,13 @@ ${frontOcr}
 
 【第一步】列出圖片上「所有」可見文字。
 【第二步】描述酒標視覺構圖：主色調、大型書道文字（直接寫出是哪個字，如「笑」「夢」「粋」）、有無印章、筆觸風格。
-【第三步】從文字和視覺共同判斷銘柄。若是「主銘柄 + 副名稱 / 系列名」結構，請拆成 brandName 與 subBrand。
+【第三步】從文字和視覺共同判斷完整銘柄，brandName 必須直接填完整品名，不要拆成多欄。
 【第四步】產生包含「銘柄」+「酒造」+「日本酒」的 searchQuery（例如：「新政 No.6 新政酒造 日本酒」）。若圖中有多瓶酒，請辨識最清晰、標籤最完整的那一瓶。
 
 ⚠️ 重要：大型書道裝飾字不是銘柄；searchQuery 必須包含「日本酒」關鍵字，縮小搜尋至清酒領域。${hasBackLabel ? '\n- 第一張圖（背標）有完整印刷銘柄文字，請從背標讀取作為主要資訊來源' : ''}
 
 請回傳 JSON（不加 markdown）：
-{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"主銘柄","subBrand":"副名稱或系列名","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"yeast":"使用酵母","searchQuery":"銘柄+酒造+日本酒"}`,
+{"allText":["所有可見文字"],"visualDescription":"視覺特徵含書道大字名稱","brandName":"完整銘柄","subBrand":"","brewery":"酒造","origin":"産地","alcoholPercent":"酒精濃度","seimaibuai":"精米步合","riceName":"使用米","specialProcess":["..."],"yeast":"使用酵母","searchQuery":"銘柄+酒造+日本酒"}`,
         },
         { media: { url: primaryImage, contentType: 'image/jpeg' } },
         ...(secondaryImage ? [{ media: { url: secondaryImage, contentType: 'image/jpeg' } }] : []),
@@ -489,8 +490,9 @@ ${frontOcr}
 1. brandName 和 brewery 必須從搜尋結果確定，不可使用圖片疑似的書道字
 2. 若搜尋結果不確定，brandName 填入空字串
 3. 所有文字保持日文原文，不要翻譯
-4. 若這款酒有副名稱、系列名或產品名，請填入 subBrand
-5. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`
+4. brandName 必須填完整品名，subBrand 留空
+5. 就算品名裡含有像酒米名的字樣，也不要因此把它從 brandName 移除；只有在搜尋結果明確同時標示使用米時，才另外填 riceName
+6. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`
         : `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
 
 從酒標圖片已確認的資訊（這些不需要搜尋，直接使用）：
@@ -508,8 +510,9 @@ ${frontOcr}
 3. 所有文字保持日文原文，不要翻譯
 4. specialProcess 只填入搜尋結果中「明確對應這款酒產品頁」的製法標籤，寧可空白也不填可疑資訊
 5. brandName 不可補上圖片裡沒有出現的上位品牌、代表銘柄或系列母名；若圖片是「CHIMERA」，就不能自行變成「醸し人九平次 CHIMERA」這類串接名稱
-6. 若圖片或搜尋結果顯示另有副名稱、系列名或產品名，請填入 subBrand，不要硬併到 brandName
-7. 受賞資訊除非搜尋結果明確說明是這瓶，否則不填；酵母若無明確資料也不填`,
+6. brandName 必須保留完整品名，不要把疑似副名稱拆出去；subBrand 留空
+7. 就算品名裡含有像酒米名的字樣，也不要因此把它從 brandName 移除；只有在圖片或搜尋結果明確同時標示使用米時，才另外填 riceName
+8. 受賞資訊除非搜尋結果明確說明是這瓶，否則不填；酵母若無明確資料也不填`,
         },
       ],
     }).catch(() => ({ output: null }));
@@ -519,7 +522,7 @@ ${frontOcr}
     if (!enriched) {
       const fallbackResult = {
         brandName,
-        subBrand: vision.subBrand || '',
+        subBrand: '',
         brewery,
         origin,
         alcoholPercent: vision.alcoholPercent || '',
@@ -538,7 +541,7 @@ ${frontOcr}
     const finalResult = {
       ...enriched,
       brandName: (!isSuspiciousBrand && brandName) ? brandName : enriched.brandName,
-      subBrand: vision.subBrand || enriched.subBrand || '',
+      subBrand: '',
       brewery: brewery || enriched.brewery,
       origin: origin || enriched.origin,
       alcoholPercent: vision.alcoholPercent || enriched.alcoholPercent || '',

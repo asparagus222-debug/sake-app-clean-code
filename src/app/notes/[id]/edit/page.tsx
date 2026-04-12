@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
-import { cn } from '@/lib/utils';
+import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
   return new Promise(resolve => {
@@ -109,7 +109,6 @@ export default function EditNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
     sweetness: 3,
@@ -132,8 +131,7 @@ export default function EditNotePage() {
   useEffect(() => {
     if (note) {
       setFormData({
-        brandName: note.brandName,
-        subBrand: note.subBrand || '',
+        brandName: mergeSakeBrandName(note.brandName, note.subBrand),
         brewery: note.brewery,
         origin: note.origin || '',
         sweetness: note.sweetnessRating,
@@ -320,8 +318,7 @@ export default function EditNotePage() {
         );
         setFormData(prev => ({
           ...prev,
-          brandName: normalized.brandName || prev.brandName,
-          subBrand: result.subBrand || prev.subBrand,
+          brandName: mergeSakeBrandName(normalized.brandName || result.brandName || prev.brandName, result.subBrand || ''),
           brewery: normalized.brewery || prev.brewery,
           origin: normalized.origin || prev.origin,
           alcoholPercent: result.alcoholPercent || prev.alcoholPercent,
@@ -754,7 +751,7 @@ export default function EditNotePage() {
 
       const noteData = {
         brandName: formData.brandName,
-        subBrand: formData.subBrand,
+        subBrand: deleteField(),
         brewery: formData.brewery,
         origin: formData.origin,
         styleTags: formData.styleTags,
@@ -953,7 +950,6 @@ export default function EditNotePage() {
               </div>
             )}
           </div>
-          <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副名稱 / 系列名</Label><Input placeholder="例如：CHIMERA" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.subBrand} onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">產地</Label><Input className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.origin} onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))} /></div>
           <div className="space-y-1"><Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒精濃度 (%)</Label><Input placeholder="例如：16" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.alcoholPercent} onChange={e => setFormData(p => ({ ...p, alcoholPercent: e.target.value }))} /></div>
