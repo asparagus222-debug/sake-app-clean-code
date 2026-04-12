@@ -569,12 +569,12 @@ export function GuidedTasting({ onComplete, onClose }: Props) {
             }
           </Button>
         )}
-        {q.optional && !isAnswered && (
+        {!isAnswered && (
           <button
             onClick={goNext}
             className="w-full text-center text-xs text-white/25 py-1.5 font-bold uppercase tracking-widest"
           >
-            跳過此題
+            無法判斷，跳過此題
           </button>
         )}
       </div>
