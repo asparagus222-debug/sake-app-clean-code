@@ -1,4 +1,3 @@
-import { mergeSakeBrandName } from '@/lib/utils';
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,7 +14,7 @@ import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search }
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { deleteField, doc } from 'firebase/firestore';
-import { cn } from '@/lib/utils';
+import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 export default function EditNotePage() {
   const router = useRouter();
