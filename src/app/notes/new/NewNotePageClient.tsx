@@ -463,7 +463,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     }));
     setShowSuggestions(false);
     setBrandSuggestions([]);
-    toast({ title: '已清空 AI 辨識資料', description: '品牌、副名稱、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
+    toast({ title: '已清空 AI 辨識資料', description: '銘柄、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
     toast({ title: '已清空 AI 辨識資料', description: '銘柄、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
   };
 
@@ -1094,7 +1094,6 @@ const handleSave = async () => {
               )}
             </div>
             <div className="space-y-1">
-              <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">副名稱 / 系列名</Label>
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">酒造</Label>
               <Input placeholder="例如：高木酒造" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brewery'))} value={formData.brewery} onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))} />
             </div>
