@@ -991,7 +991,7 @@ const handleSave = async () => {
                 onClick={() => setShowGuidedTasting(true)}
               >
                 <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_18%,rgba(255,255,255,0.06)_34%,rgba(255,255,255,0.42)_50%,rgba(255,255,255,0.06)_66%,transparent_82%)] opacity-80 animate-pulse" />
-                <span className="pointer-events-none absolute -right-1 top-0 text-[10px] text-yellow-200/90 drop-shadow-[0_0_8px_rgba(253,224,71,0.9)] animate-pulse">✦</span>
+                {/* <span className="pointer-events-none absolute -right-1 top-0 text-[10px] text-yellow-200/90 drop-shadow-[0_0_8px_rgba(253,224,71,0.9)] animate-pulse">✦</span> */}
                 <span className="relative z-10 flex items-center">
                   <ListChecks className="mr-1.5 h-3 w-3" /> 引導品鑒
                 </span>
