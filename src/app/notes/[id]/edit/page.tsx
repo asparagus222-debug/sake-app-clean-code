@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession, CUP_TYPE_OPTIONS } from '@/lib/types';
+import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
@@ -42,6 +43,31 @@ async function resizeImage(base64: string, maxDimension = 1024): Promise<string>
   });
 }
 
+function buildComposedNoteText(authorNote: string, guidedSummary: string, otherComments: string): string {
+  const sections = [
+    authorNote.trim(),
+    guidedSummary.trim(),
+    otherComments.trim() ? `【其他補充】${otherComments.trim()}` : '',
+  ].filter(Boolean);
+
+  return sections.join('\n\n');
+}
+
+type PrimarySessionFields = {
+  sweetness: number;
+  acidity: number;
+  bitterness: number;
+  umami: number;
+  astringency: number;
+  overallRating: number;
+  userDescription: string;
+  guidedTastingSummary: string;
+  guidedTastingAnswers: GuidedTastingAnswers;
+  aiResultNote: string;
+  activeBrain: 'left' | 'right' | null;
+  otherComments: string;
+};
+
 export default function EditNotePage() {
   const router = useRouter();
   const params = useParams();
@@ -71,6 +97,7 @@ export default function EditNotePage() {
   // 相機/相簿選擇器
   const [showPicker, setShowPicker] = useState(false);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+  const [showGuidedTasting, setShowGuidedTasting] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +113,7 @@ export default function EditNotePage() {
   // Multi-session state
   const [extraSessions, setExtraSessions] = useState<TastingSession[]>([]);
   const [activeSessionIdx, setActiveSessionIdx] = useState(0); // 0 = original note
+  const [primarySessionDraft, setPrimarySessionDraft] = useState<PrimarySessionFields | null>(null);
 
   const noteRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -124,32 +152,102 @@ export default function EditNotePage() {
     alcoholPercent: '',
     foodPairings: [] as { food: string; pairing: 'yes' | 'no'; reason: string }[],
     userDescription: '',
+    guidedTastingSummary: '',
+    guidedTastingAnswers: {} as GuidedTastingAnswers,
     aiResultNote: '',
     activeBrain: null as 'left' | 'right' | null,
+    otherComments: '',
   });
+
+  const getPrimarySessionFromNote = (currentNote: SakeNote): PrimarySessionFields => ({
+    sweetness: currentNote.sweetnessRating,
+    acidity: currentNote.acidityRating,
+    bitterness: currentNote.bitternessRating,
+    umami: currentNote.umamiRating,
+    astringency: currentNote.astringencyRating,
+    overallRating: currentNote.overallRating,
+    userDescription: currentNote.userDescription || '',
+    guidedTastingSummary: currentNote.guidedTastingSummary || '',
+    guidedTastingAnswers: currentNote.guidedTastingAnswers || {},
+    aiResultNote: currentNote.aiResultNote || '',
+    activeBrain: currentNote.activeBrain || null,
+    otherComments: currentNote.otherComments || '',
+  });
+
+  const getPrimarySessionFromForm = (): PrimarySessionFields => ({
+    sweetness: formData.sweetness,
+    acidity: formData.acidity,
+    bitterness: formData.bitterness,
+    umami: formData.umami,
+    astringency: formData.astringency,
+    overallRating: formData.overallRating,
+    userDescription: formData.userDescription,
+    guidedTastingSummary: formData.guidedTastingSummary,
+    guidedTastingAnswers: formData.guidedTastingAnswers,
+    aiResultNote: formData.aiResultNote,
+    activeBrain: formData.activeBrain,
+    otherComments: formData.otherComments,
+  });
+
+  const handleGuidedAnswersChange = React.useCallback((answers: GuidedTastingAnswers) => {
+    setFormData(prev => (prev.guidedTastingAnswers === answers
+      ? prev
+      : { ...prev, guidedTastingAnswers: answers }));
+  }, []);
+
+  const handleGuidedComplete = (result: GuidedTastingResult) => {
+    const hasAnswer = (answerId: string) => {
+      const value = result.answers[answerId];
+      if (Array.isArray(value)) return value.length > 0;
+      return typeof value === 'string' && value.trim().length > 0;
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      sweetness: hasAnswer('sweetness') ? result.sweetness : prev.sweetness,
+      acidity: hasAnswer('acidity') ? result.acidity : prev.acidity,
+      bitterness: hasAnswer('bitterness') ? result.bitterness : prev.bitterness,
+      umami: hasAnswer('umami') ? result.umami : prev.umami,
+      astringency: hasAnswer('astringency') ? result.astringency : prev.astringency,
+      styleTags: [...new Set([...prev.styleTags, ...result.styleTags])],
+      foodPairings: hasAnswer('food') ? result.foodPairings : prev.foodPairings,
+      servingTemperatures: [...new Set([...prev.servingTemperatures, ...result.servingTemperatures])],
+      cupTypes: [...new Set([...(prev.cupTypes ?? []), ...result.cupTypes])],
+      otherComments: hasAnswer('otherComments') ? (result.otherComments || '') : prev.otherComments,
+      guidedTastingSummary: result.guidedSummary,
+      guidedTastingAnswers: result.answers,
+    }));
+    setShowGuidedTasting(false);
+    toast({ title: '引導品鑑完成', description: '已整理完成的品鑑內容，準備補充到筆記。' });
+  };
 
   useEffect(() => {
     if (note) {
+      const primaryFields = getPrimarySessionFromNote(note);
       setFormData({
         brandName: mergeSakeBrandName(note.brandName, note.subBrand),
         brewery: note.brewery,
         origin: note.origin || '',
-        sweetness: note.sweetnessRating,
-        acidity: note.acidityRating,
-        bitterness: note.bitternessRating,
-        umami: note.umamiRating,
-        astringency: note.astringencyRating,
-        overallRating: note.overallRating,
+        sweetness: primaryFields.sweetness,
+        acidity: primaryFields.acidity,
+        bitterness: primaryFields.bitterness,
+        umami: primaryFields.umami,
+        astringency: primaryFields.astringency,
+        overallRating: primaryFields.overallRating,
         styleTags: note.styleTags || [],
         servingTemperatures: note.servingTemperatures || (note.servingTemperature ? [note.servingTemperature] : []),
         cupTypes: note.cupTypes || [],
         sakeInfoTags: note.sakeInfoTags || [],
         alcoholPercent: note.alcoholPercent || '',
         foodPairings: (note.foodPairings || []).map((fp: { food: string; pairing: 'yes' | 'no'; reason?: string }) => ({ food: fp.food, pairing: fp.pairing, reason: fp.reason || '' })),
-        userDescription: note.userDescription || note.description || '',
-        aiResultNote: note.aiResultNote || '',
-        activeBrain: note.activeBrain || null,
+        userDescription: primaryFields.userDescription,
+        guidedTastingSummary: primaryFields.guidedTastingSummary,
+        guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+        aiResultNote: primaryFields.aiResultNote,
+        activeBrain: primaryFields.activeBrain,
+        otherComments: primaryFields.otherComments,
       });
+      setPrimarySessionDraft(primaryFields);
       if (note.imageUrls) {
         const imgs = note.imageOriginals || note.imageUrls;
         setImages(imgs);
@@ -255,10 +353,19 @@ export default function EditNotePage() {
     setIsGenerating(true);
     setFormData(prev => ({ ...prev, activeBrain: mode }));
     try {
+      const composedDescription = buildComposedNoteText(
+        formData.userDescription,
+        formData.guidedTastingSummary,
+        formData.otherComments
+      );
       const response = await authorizedJsonFetch(auth, '/api/ai/generate-note', {
         method: 'POST',
         body: JSON.stringify({
           brandName: formData.brandName,
+          brewery: formData.brewery,
+          origin: formData.origin,
+          alcoholPercent: formData.alcoholPercent,
+          sakeInfoTags: formData.sakeInfoTags,
           ratings: {
             sweetness: formData.sweetness,
             acidity: formData.acidity,
@@ -267,7 +374,7 @@ export default function EditNotePage() {
             astringency: formData.astringency
           },
           tags: formData.styleTags,
-          userDescription: formData.userDescription,
+          userDescription: composedDescription,
           mode
         })
       });
@@ -583,23 +690,29 @@ export default function EditNotePage() {
 
   const switchToSession = (idx: number) => {
     if (idx === activeSessionIdx) return;
-    // Save current formData to the right slot
-    setExtraSessions(prev => snapshotCurrentSession(prev));
+    if (activeSessionIdx === 0) {
+      setPrimarySessionDraft(getPrimarySessionFromForm());
+    } else {
+      setExtraSessions(prev => snapshotCurrentSession(prev));
+    }
     // Load target session
     if (idx === 0) {
-      // Restore from original note
-      if (note) {
+      const primaryFields = primarySessionDraft ?? (note ? getPrimarySessionFromNote(note) : null);
+      if (primaryFields) {
         setFormData(prev => ({
           ...prev,
-          sweetness: note.sweetnessRating,
-          acidity: note.acidityRating,
-          bitterness: note.bitternessRating,
-          umami: note.umamiRating,
-          astringency: note.astringencyRating,
-          overallRating: note.overallRating,
-          userDescription: note.userDescription || note.description || '',
-          aiResultNote: note.aiResultNote || '',
-          activeBrain: note.activeBrain || null,
+          sweetness: primaryFields.sweetness,
+          acidity: primaryFields.acidity,
+          bitterness: primaryFields.bitterness,
+          umami: primaryFields.umami,
+          astringency: primaryFields.astringency,
+          overallRating: primaryFields.overallRating,
+          userDescription: primaryFields.userDescription,
+          guidedTastingSummary: primaryFields.guidedTastingSummary,
+          guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+          aiResultNote: primaryFields.aiResultNote,
+          activeBrain: primaryFields.activeBrain,
+          otherComments: primaryFields.otherComments,
         }));
       }
     } else {
@@ -666,18 +779,22 @@ export default function EditNotePage() {
     if (activeSessionIdx >= idx) {
       const fallback = activeSessionIdx === idx ? idx - 1 : activeSessionIdx - 1;
       setActiveSessionIdx(0);
-      if (note && fallback === 0) {
+      const primaryFields = primarySessionDraft ?? (note ? getPrimarySessionFromNote(note) : null);
+      if (primaryFields && fallback === 0) {
         setFormData(p => ({
           ...p,
-          sweetness: note.sweetnessRating,
-          acidity: note.acidityRating,
-          bitterness: note.bitternessRating,
-          umami: note.umamiRating,
-          astringency: note.astringencyRating,
-          overallRating: note.overallRating,
-          userDescription: note.userDescription || note.description || '',
-          aiResultNote: note.aiResultNote || '',
-          activeBrain: note.activeBrain || null,
+          sweetness: primaryFields.sweetness,
+          acidity: primaryFields.acidity,
+          bitterness: primaryFields.bitterness,
+          umami: primaryFields.umami,
+          astringency: primaryFields.astringency,
+          overallRating: primaryFields.overallRating,
+          userDescription: primaryFields.userDescription,
+          guidedTastingSummary: primaryFields.guidedTastingSummary,
+          guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+          aiResultNote: primaryFields.aiResultNote,
+          activeBrain: primaryFields.activeBrain,
+          otherComments: primaryFields.otherComments,
         }));
       }
     }
@@ -688,18 +805,28 @@ export default function EditNotePage() {
     setIsSaving(true);
     try {
       const finalSessions = snapshotCurrentSession(extraSessions);
-      const session0Data = activeSessionIdx === 0 ? {
-        sweetnessRating: formData.sweetness,
-        acidityRating: formData.acidity,
-        bitternessRating: formData.bitterness,
-        umamiRating: formData.umami,
-        astringencyRating: formData.astringency,
-        overallRating: formData.overallRating,
-        userDescription: formData.userDescription,
-        aiResultNote: formData.aiResultNote,
-        activeBrain: formData.activeBrain,
-        description: formData.userDescription,
-      } : {};
+      const primaryFields = activeSessionIdx === 0
+        ? getPrimarySessionFromForm()
+        : (primarySessionDraft ?? getPrimarySessionFromNote(note));
+      const session0Data = {
+        sweetnessRating: primaryFields.sweetness,
+        acidityRating: primaryFields.acidity,
+        bitternessRating: primaryFields.bitterness,
+        umamiRating: primaryFields.umami,
+        astringencyRating: primaryFields.astringency,
+        overallRating: primaryFields.overallRating,
+        userDescription: primaryFields.userDescription,
+        guidedTastingSummary: primaryFields.guidedTastingSummary,
+        guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+        aiResultNote: primaryFields.aiResultNote,
+        activeBrain: primaryFields.activeBrain,
+        otherComments: primaryFields.otherComments,
+        description: buildComposedNoteText(
+          primaryFields.userDescription,
+          primaryFields.guidedTastingSummary,
+          primaryFields.otherComments
+        ),
+      };
       await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), {
         sessions: finalSessions,
         ...session0Data,
@@ -719,6 +846,14 @@ export default function EditNotePage() {
     try {
       // Snapshot current session before saving
       const finalSessions = snapshotCurrentSession(extraSessions);
+      const primaryFields = activeSessionIdx === 0
+        ? getPrimarySessionFromForm()
+        : (primarySessionDraft ?? getPrimarySessionFromNote(note));
+      const composedPrimaryDescription = buildComposedNoteText(
+        primaryFields.userDescription,
+        primaryFields.guidedTastingSummary,
+        primaryFields.otherComments
+      );
 
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
       // 儲存目前的縮放位移參數，供下次重新編輯時還原
@@ -726,27 +861,33 @@ export default function EditNotePage() {
 
       // Build session-0 data (original)
       const session0Data = activeSessionIdx === 0 ? {
-        sweetnessRating: formData.sweetness,
-        acidityRating: formData.acidity,
-        bitternessRating: formData.bitterness,
-        umamiRating: formData.umami,
-        astringencyRating: formData.astringency,
-        overallRating: formData.overallRating,
-        userDescription: formData.userDescription,
-        aiResultNote: formData.aiResultNote,
-        activeBrain: formData.activeBrain,
-        description: formData.userDescription,
+        sweetnessRating: primaryFields.sweetness,
+        acidityRating: primaryFields.acidity,
+        bitternessRating: primaryFields.bitterness,
+        umamiRating: primaryFields.umami,
+        astringencyRating: primaryFields.astringency,
+        overallRating: primaryFields.overallRating,
+        userDescription: primaryFields.userDescription,
+        guidedTastingSummary: primaryFields.guidedTastingSummary,
+        guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+        aiResultNote: primaryFields.aiResultNote,
+        activeBrain: primaryFields.activeBrain,
+        otherComments: primaryFields.otherComments,
+        description: composedPrimaryDescription,
       } : {
-        sweetnessRating: note.sweetnessRating,
-        acidityRating: note.acidityRating,
-        bitternessRating: note.bitternessRating,
-        umamiRating: note.umamiRating,
-        astringencyRating: note.astringencyRating,
-        overallRating: note.overallRating,
-        userDescription: note.userDescription || note.description || '',
-        aiResultNote: note.aiResultNote || '',
-        activeBrain: note.activeBrain || null,
-        description: note.userDescription || note.description || '',
+        sweetnessRating: primaryFields.sweetness,
+        acidityRating: primaryFields.acidity,
+        bitternessRating: primaryFields.bitterness,
+        umamiRating: primaryFields.umami,
+        astringencyRating: primaryFields.astringency,
+        overallRating: primaryFields.overallRating,
+        userDescription: primaryFields.userDescription,
+        guidedTastingSummary: primaryFields.guidedTastingSummary,
+        guidedTastingAnswers: primaryFields.guidedTastingAnswers,
+        aiResultNote: primaryFields.aiResultNote,
+        activeBrain: primaryFields.activeBrain,
+        otherComments: primaryFields.otherComments,
+        description: composedPrimaryDescription,
       };
 
       const noteData = {
@@ -855,9 +996,35 @@ export default function EditNotePage() {
 
       <div className="space-y-5">
         <section className="space-y-3">
-          <div className="flex justify-between items-center px-1">
-            <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">照片聚焦編輯</Label>
-            <div className="flex gap-1.5">
+          <div className="flex justify-between items-center gap-2 px-1">
+            <Label className="text-[10px] uppercase font-bold text-primary tracking-widest shrink-0">照片聚焦編輯</Label>
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              {activeSessionIdx === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  className="relative h-8 overflow-hidden rounded-full border border-amber-300/45 bg-[linear-gradient(135deg,rgba(249,115,22,0.32),rgba(250,204,21,0.26))] px-4 text-[10px] font-black tracking-[0.14em] text-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.14),0_10px_24px_rgba(249,115,22,0.24)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_0_1px_rgba(253,224,71,0.2),0_14px_32px_rgba(245,158,11,0.3)]"
+                  onClick={() => setShowGuidedTasting(true)}
+                >
+                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_18%,rgba(255,255,255,0.06)_34%,rgba(255,255,255,0.42)_50%,rgba(255,255,255,0.06)_66%,transparent_82%)] opacity-80 animate-pulse" />
+                  <span className="relative z-10 flex items-center">
+                    <ListChecks className="mr-1.5 h-3 w-3" /> 引導品鑑
+                  </span>
+                </Button>
+              )}
+              {activeSessionIdx === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled
+                  className="text-[9px] font-bold h-6 rounded-full border-white/10 bg-white/5 text-muted-foreground/55 opacity-100 cursor-not-allowed disabled:opacity-100 disabled:pointer-events-none"
+                  title="專業品鑑功能建構中"
+                >
+                  <ClipboardCheck className="w-2.5 h-2.5 mr-1" /> 專業品鑑（建構中）
+                </Button>
+              )}
               {images.length > 0 && (
                 <Button variant="outline" size="sm" className="text-[9px] font-bold h-6 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker()}>
                   <Camera className="w-2.5 h-2.5 mr-1" /> 重選
@@ -1086,6 +1253,19 @@ export default function EditNotePage() {
                 onChange={e => setFormData(p => ({ ...p, userDescription: e.target.value }))}
               />
             </div>
+
+            {activeSessionIdx === 0 && (formData.guidedTastingSummary || formData.otherComments) && (
+              <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="mb-2 flex items-center gap-2 text-emerald-300/75">
+                  <div className="rounded-md bg-emerald-500/10 p-1"><ListChecks size={12} /></div>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em]">引導式品鑑整理預覽</span>
+                </div>
+                <div className="space-y-3 text-xs leading-relaxed text-white/75 whitespace-pre-wrap">
+                  {formData.guidedTastingSummary && <p>{formData.guidedTastingSummary}</p>}
+                  {formData.otherComments && <p>{`【其他補充】${formData.otherComments}`}</p>}
+                </div>
+              </div>
+            )}
 
             <div className={cn(
               "relative overflow-hidden rounded-xl p-4 transition-all duration-500 border min-h-[120px]",
@@ -1324,6 +1504,15 @@ export default function EditNotePage() {
       {/* 隱藏 file inputs — 相機 & 相簿 */}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePickerFile} />
       <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePickerFile} />
+
+      {showGuidedTasting && activeSessionIdx === 0 && (
+        <GuidedTasting
+          onComplete={handleGuidedComplete}
+          initialAnswers={formData.guidedTastingAnswers}
+          onAnswersChange={handleGuidedAnswersChange}
+          onClose={() => setShowGuidedTasting(false)}
+        />
+      )}
     </div>
   );
 }
