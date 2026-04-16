@@ -214,35 +214,31 @@ export const EXPO_BUY_INTENT_OPTIONS: Array<{ value: ExpoBuyIntent; label: strin
 export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
   {
     category: '香氣',
-    tags: ['果香明亮', '花香細緻', '米旨香', '熟果香'],
+    tags: ['花果香', '米旨香', '熟成香'],
   },
   {
     category: '氣泡',
-    tags: ['微氣泡', '綿密氣泡', '氣泡活潑'],
+    tags: ['無', '微', '中等', '刺激'],
   },
   {
     category: '口感',
-    tags: ['清爽輕盈', '圓潤滑順', '濃醇厚實', '酸度亮'],
+    tags: ['清爽', '圓潤', '醇厚'],
   },
   {
     category: '尾韻',
-    tags: ['尾韻短俐落', '尾韻中長', '尾韻綿長'],
+    tags: ['俐落', '中等', '綿長'],
   },
   {
     category: '甘辛口',
     tags: ['偏甘口', '甘辛平衡', '偏辛口'],
   },
   {
-    category: '前段',
-    tags: ['前段柔和', '前段果香開', '前段衝擊強'],
+    category: '酒精味',
+    tags: ['無明顯酒精味', '微酒精味', '酒精味明顯'],
   },
   {
-    category: '中段',
-    tags: ['中段展開快', '中段旨味撐起', '中段層次豐富'],
-  },
-  {
-    category: '後段',
-    tags: ['後段收得快', '後段微苦', '後段回甘'],
+    category: '酒精刺激感',
+    tags: ['無刺激', '微刺激', '刺激明顯'],
   },
 ];
 
