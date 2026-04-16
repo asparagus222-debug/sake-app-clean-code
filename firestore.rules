@@ -120,6 +120,15 @@ service cloud.firestore {
       );
     }
 
+    match /chatMessages/{messageId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /chatAnnouncementLimits/{userId} {
+      allow read, write: if false;
+    }
+
     match /reports/{reportId} {
       allow create: if isAdmin() || (
         isSignedIn()

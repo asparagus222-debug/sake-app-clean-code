@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { DailyAnnouncementDialog } from '@/components/DailyAnnouncementDialog';
+import { FloatingChatWidget } from '@/components/FloatingChatWidget';
 import { clearAuthBootstrap, createAuthBootstrapSnapshot, writeAuthBootstrap } from '@/lib/auth-bootstrap';
 
 interface FirebaseClientProviderProps {
@@ -119,6 +120,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     >
       <UserProfileBootstrapper />
       <DailyAnnouncementDialog />
+      <FloatingChatWidget />
       {children}
     </FirebaseProvider>
   );

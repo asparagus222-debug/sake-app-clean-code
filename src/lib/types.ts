@@ -45,6 +45,18 @@ export type ExpoEvent = {
   updatedAt?: string;
 };
 
+export type ChatMessageType = 'message' | 'announcement';
+
+export type ChatMessage = {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  text: string;
+  messageType: ChatMessageType;
+  createdAt: string;
+};
+
 export type SakeNote = {
   id: string;
   userId: string;

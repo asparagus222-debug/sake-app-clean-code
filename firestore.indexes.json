@@ -60,6 +60,13 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "eventDate", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "chatMessages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
