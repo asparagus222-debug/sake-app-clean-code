@@ -75,6 +75,7 @@ export function FloatingChatWidget() {
   const { user } = useUser();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const pointerIdRef = useRef<number | null>(null);
+  const widgetSizeRef = useRef<{ width: number; height: number } | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const didInitPositionRef = useRef(false);
   const dragMovedRef = useRef(false);
@@ -115,6 +116,7 @@ export function FloatingChatWidget() {
     if (typeof window === 'undefined' || !widgetRef.current || didInitPositionRef.current) return;
 
     const rect = widgetRef.current.getBoundingClientRect();
+    widgetSizeRef.current = { width: rect.width, height: rect.height };
     const storedPosition = readChatPosition();
     const defaultPosition = {
       x: window.innerWidth - rect.width - CHAT_GAP,
@@ -126,9 +128,27 @@ export function FloatingChatWidget() {
   }, []);
 
   useEffect(() => {
-    if (!widgetRef.current || !position) return;
-    const rect = widgetRef.current.getBoundingClientRect();
-    setPosition((prev) => (prev ? clampPosition(prev, rect.width, rect.height) : prev));
+    if (typeof window === 'undefined' || !widgetRef.current || !position) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (!widgetRef.current) return;
+
+      const rect = widgetRef.current.getBoundingClientRect();
+      const previousSize = widgetSizeRef.current;
+      widgetSizeRef.current = { width: rect.width, height: rect.height };
+
+      setPosition((prev) => {
+        if (!prev) return prev;
+        if (!previousSize) return clampPosition(prev, rect.width, rect.height);
+
+        return clampPosition({
+          x: prev.x + (previousSize.width - rect.width),
+          y: prev.y + (previousSize.height - rect.height),
+        }, rect.width, rect.height);
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [isCollapsed]);
 
   useEffect(() => {
@@ -142,6 +162,7 @@ export function FloatingChatWidget() {
     const handleResize = () => {
       if (!widgetRef.current || !position) return;
       const rect = widgetRef.current.getBoundingClientRect();
+      widgetSizeRef.current = { width: rect.width, height: rect.height };
       setPosition((prev) => (prev ? clampPosition(prev, rect.width, rect.height) : prev));
     };
 
