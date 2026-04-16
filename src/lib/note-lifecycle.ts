@@ -81,3 +81,25 @@ export function getExpoBuyIntentClassName(intent?: ExpoBuyIntent | null) {
 export function getSortableExpoPrice(note: Pick<SakeNote, 'expoMeta'>) {
   return typeof note.expoMeta?.price === 'number' ? note.expoMeta.price : Number.POSITIVE_INFINITY;
 }
+
+export function getExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
+  const price = note.expoMeta?.price;
+  if (typeof price !== 'number' || price <= 0) return null;
+
+  return (note.overallRating * getExpoBuyIntentRank(note.expoMeta?.buyIntent)) / price;
+}
+
+export function getSortableExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
+  return getExpoCpScore(note) ?? Number.NEGATIVE_INFINITY;
+}
+
+export function getExpoNoteDisplayName(note: Pick<SakeNote, 'brandName' | 'brewery' | 'expoMeta'>) {
+  const brandName = note.brandName?.trim();
+  const brewery = note.brewery?.trim();
+  const booth = note.expoMeta?.booth?.trim();
+
+  if (brandName) return brandName;
+  if (brewery) return `${brewery}（未填銘柄）`;
+  if (booth) return `攤位 ${booth}`;
+  return '未命名快記';
+}

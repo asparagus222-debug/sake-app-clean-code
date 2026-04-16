@@ -3,8 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, ShoppingBag, Star, Store, Trash2 } from 'lucide-react';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, PencilLine, ShoppingBag, Star, Store, Trash2, Trophy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,11 +23,11 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
-import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
+import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type SortMode = 'intent' | 'score' | 'price';
+type SortMode = 'intent' | 'score' | 'price' | 'cp';
 
 export default function ExpoEventPage() {
   const params = useParams();
@@ -39,6 +39,7 @@ export default function ExpoEventPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('intent');
   const [formData, setFormData] = useState({
     brandName: '',
@@ -87,6 +88,12 @@ export default function ExpoEventPage() {
           || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
           || (right.createdAt || '').localeCompare(left.createdAt || '');
       }
+      if (sortMode === 'cp') {
+        return getSortableExpoCpScore(right) - getSortableExpoCpScore(left)
+          || right.overallRating - left.overallRating
+          || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
+          || (right.createdAt || '').localeCompare(left.createdAt || '');
+      }
       return getSortableExpoPrice(left) - getSortableExpoPrice(right)
         || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
         || (right.createdAt || '').localeCompare(left.createdAt || '');
@@ -108,14 +115,23 @@ export default function ExpoEventPage() {
     }));
   };
 
+  const resetForm = () => {
+    setEditingNoteId(null);
+    setFormData((prev) => ({
+      ...prev,
+      brandName: '',
+      price: '',
+      overallRating: 7,
+      buyIntent: 'consider',
+      quickTags: [],
+      quickNote: '',
+    }));
+  };
+
   const handleCreateQuickNote = async () => {
     if (!firestore || !user || !event) return;
-    if (!formData.brandName.trim()) {
-      toast({ variant: 'destructive', title: '請先填寫酒名' });
-      return;
-    }
-    if (!formData.booth.trim()) {
-      toast({ variant: 'destructive', title: '請先填寫攤位' });
+    if (!formData.brandName.trim() && !formData.brewery.trim() && !formData.booth.trim()) {
+      toast({ variant: 'destructive', title: '銘柄、品牌或攤位至少填一項' });
       return;
     }
 
@@ -157,23 +173,53 @@ export default function ExpoEventPage() {
           isPurchased: false,
         },
       };
-      await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
-      toast({ title: '酒展快記已儲存' });
-      setFormData((prev) => ({
-        ...prev,
-        brandName: '',
-        price: '',
-        overallRating: 7,
-        buyIntent: 'consider',
-        quickTags: [],
-        quickNote: '',
-      }));
+      if (editingNoteId) {
+        await updateDoc(doc(firestore, 'sakeTastingNotes', editingNoteId), {
+          brandName: formData.brandName.trim(),
+          brewery: formData.brewery.trim(),
+          description: formData.quickNote.trim(),
+          userDescription: formData.quickNote.trim(),
+          overallRating: formData.overallRating,
+          updatedAt: now,
+          expoMeta: {
+            eventId,
+            eventName: event.name,
+            booth: formData.booth.trim(),
+            price: Number.isFinite(price) ? price : null,
+            currency: 'TWD',
+            buyIntent: formData.buyIntent,
+            quickTags: formData.quickTags,
+            quickNote: formData.quickNote.trim(),
+            isPurchased: false,
+          },
+        });
+        toast({ title: '快記已更新' });
+      } else {
+        await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+        toast({ title: '酒展快記已儲存' });
+      }
+      resetForm();
     } catch {
-      toast({ variant: 'destructive', title: '快記儲存失敗' });
+      toast({ variant: 'destructive', title: editingNoteId ? '快記更新失敗' : '快記儲存失敗' });
       setIsSaving(false);
       return;
     }
     setIsSaving(false);
+  };
+
+  const handleEditQuickNote = (note: SakeNote) => {
+    setEditingNoteId(note.id);
+    setFormData({
+      brandName: note.brandName || '',
+      brewery: note.brewery || '',
+      booth: note.expoMeta?.booth || '',
+      price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
+      overallRating: note.overallRating || 7,
+      buyIntent: note.expoMeta?.buyIntent || 'consider',
+      quickTags: note.expoMeta?.quickTags || [],
+      quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteQuickNote = async (noteId: string) => {
@@ -288,7 +334,7 @@ export default function ExpoEventPage() {
           <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Quick Capture</p>
-              <h2 className="text-lg font-bold text-foreground">現場快記一杯</h2>
+              <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '現場快記一杯'}</h2>
             </div>
 
             <div className="grid gap-4">
@@ -376,10 +422,17 @@ export default function ExpoEventPage() {
             <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
 
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-muted-foreground">送出後保留當前攤位與酒造，方便下一杯繼續記。</p>
-              <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} 儲存快記
-              </Button>
+              <p className="text-[11px] text-muted-foreground">銘柄、品牌、攤位三者至少填一項即可送出；送出後保留當前攤位與酒造，方便下一杯繼續記。</p>
+              <div className="flex items-center gap-2">
+                {editingNoteId && (
+                  <Button type="button" variant="outline" onClick={resetForm} className="rounded-full h-11 px-5 text-xs font-bold uppercase tracking-widest">
+                    取消編輯
+                  </Button>
+                )}
+                <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} {editingNoteId ? '更新快記' : '儲存快記'}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -390,11 +443,17 @@ export default function ExpoEventPage() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Compare View</p>
                   <h2 className="text-lg font-bold text-foreground">本場比較清單</h2>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link href={`/expo/${eventId}/ranking`}>
+                    <Button variant="outline" className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">
+                      <Trophy className="w-3 h-3 mr-1.5" /> 排名打卡頁
+                    </Button>
+                  </Link>
                   {[
                     { value: 'intent', label: '想買程度', icon: ShoppingBag },
                     { value: 'score', label: '整體分數', icon: Star },
                     { value: 'price', label: '價格', icon: CircleDollarSign },
+                    { value: 'cp', label: 'CP 值', icon: BadgeDollarSign },
                   ].map((option) => {
                     const Icon = option.icon;
                     return (
@@ -437,15 +496,19 @@ export default function ExpoEventPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm font-bold text-foreground break-words leading-snug">{note.brandName || '未命名酒款'}</p>
+                        <p className="text-sm font-bold text-foreground break-words leading-snug">{getExpoNoteDisplayName(note)}</p>
                         <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                           {note.brewery && <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3 text-primary/70" /> {note.brewery}</span>}
                           <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> 攤位 {note.expoMeta?.booth || '-'}</span>
                           <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> {typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '未記價格'}</span>
                           <span className="inline-flex items-center gap-1"><Star className="w-3 h-3 text-primary/70" /> {note.overallRating}/10</span>
+                          <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> CP {getExpoCpScore(note)?.toFixed(2) ?? '--'}</span>
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
+                        <Button type="button" variant="outline" onClick={() => handleEditQuickNote(note)} className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">
+                          <PencilLine className="w-3.5 h-3.5 mr-1.5" /> 編輯
+                        </Button>
                         <Link href={`/notes/${note.id}`}>
                           <Button variant="outline" className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">查看</Button>
                         </Link>
