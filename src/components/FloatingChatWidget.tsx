@@ -75,6 +75,8 @@ export function FloatingChatWidget() {
   const { user } = useUser();
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const didInitPositionRef = useRef(false);
+  const dragMovedRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -108,16 +110,23 @@ export function FloatingChatWidget() {
   }, [isCollapsed]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !widgetRef.current) return;
+    if (typeof window === 'undefined' || !widgetRef.current || didInitPositionRef.current) return;
 
-    const storedPosition = readChatPosition();
     const rect = widgetRef.current.getBoundingClientRect();
+    const storedPosition = readChatPosition();
     const defaultPosition = {
       x: window.innerWidth - rect.width - CHAT_GAP,
       y: window.innerHeight - rect.height - CHAT_GAP,
     };
 
+    didInitPositionRef.current = true;
     setPosition(clampPosition(storedPosition ?? defaultPosition, rect.width, rect.height));
+  }, []);
+
+  useEffect(() => {
+    if (!widgetRef.current || !position) return;
+    const rect = widgetRef.current.getBoundingClientRect();
+    setPosition((prev) => (prev ? clampPosition(prev, rect.width, rect.height) : prev));
   }, [isCollapsed]);
 
   useEffect(() => {
@@ -178,15 +187,16 @@ export function FloatingChatWidget() {
     }
   };
 
-  const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
+  const beginDrag = (event: React.PointerEvent<HTMLElement>, allowInteractiveTarget = false) => {
     if (!widgetRef.current) return;
 
     const target = event.target as HTMLElement;
-    if (target.closest('button, textarea, input, [role="button"]')) {
+    if (!allowInteractiveTarget && target.closest('button, textarea, input, [role="button"]')) {
       return;
     }
 
     const rect = widgetRef.current.getBoundingClientRect();
+    dragMovedRef.current = false;
     dragOffsetRef.current = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
@@ -199,9 +209,19 @@ export function FloatingChatWidget() {
     if (!isDragging || !widgetRef.current) return;
 
     const rect = widgetRef.current.getBoundingClientRect();
-    const nextPosition = clampPosition({
+    const nextRawPosition = {
       x: event.clientX - dragOffsetRef.current.x,
       y: event.clientY - dragOffsetRef.current.y,
+    };
+    if (
+      Math.abs(nextRawPosition.x - rect.left) > 3 ||
+      Math.abs(nextRawPosition.y - rect.top) > 3
+    ) {
+      dragMovedRef.current = true;
+    }
+    const nextPosition = clampPosition({
+      x: nextRawPosition.x,
+      y: nextRawPosition.y,
     }, rect.width, rect.height);
 
     setPosition(nextPosition);
@@ -213,6 +233,14 @@ export function FloatingChatWidget() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  };
+
+  const handleCollapsedClick = () => {
+    if (dragMovedRef.current) {
+      dragMovedRef.current = false;
+      return;
+    }
+    setIsCollapsed(false);
   };
 
   return (
@@ -245,8 +273,8 @@ export function FloatingChatWidget() {
         {isCollapsed ? (
           <button
             type="button"
-            onClick={() => setIsCollapsed(false)}
-            onPointerDown={beginDrag}
+            onClick={handleCollapsedClick}
+            onPointerDown={(event) => beginDrag(event, true)}
             onPointerMove={handleDragMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
