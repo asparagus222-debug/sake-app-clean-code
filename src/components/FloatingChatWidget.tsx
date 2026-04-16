@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, limit, orderBy, query } from 'firebase/firestore';
 import { Bell, Megaphone, MessagesSquare, Minimize2, Send, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,6 +13,13 @@ import { cn } from '@/lib/utils';
 
 const CHAT_COLLAPSED_STORAGE_KEY = 'floating_chat_collapsed';
 const CHAT_SEEN_ANNOUNCEMENTS_KEY = 'floating_chat_seen_announcements';
+const CHAT_POSITION_STORAGE_KEY = 'floating_chat_position';
+const CHAT_GAP = 16;
+
+type ChatPosition = {
+  x: number;
+  y: number;
+};
 
 function readSeenAnnouncements() {
   if (typeof window === 'undefined') return [] as string[];
@@ -31,10 +38,44 @@ function writeSeenAnnouncements(ids: string[]) {
   window.localStorage.setItem(CHAT_SEEN_ANNOUNCEMENTS_KEY, JSON.stringify(ids.slice(-50)));
 }
 
+function readChatPosition() {
+  if (typeof window === 'undefined') return null as ChatPosition | null;
+
+  try {
+    const raw = window.localStorage.getItem(CHAT_POSITION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ChatPosition>;
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return null;
+    return { x: parsed.x, y: parsed.y };
+  } catch {
+    return null;
+  }
+}
+
+function writeChatPosition(position: ChatPosition) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(CHAT_POSITION_STORAGE_KEY, JSON.stringify(position));
+}
+
+function clampPosition(position: ChatPosition, width: number, height: number) {
+  if (typeof window === 'undefined') return position;
+
+  const maxX = Math.max(CHAT_GAP, window.innerWidth - width - CHAT_GAP);
+  const maxY = Math.max(CHAT_GAP, window.innerHeight - height - CHAT_GAP);
+
+  return {
+    x: Math.min(Math.max(CHAT_GAP, position.x), maxX),
+    y: Math.min(Math.max(CHAT_GAP, position.y), maxY),
+  };
+}
+
 export function FloatingChatWidget() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { user } = useUser();
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -43,6 +84,7 @@ export function FloatingChatWidget() {
     return window.localStorage.getItem(CHAT_COLLAPSED_STORAGE_KEY) !== 'false';
   });
   const [activeAnnouncement, setActiveAnnouncement] = useState<ChatMessage | null>(null);
+  const [position, setPosition] = useState<ChatPosition | null>(null);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -64,6 +106,37 @@ export function FloatingChatWidget() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(CHAT_COLLAPSED_STORAGE_KEY, String(isCollapsed));
   }, [isCollapsed]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !widgetRef.current) return;
+
+    const storedPosition = readChatPosition();
+    const rect = widgetRef.current.getBoundingClientRect();
+    const defaultPosition = {
+      x: window.innerWidth - rect.width - CHAT_GAP,
+      y: window.innerHeight - rect.height - CHAT_GAP,
+    };
+
+    setPosition(clampPosition(storedPosition ?? defaultPosition, rect.width, rect.height));
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    if (!position) return;
+    writeChatPosition(position);
+  }, [position]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      if (!widgetRef.current || !position) return;
+      const rect = widgetRef.current.getBoundingClientRect();
+      setPosition((prev) => (prev ? clampPosition(prev, rect.width, rect.height) : prev));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [position]);
 
   useEffect(() => {
     if (!latestAnnouncement) return;
@@ -105,6 +178,43 @@ export function FloatingChatWidget() {
     }
   };
 
+  const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (!widgetRef.current) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('button, textarea, input, [role="button"]')) {
+      return;
+    }
+
+    const rect = widgetRef.current.getBoundingClientRect();
+    dragOffsetRef.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleDragMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!isDragging || !widgetRef.current) return;
+
+    const rect = widgetRef.current.getBoundingClientRect();
+    const nextPosition = clampPosition({
+      x: event.clientX - dragOffsetRef.current.x,
+      y: event.clientY - dragOffsetRef.current.y,
+    }, rect.width, rect.height);
+
+    setPosition(nextPosition);
+  };
+
+  const endDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
   return (
     <>
       {activeAnnouncement && (
@@ -127,12 +237,23 @@ export function FloatingChatWidget() {
         </div>
       )}
 
-      <div className="fixed left-4 bottom-4 z-[65] max-w-[calc(100vw-2rem)]">
+      <div
+        ref={widgetRef}
+        className="fixed z-[65] max-w-[calc(100vw-2rem)]"
+        style={position ? { left: position.x, top: position.y } : { right: CHAT_GAP, bottom: CHAT_GAP }}
+      >
         {isCollapsed ? (
           <button
             type="button"
             onClick={() => setIsCollapsed(false)}
-            className="group flex h-16 w-16 items-center justify-center rounded-full border border-sky-400/30 bg-[#111317]/95 text-sky-200 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-sky-500/10"
+            onPointerDown={beginDrag}
+            onPointerMove={handleDragMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            className={cn(
+              'group flex h-16 w-16 items-center justify-center rounded-full border border-sky-400/30 bg-[#111317]/95 text-sky-200 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-sky-500/10',
+              isDragging && 'cursor-grabbing scale-105'
+            )}
           >
             <div className="relative">
               <MessagesSquare className="h-7 w-7" />
@@ -143,7 +264,13 @@ export function FloatingChatWidget() {
           </button>
         ) : (
           <div className="dark-glass flex h-[min(70vh,42rem)] w-[min(92vw,24rem)] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#101215]/95 shadow-[0_18px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div
+              onPointerDown={beginDrag}
+              onPointerMove={handleDragMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              className={cn('flex items-center justify-between border-b border-white/10 px-4 py-3 cursor-grab select-none', isDragging && 'cursor-grabbing')}
+            >
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Open Chat</p>
                 <p className="text-sm font-bold text-foreground">酒友聊天室</p>

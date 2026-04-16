@@ -19,6 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
@@ -298,7 +299,28 @@ export default function ExpoEventPage() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-                <Input type="number" min={1} max={10} value={formData.overallRating} onChange={(event) => setFormData((prev) => ({ ...prev, overallRating: Math.min(10, Math.max(1, Number(event.target.value) || 1)) }))} placeholder="整體分數" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">整體分數</p>
+                    <p className="text-sm font-bold text-primary">{formData.overallRating}/10</p>
+                  </div>
+                  <Slider
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={[formData.overallRating]}
+                    onValueChange={(value) => {
+                      const nextValue = value[0];
+                      if (!nextValue) return;
+                      setFormData((prev) => ({ ...prev, overallRating: nextValue }));
+                    }}
+                    className="py-2"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                    <span>1</span>
+                    <span>10</span>
+                  </div>
+                </div>
               </div>
             </div>
 
