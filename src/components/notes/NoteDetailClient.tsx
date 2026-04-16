@@ -455,7 +455,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                     </Badge>
                     {note.expoMeta.booth && (
                       <Badge variant="outline" className="text-[9px] h-5 px-2 border-white/10 bg-white/5 text-foreground/80 font-bold tracking-widest">
-                        Booth {note.expoMeta.booth}
+                        攤位 {note.expoMeta.booth}
                       </Badge>
                     )}
                     {typeof note.expoMeta.price === 'number' && (

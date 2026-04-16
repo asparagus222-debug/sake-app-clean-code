@@ -22,6 +22,11 @@ export type NotePublicationStatus = 'draft' | 'published';
 
 export type ExpoBuyIntent = 'skip' | 'consider' | 'want' | 'must-buy';
 
+export type ExpoQuickTagGroup = {
+  category: string;
+  tags: string[];
+};
+
 export type ExpoMeta = {
   eventId: string;
   eventName?: string;
@@ -206,19 +211,39 @@ export const EXPO_BUY_INTENT_OPTIONS: Array<{ value: ExpoBuyIntent; label: strin
   { value: 'must-buy', label: '必買' },
 ];
 
-export const EXPO_QUICK_TAG_OPTIONS = [
-  '果香',
-  '花香',
-  '米旨',
-  '清爽',
-  '濃醇',
-  '辛口',
-  '甘口',
-  '酸度亮',
-  '尾韻長',
-  '尾韻短',
-  'CP 值高',
-  '價格偏高',
-  '想回喝',
-  '想送禮',
+export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
+  {
+    category: '香氣',
+    tags: ['果香明亮', '花香細緻', '米旨香', '熟果香'],
+  },
+  {
+    category: '氣泡',
+    tags: ['微氣泡', '綿密氣泡', '氣泡活潑'],
+  },
+  {
+    category: '口感',
+    tags: ['清爽輕盈', '圓潤滑順', '濃醇厚實', '酸度亮'],
+  },
+  {
+    category: '尾韻',
+    tags: ['尾韻短俐落', '尾韻中長', '尾韻綿長'],
+  },
+  {
+    category: '甘辛口',
+    tags: ['偏甘口', '甘辛平衡', '偏辛口'],
+  },
+  {
+    category: '前段',
+    tags: ['前段柔和', '前段果香開', '前段衝擊強'],
+  },
+  {
+    category: '中段',
+    tags: ['中段展開快', '中段旨味撐起', '中段層次豐富'],
+  },
+  {
+    category: '後段',
+    tags: ['後段收得快', '後段微苦', '後段回甘'],
+  },
 ];
+
+export const EXPO_QUICK_TAG_OPTIONS = EXPO_QUICK_TAG_GROUPS.flatMap((group) => group.tags);

@@ -64,6 +64,16 @@ const QUESTIONS: Q[] = [
     ],
   },
   {
+    id: 'bubbles', section: '外觀', sectionColor: '#d4af37',
+    text: '氣泡感？', shortLabel: '氣泡', type: 'single',
+    options: [
+      { value: '無', label: '無', emoji: '⚪' },
+      { value: '微', label: '微', emoji: '🫧' },
+      { value: '中等', label: '中等', emoji: '✨' },
+      { value: '強', label: '強', emoji: '🥂' },
+    ],
+  },
+  {
     id: 'aromaIntensity', section: '香氣', sectionColor: '#7c3aed',
     text: '香氣的強度？', shortLabel: '香氣強度', type: 'single',
     options: [
@@ -254,8 +264,12 @@ function buildResult(answers: GuidedTastingAnswers): GuidedTastingResult {
 
   const color = get('color');
   const clarity = get('clarity');
-  if (color || clarity) {
-    parts.push(`【外觀】酒液${color ?? ''}${clarity ? `，${clarity}` : ''}`);
+  const bubbles = get('bubbles');
+  if (color || clarity || bubbles) {
+    let line = `【外觀】酒液${color ?? ''}`;
+    if (clarity) line += `${color ? '，' : ''}${clarity}`;
+    if (bubbles) line += `${color || clarity ? '，' : ''}氣泡感${bubbles}`;
+    parts.push(line);
   }
 
   const aromaIntensity = get('aromaIntensity');

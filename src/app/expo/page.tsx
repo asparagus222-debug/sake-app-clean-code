@@ -3,8 +3,19 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { addDoc, collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { CalendarDays, ChevronRight, Loader2, MapPin, Plus, Sparkles } from 'lucide-react';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { CalendarDays, ChevronRight, Loader2, MapPin, Plus, Sparkles, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +29,7 @@ export default function ExpoPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     venue: '',
@@ -66,6 +78,27 @@ export default function ExpoPage() {
     } catch {
       toast({ variant: 'destructive', title: '建立活動失敗' });
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!firestore || !user || deletingEventId) return;
+
+    setDeletingEventId(eventId);
+    try {
+      const noteSnapshots = await getDocs(query(
+        collection(firestore, 'sakeTastingNotes'),
+        where('userId', '==', user.uid),
+        where('expoMeta.eventId', '==', eventId)
+      ));
+
+      await Promise.all(noteSnapshots.docs.map((noteDoc) => deleteDoc(noteDoc.ref)));
+      await deleteDoc(doc(firestore, 'expoEvents', eventId));
+      toast({ title: '酒展工作台已刪除' });
+    } catch {
+      toast({ variant: 'destructive', title: '刪除工作台失敗' });
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -156,7 +189,7 @@ export default function ExpoPage() {
             </div>
             <div className="space-y-3 text-sm text-foreground/80">
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">1. 建立酒展活動</div>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">2. 每杯只記酒名、booth、價格、分數、想買程度</div>
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">2. 每杯只記酒名、攤位、價格、分數、想買程度</div>
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">3. 回家用比較頁切排序，挑出最值得買和最值得發文的酒</div>
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">4. 從同一篇進入完整編輯，補好之後再發布</div>
             </div>
@@ -185,19 +218,47 @@ export default function ExpoPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {events.map((event) => (
-                <Link key={event.id} href={`/expo/${event.id}`} className="group dark-glass rounded-[2rem] border border-white/10 p-5 space-y-4 hover:border-sky-400/30 hover:bg-sky-500/5 transition-all">
+                <div key={event.id} className="group dark-glass rounded-[2rem] border border-white/10 p-5 space-y-4 hover:border-sky-400/30 hover:bg-sky-500/5 transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <Link href={`/expo/${event.id}`} className="min-w-0 flex-1">
                       <p className="text-xs font-bold text-foreground break-words leading-snug">{event.name}</p>
                       <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         <span className="inline-flex items-center gap-1"><CalendarDays className="w-3 h-3 text-primary/70" /> {event.eventDate}</span>
                         {event.venue && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3 text-primary/70" /> {event.venue}</span>}
                       </div>
+                    </Link>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Link href={`/expo/${event.id}`} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-sky-300 transition-colors">
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem]">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-destructive uppercase tracking-widest font-bold">刪除酒展工作台？</AlertDialogTitle>
+                            <AlertDialogDescription className="text-xs">
+                              確定要刪除「{event.name}」嗎？這會連同該活動底下的所有快記一起刪除，且不可復原。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="rounded-full bg-destructive text-[10px] font-bold uppercase"
+                            >
+                              {deletingEventId === event.id ? '刪除中' : '確認刪除'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-sky-300 transition-colors" />
                   </div>
                   {event.notes && <p className="text-sm text-foreground/70 line-clamp-3">{event.notes}</p>}
-                </Link>
+                </div>
               ))}
             </div>
           )}

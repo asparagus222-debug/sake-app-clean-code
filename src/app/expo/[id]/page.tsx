@@ -3,14 +3,25 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { addDoc, collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, ShoppingBag, Star, Store } from 'lucide-react';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, ShoppingBag, Star, Store, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
+import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
 import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -25,6 +36,8 @@ export default function ExpoEventPage() {
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('intent');
   const [formData, setFormData] = useState({
     brandName: '',
@@ -101,7 +114,7 @@ export default function ExpoEventPage() {
       return;
     }
     if (!formData.booth.trim()) {
-      toast({ variant: 'destructive', title: '請先填寫 booth' });
+      toast({ variant: 'destructive', title: '請先填寫攤位' });
       return;
     }
 
@@ -162,6 +175,42 @@ export default function ExpoEventPage() {
     setIsSaving(false);
   };
 
+  const handleDeleteQuickNote = async (noteId: string) => {
+    if (!firestore || deletingNoteId) return;
+
+    setDeletingNoteId(noteId);
+    try {
+      await deleteDoc(doc(firestore, 'sakeTastingNotes', noteId));
+      toast({ title: '快記已刪除' });
+    } catch {
+      toast({ variant: 'destructive', title: '刪除快記失敗' });
+    } finally {
+      setDeletingNoteId(null);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!firestore || !user || !eventId || isDeletingEvent) return;
+
+    setIsDeletingEvent(true);
+    try {
+      const noteSnapshots = await getDocs(query(
+        collection(firestore, 'sakeTastingNotes'),
+        where('userId', '==', user.uid),
+        where('expoMeta.eventId', '==', eventId)
+      ));
+
+      await Promise.all(noteSnapshots.docs.map((noteDoc) => deleteDoc(noteDoc.ref)));
+      await deleteDoc(doc(firestore, 'expoEvents', eventId));
+      toast({ title: '酒展工作台已刪除' });
+      router.replace('/expo');
+    } catch {
+      toast({ variant: 'destructive', title: '刪除工作台失敗' });
+    } finally {
+      setIsDeletingEvent(false);
+    }
+  };
+
   if (isUserLoading || isEventLoading) {
     return (
       <div className="min-h-screen notebook-texture flex items-center justify-center">
@@ -195,18 +244,41 @@ export default function ExpoEventPage() {
               <span className="inline-flex items-center gap-1"><ClipboardList className="w-3 h-3 text-primary/70" /> {event.eventDate}</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 shrink-0">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
-              <div className="text-lg font-headline font-bold text-primary">{counts.total}</div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">總杯數</div>
-            </div>
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-center">
-              <div className="text-lg font-headline font-bold text-emerald-300">{counts.mustBuy}</div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-200/70">必買</div>
-            </div>
-            <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-center">
-              <div className="text-lg font-headline font-bold text-sky-300">{counts.published}</div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-sky-200/70">已發布</div>
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="outline" className="rounded-full h-10 px-5 text-[10px] font-bold uppercase tracking-widest text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" /> 刪除工作台
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive uppercase tracking-widest font-bold">刪除這個酒展工作台？</AlertDialogTitle>
+                  <AlertDialogDescription className="text-xs">
+                    確定要刪除「{event.name}」嗎？這會連同本場所有快記一起刪除，且不可復原。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteEvent} className="rounded-full bg-destructive text-[10px] font-bold uppercase">
+                    {isDeletingEvent ? '刪除中' : '確認刪除'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
+                <div className="text-lg font-headline font-bold text-primary">{counts.total}</div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">總杯數</div>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-center">
+                <div className="text-lg font-headline font-bold text-emerald-300">{counts.mustBuy}</div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-200/70">必買</div>
+              </div>
+              <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-center">
+                <div className="text-lg font-headline font-bold text-sky-300">{counts.published}</div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-sky-200/70">已發布</div>
+              </div>
             </div>
           </div>
         </div>
@@ -222,7 +294,7 @@ export default function ExpoEventPage() {
               <Input value={formData.brandName} onChange={(event) => setFormData((prev) => ({ ...prev, brandName: event.target.value }))} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input value={formData.brewery} onChange={(event) => setFormData((prev) => ({ ...prev, brewery: event.target.value }))} placeholder="酒造 / 品牌" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-                <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="Booth" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-11 rounded-2xl bg-white/5 border-white/10" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
@@ -253,21 +325,28 @@ export default function ExpoEventPage() {
 
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速標籤</p>
-              <div className="flex flex-wrap gap-2">
-                {EXPO_QUICK_TAG_OPTIONS.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleQuickTag(tag)}
-                    className={cn(
-                      'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all',
-                      formData.quickTags.includes(tag)
-                        ? 'border-primary bg-primary text-white shadow-lg'
-                        : 'border-white/10 bg-white/5 text-muted-foreground'
-                    )}
-                  >
-                    {tag}
-                  </button>
+              <div className="space-y-3">
+                {EXPO_QUICK_TAG_GROUPS.map((group) => (
+                  <div key={group.category} className="rounded-[1.4rem] border border-white/10 bg-white/5 p-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {group.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleQuickTag(tag)}
+                          className={cn(
+                            'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all',
+                            formData.quickTags.includes(tag)
+                              ? 'border-primary bg-primary text-white shadow-lg'
+                              : 'border-white/10 bg-white/5 text-muted-foreground'
+                          )}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -275,7 +354,7 @@ export default function ExpoEventPage() {
             <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
 
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-muted-foreground">送出後保留當前 booth 與酒造，方便下一杯繼續記。</p>
+              <p className="text-[11px] text-muted-foreground">送出後保留當前攤位與酒造，方便下一杯繼續記。</p>
               <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} 儲存快記
               </Button>
@@ -339,7 +418,7 @@ export default function ExpoEventPage() {
                         <p className="text-sm font-bold text-foreground break-words leading-snug">{note.brandName || '未命名酒款'}</p>
                         <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                           {note.brewery && <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3 text-primary/70" /> {note.brewery}</span>}
-                          <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> Booth {note.expoMeta?.booth || '-'}</span>
+                          <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> 攤位 {note.expoMeta?.booth || '-'}</span>
                           <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> {typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '未記價格'}</span>
                           <span className="inline-flex items-center gap-1"><Star className="w-3 h-3 text-primary/70" /> {note.overallRating}/10</span>
                         </div>
@@ -351,6 +430,27 @@ export default function ExpoEventPage() {
                         <Link href={`/notes/${note.id}/edit`}>
                           <Button className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">完整整理</Button>
                         </Link>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="outline" className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">
+                              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> 刪除
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="dark-glass border border-white/10 rounded-[2rem]">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-destructive uppercase tracking-widest font-bold">刪除這杯快記？</AlertDialogTitle>
+                              <AlertDialogDescription className="text-xs">
+                                確定要刪除「{note.brandName || '未命名酒款'}」嗎？刪除後將無法復原。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-full text-[10px] font-bold uppercase">取消</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteQuickNote(note.id)} className="rounded-full bg-destructive text-[10px] font-bold uppercase">
+                                {deletingNoteId === note.id ? '刪除中' : '確認刪除'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
 
