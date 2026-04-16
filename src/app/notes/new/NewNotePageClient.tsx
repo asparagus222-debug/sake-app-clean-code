@@ -17,6 +17,7 @@ import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemo
 import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
+import { deleteNoteDraft, getNoteDraft, saveNoteDraft } from '@/lib/note-draft-storage';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 type NewNotePageClientProps = {
@@ -270,37 +271,47 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     const params = new URLSearchParams(window.location.search);
     const draftParam = params.get('draft');
     if (!draftParam) return;
-    try {
-      const raw = localStorage.getItem('sake_note_drafts');
-      if (!raw) return;
-      const arr = JSON.parse(raw);
-      const d = arr.find((item: Record<string, unknown>) => item.id === draftParam);
-      if (!d) return;
-      setDraftId(d.id as string);
-      setIsEditingDraft(true);
-      if (d.formData) {
-        setFormData(prev => ({
-          ...prev,
-          ...(d.formData as Partial<typeof prev>),
-          brandName: mergeSakeBrandName(
-            (d.formData as { brandName?: string }).brandName || prev.brandName,
-            (d.formData as { subBrand?: string }).subBrand || ''
-          ),
-          servingTemperatures: Array.isArray((d.formData as { servingTemperatures?: unknown }).servingTemperatures)
-            ? ((d.formData as { servingTemperatures?: string[] }).servingTemperatures || []).filter(Boolean)
-            : typeof (d.formData as { servingTemperature?: unknown }).servingTemperature === 'string'
-              ? [((d.formData as { servingTemperature?: string }).servingTemperature || '')].filter(Boolean)
-              : prev.servingTemperatures,
-        }));
+    let cancelled = false;
+
+    const loadDraft = async () => {
+      try {
+        const draft = await getNoteDraft(draftParam);
+        if (!draft || cancelled) return;
+
+        setDraftId(draft.id);
+        setIsEditingDraft(true);
+        if (draft.formData) {
+          setFormData(prev => ({
+            ...prev,
+            ...(draft.formData as Partial<typeof prev>),
+            brandName: mergeSakeBrandName(
+              (draft.formData as { brandName?: string }).brandName || prev.brandName,
+              (draft.formData as { subBrand?: string }).subBrand || ''
+            ),
+            servingTemperatures: Array.isArray((draft.formData as { servingTemperatures?: unknown }).servingTemperatures)
+              ? ((draft.formData as { servingTemperatures?: string[] }).servingTemperatures || []).filter(Boolean)
+              : typeof (draft.formData as { servingTemperature?: unknown }).servingTemperature === 'string'
+                ? [((draft.formData as { servingTemperature?: string }).servingTemperature || '')].filter(Boolean)
+                : prev.servingTemperatures,
+          }));
+        }
+        if (draft.images?.length) setImages(draft.images);
+        if (draft.originals?.length) setOriginals(draft.originals);
+        if (draft.zooms) setZooms(draft.zooms);
+        if (draft.offsets) setOffsets(draft.offsets);
+        if (draft.splitRatio !== undefined) setSplitRatio(draft.splitRatio);
+        if (draft.imgRatios) setImgRatios(draft.imgRatios);
+        toast({ title: '草稿已載入', description: `繼續編輯「${draft.brandName || '未命名草稿'}」` });
+      } catch {
+        // Ignore malformed draft payloads.
       }
-      if ((d.images as string[])?.length) setImages(d.images as string[]);
-      if ((d.originals as string[])?.length) setOriginals(d.originals as string[]);
-      if (d.zooms) setZooms(d.zooms as number[]);
-      if (d.offsets) setOffsets(d.offsets as {x:number;y:number}[]);
-      if (d.splitRatio !== undefined) setSplitRatio(d.splitRatio as number);
-      if (d.imgRatios) setImgRatios(d.imgRatios as number[]);
-      toast({ title: '草稿已載入', description: `繼續編輯「${(d.brandName as string) || '未命名草稿'}」` });
-    } catch {}
+    };
+
+    void loadDraft();
+
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -629,13 +640,13 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     });
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     try {
       const id = draftId || Date.now().toString();
-      const draft = {
+      await saveNoteDraft({
         id,
         brandName: formData.brandName || '未命名草稿',
-        formData,
+        formData: formData as unknown as Record<string, unknown>,
         images,
         originals,
         zooms,
@@ -643,17 +654,12 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         splitRatio,
         imgRatios,
         savedAt: new Date().toISOString(),
-      };
-      const raw = localStorage.getItem('sake_note_drafts');
-      const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
-      const idx = arr.findIndex(d => d.id === id);
-      if (idx >= 0) { arr[idx] = draft; } else { arr.push(draft); }
-      localStorage.setItem('sake_note_drafts', JSON.stringify(arr));
+      });
       setDraftId(id);
       setIsEditingDraft(true);
       toast({ title: '草稿已儲存', description: '可從首頁草稿列表繼續編輯' });
     } catch {
-      toast({ variant: 'destructive', title: '儲存草稿失敗', description: '裝置儲存空間可能不足' });
+      toast({ variant: 'destructive', title: '儲存草稿失敗', description: '草稿寫入失敗，請稍後再試' });
     }
   };
 
@@ -909,6 +915,10 @@ const handleSave = async () => {
       alcoholPercent: formData.alcoholPercent,
       foodPairings: formData.foodPairings,
       cupTypes: formData.cupTypes,
+      entryMode: 'standard' as const,
+      visibility: 'public' as const,
+      publicationStatus: 'published' as const,
+      publishedAt: new Date().toISOString(),
       
       imageUrls: finalImages,
       imageOriginals: originals,
@@ -934,9 +944,7 @@ const handleSave = async () => {
     deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
     try {
       if (draftId) {
-        const raw = localStorage.getItem('sake_note_drafts');
-        const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
-        localStorage.setItem('sake_note_drafts', JSON.stringify(arr.filter(d => d.id !== draftId)));
+        await deleteNoteDraft(draftId);
       }
     } catch {}
 

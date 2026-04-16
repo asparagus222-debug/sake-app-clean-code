@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Loader2, Trophy, Building2, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 export default function RankingsPage() {
@@ -17,16 +18,23 @@ export default function RankingsPage() {
 
   const rankingQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(500));
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('visibility', '==', 'public'),
+      where('publicationStatus', '==', 'published'),
+      orderBy('overallRating', 'desc'),
+      limit(500)
+    );
   }, [firestore]);
   const { data: notes, isLoading } = useCollection<SakeNote>(rankingQuery);
 
   // 本月月榜：用 tastingDate 或 createdAt 判斷
   const monthlyNotes = React.useMemo(() => {
     if (!notes) return [];
+    const publicNotes = notes.filter(isPublicPublishedNote);
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return notes.filter(n => {
+    return publicNotes.filter(n => {
       const d = n.tastingDate || n.createdAt || '';
       return d.startsWith(ym);
     });
@@ -60,8 +68,9 @@ export default function RankingsPage() {
 
   const brandGroups = React.useMemo(() => {
     if (!notes) return [];
+    const publicNotes = notes.filter(isPublicPublishedNote);
     const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
-    for (const note of notes) {
+    for (const note of publicNotes) {
       const key = `${note.brandName}|||${note.brewery}`;
       if (!map.has(key)) map.set(key, { brandName: note.brandName, brewery: note.brewery, notes: [] });
       map.get(key)!.notes.push(note);
@@ -79,8 +88,9 @@ export default function RankingsPage() {
 
   const breweryGroups = React.useMemo(() => {
     if (!notes) return [];
+    const publicNotes = notes.filter(isPublicPublishedNote);
     const map = new Map<string, { brewery: string; brandSet: Set<string>; notes: SakeNote[] }>();
-    for (const note of notes) {
+    for (const note of publicNotes) {
       if (!map.has(note.brewery)) map.set(note.brewery, { brewery: note.brewery, brandSet: new Set(), notes: [] });
       const g = map.get(note.brewery)!;
       g.brandSet.add(note.brandName);

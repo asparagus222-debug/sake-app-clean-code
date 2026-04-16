@@ -42,6 +42,17 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(['likedByUserIds']) || request.resource.data.likedByUserIds.size() == 0);
     }
 
+    function noteIsPublicPublished(data) {
+      return data.visibility == 'public'
+        && data.publicationStatus == 'published';
+    }
+
+    function canReadNote(data) {
+      return isAdmin()
+        || noteIsPublicPublished(data)
+        || isOwner(data.userId);
+    }
+
     match /users/{userId} {
       allow read: if true;
       allow create: if isAdmin() || (
@@ -67,7 +78,7 @@ service cloud.firestore {
     }
 
     match /sakeTastingNotes/{noteId} {
-      allow read: if true;
+      allow read: if canReadNote(resource.data);
       allow create: if isAdmin() || (
         isSignedIn()
         && request.resource.data.userId == request.auth.uid
@@ -84,9 +95,10 @@ service cloud.firestore {
       );
 
       match /comments/{commentId} {
-        allow read: if true;
+        allow read: if canReadNote(get(/databases/$(database)/documents/sakeTastingNotes/$(noteId)).data);
         allow create: if isAdmin() || (
           isSignedIn()
+          && noteIsPublicPublished(get(/databases/$(database)/documents/sakeTastingNotes/$(noteId)).data)
           && request.resource.data.userId == request.auth.uid
         );
         allow update, delete: if isAdmin() || (
@@ -94,6 +106,18 @@ service cloud.firestore {
           && resource.data.userId == request.auth.uid
         );
       }
+    }
+
+    match /expoEvents/{eventId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (
+        isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+      );
+      allow update, delete: if isAdmin() || (
+        isSignedIn()
+        && resource.data.userId == request.auth.uid
+      );
     }
 
     match /reports/{reportId} {

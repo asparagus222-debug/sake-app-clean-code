@@ -1,0 +1,377 @@
+'use client';
+
+import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { addDoc, collection, doc, orderBy, query, where } from 'firebase/firestore';
+import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, ShoppingBag, Star, Store } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
+import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+type SortMode = 'intent' | 'score' | 'price';
+
+export default function ExpoEventPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+  const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+  const [isSaving, setIsSaving] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('intent');
+  const [formData, setFormData] = useState({
+    brandName: '',
+    brewery: '',
+    booth: '',
+    price: '',
+    overallRating: 7,
+    buyIntent: 'consider' as ExpoBuyIntent,
+    quickTags: [] as string[],
+    quickNote: '',
+  });
+
+  const profileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: profile } = useDoc<UserProfile>(profileRef);
+
+  const eventRef = useMemoFirebase(() => {
+    if (!firestore || !eventId) return null;
+    return doc(firestore, 'expoEvents', eventId);
+  }, [firestore, eventId]);
+  const { data: event, isLoading: isEventLoading } = useDoc<ExpoEvent>(eventRef);
+
+  const notesQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !eventId) return null;
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('userId', '==', user.uid),
+      where('expoMeta.eventId', '==', eventId),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, user, eventId]);
+  const { data: rawNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(notesQuery);
+
+  const sortedNotes = useMemo(() => {
+    const notes = [...(rawNotes || [])];
+    return notes.sort((left, right) => {
+      if (sortMode === 'intent') {
+        return getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
+          || right.overallRating - left.overallRating
+          || (right.createdAt || '').localeCompare(left.createdAt || '');
+      }
+      if (sortMode === 'score') {
+        return right.overallRating - left.overallRating
+          || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
+          || (right.createdAt || '').localeCompare(left.createdAt || '');
+      }
+      return getSortableExpoPrice(left) - getSortableExpoPrice(right)
+        || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
+        || (right.createdAt || '').localeCompare(left.createdAt || '');
+    });
+  }, [rawNotes, sortMode]);
+
+  const counts = useMemo(() => ({
+    total: rawNotes?.length || 0,
+    mustBuy: rawNotes?.filter((note) => note.expoMeta?.buyIntent === 'must-buy').length || 0,
+    published: rawNotes?.filter((note) => isPublicPublishedNote(note)).length || 0,
+  }), [rawNotes]);
+
+  const toggleQuickTag = (tag: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      quickTags: prev.quickTags.includes(tag)
+        ? prev.quickTags.filter((item) => item !== tag)
+        : [...prev.quickTags, tag],
+    }));
+  };
+
+  const handleCreateQuickNote = async () => {
+    if (!firestore || !user || !event) return;
+    if (!formData.brandName.trim()) {
+      toast({ variant: 'destructive', title: '請先填寫酒名' });
+      return;
+    }
+    if (!formData.booth.trim()) {
+      toast({ variant: 'destructive', title: '請先填寫 booth' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const price = formData.price.trim() ? Number(formData.price) : null;
+      const noteData = {
+        userId: user.uid,
+        username: profile?.username || '',
+        entryMode: 'expo-quick' as const,
+        visibility: 'private' as const,
+        publicationStatus: 'draft' as const,
+        brandName: formData.brandName.trim(),
+        brewery: formData.brewery.trim(),
+        origin: '',
+        imageUrls: [] as string[],
+        sweetnessRating: 3,
+        acidityRating: 3,
+        bitternessRating: 3,
+        umamiRating: 3,
+        astringencyRating: 3,
+        overallRating: formData.overallRating,
+        styleTags: [] as string[],
+        description: formData.quickNote.trim(),
+        userDescription: formData.quickNote.trim(),
+        otherComments: '',
+        tastingDate: now,
+        createdAt: now,
+        expoMeta: {
+          eventId,
+          eventName: event.name,
+          booth: formData.booth.trim(),
+          price: Number.isFinite(price) ? price : null,
+          currency: 'TWD',
+          buyIntent: formData.buyIntent,
+          quickTags: formData.quickTags,
+          quickNote: formData.quickNote.trim(),
+          isPurchased: false,
+        },
+      };
+      await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+      toast({ title: '酒展快記已儲存' });
+      setFormData((prev) => ({
+        ...prev,
+        brandName: '',
+        price: '',
+        overallRating: 7,
+        buyIntent: 'consider',
+        quickTags: [],
+        quickNote: '',
+      }));
+    } catch {
+      toast({ variant: 'destructive', title: '快記儲存失敗' });
+      setIsSaving(false);
+      return;
+    }
+    setIsSaving(false);
+  };
+
+  if (isUserLoading || isEventLoading) {
+    return (
+      <div className="min-h-screen notebook-texture flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !event) {
+    return (
+      <div className="min-h-screen notebook-texture px-4 py-10">
+        <div className="max-w-xl mx-auto dark-glass rounded-[2rem] border border-white/10 p-6 text-center space-y-4">
+          <p className="text-sm text-muted-foreground">找不到這場酒展活動，或目前沒有讀取權限。</p>
+          <Button onClick={() => router.push('/expo')} className="rounded-full h-10 px-5 text-xs font-bold uppercase tracking-widest">返回酒展列表</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen notebook-texture px-4 py-8 pb-24 font-body">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <button type="button" onClick={() => router.push('/expo')} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70 hover:text-primary transition-colors">
+              <ArrowLeft className="w-3 h-3" /> 返回活動列表
+            </button>
+            <h1 className="mt-3 text-2xl font-headline font-bold text-primary tracking-widest uppercase break-words">{event.name}</h1>
+            <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> {event.venue || '未填地點'}</span>
+              <span className="inline-flex items-center gap-1"><ClipboardList className="w-3 h-3 text-primary/70" /> {event.eventDate}</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 shrink-0">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
+              <div className="text-lg font-headline font-bold text-primary">{counts.total}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">總杯數</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-center">
+              <div className="text-lg font-headline font-bold text-emerald-300">{counts.mustBuy}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-200/70">必買</div>
+            </div>
+            <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-center">
+              <div className="text-lg font-headline font-bold text-sky-300">{counts.published}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-sky-200/70">已發布</div>
+            </div>
+          </div>
+        </div>
+
+        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Quick Capture</p>
+              <h2 className="text-lg font-bold text-foreground">現場快記一杯</h2>
+            </div>
+
+            <div className="grid gap-4">
+              <Input value={formData.brandName} onChange={(event) => setFormData((prev) => ({ ...prev, brandName: event.target.value }))} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input value={formData.brewery} onChange={(event) => setFormData((prev) => ({ ...prev, brewery: event.target.value }))} placeholder="酒造 / 品牌" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="Booth" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <Input type="number" min={1} max={10} value={formData.overallRating} onChange={(event) => setFormData((prev) => ({ ...prev, overallRating: Math.min(10, Math.max(1, Number(event.target.value) || 1)) }))} placeholder="整體分數" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">想買程度</p>
+              <div className="grid grid-cols-2 gap-2">
+                {EXPO_BUY_INTENT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, buyIntent: option.value }))}
+                    className={cn(
+                      'rounded-2xl border px-4 py-3 text-sm font-bold transition-all',
+                      formData.buyIntent === option.value
+                        ? getExpoBuyIntentClassName(option.value)
+                        : 'border-white/10 bg-white/5 text-muted-foreground'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速標籤</p>
+              <div className="flex flex-wrap gap-2">
+                {EXPO_QUICK_TAG_OPTIONS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleQuickTag(tag)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all',
+                      formData.quickTags.includes(tag)
+                        ? 'border-primary bg-primary text-white shadow-lg'
+                        : 'border-white/10 bg-white/5 text-muted-foreground'
+                    )}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] text-muted-foreground">送出後保留當前 booth 與酒造，方便下一杯繼續記。</p>
+              <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} 儲存快記
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="dark-glass rounded-[2rem] border border-white/10 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Compare View</p>
+                  <h2 className="text-lg font-bold text-foreground">本場比較清單</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'intent', label: '想買程度', icon: ShoppingBag },
+                    { value: 'score', label: '整體分數', icon: Star },
+                    { value: 'price', label: '價格', icon: CircleDollarSign },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={sortMode === option.value ? 'default' : 'outline'}
+                        onClick={() => setSortMode(option.value as SortMode)}
+                        className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                      >
+                        <Icon className="w-3 h-3 mr-1.5" /> {option.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {isNotesLoading ? (
+              <div className="dark-glass rounded-[2rem] border border-white/10 p-10 flex justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : sortedNotes.length === 0 ? (
+              <div className="dark-glass rounded-[2rem] border border-dashed border-white/10 p-10 text-center text-sm text-muted-foreground">
+                還沒有本場快記，先在左邊輸入第一杯。
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sortedNotes.map((note) => (
+                  <div key={note.id} className="dark-glass rounded-[1.6rem] border border-white/10 p-4 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="outline" className={cn('text-[9px] h-5 px-2 font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta?.buyIntent))}>
+                            {getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}
+                          </Badge>
+                          {isPublicPublishedNote(note) && (
+                            <Badge variant="outline" className="text-[9px] h-5 px-2 border-emerald-400/30 bg-emerald-500/10 text-emerald-200 font-bold tracking-widest">
+                              已發布
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-foreground break-words leading-snug">{note.brandName || '未命名酒款'}</p>
+                        <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          {note.brewery && <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3 text-primary/70" /> {note.brewery}</span>}
+                          <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> Booth {note.expoMeta?.booth || '-'}</span>
+                          <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> {typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '未記價格'}</span>
+                          <span className="inline-flex items-center gap-1"><Star className="w-3 h-3 text-primary/70" /> {note.overallRating}/10</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Link href={`/notes/${note.id}`}>
+                          <Button variant="outline" className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">查看</Button>
+                        </Link>
+                        <Link href={`/notes/${note.id}/edit`}>
+                          <Button className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">完整整理</Button>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {note.expoMeta?.quickTags && note.expoMeta.quickTags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {note.expoMeta.quickTags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[9px] h-5 px-2 border-primary/20 bg-primary/10 text-primary font-bold tracking-widest">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {note.expoMeta?.quickNote && <p className="text-sm text-foreground/75 whitespace-pre-wrap">{note.expoMeta.quickNote}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

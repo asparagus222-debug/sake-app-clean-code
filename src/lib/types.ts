@@ -14,14 +14,50 @@ export interface TastingSession {
   styleTags?: string[];
 }
 
+export type NoteEntryMode = 'standard' | 'expo-quick';
+
+export type NoteVisibility = 'private' | 'public';
+
+export type NotePublicationStatus = 'draft' | 'published';
+
+export type ExpoBuyIntent = 'skip' | 'consider' | 'want' | 'must-buy';
+
+export type ExpoMeta = {
+  eventId: string;
+  eventName?: string;
+  booth: string;
+  price?: number | null;
+  currency?: string;
+  buyIntent: ExpoBuyIntent;
+  quickTags?: string[];
+  quickNote?: string;
+  isPurchased?: boolean;
+};
+
+export type ExpoEvent = {
+  id: string;
+  userId: string;
+  name: string;
+  venue?: string;
+  eventDate: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type SakeNote = {
   id: string;
   userId: string;
   username?: string;
+  entryMode?: NoteEntryMode;
+  visibility?: NoteVisibility;
+  publicationStatus?: NotePublicationStatus;
+  publishedAt?: string;
   brandName: string;
   subBrand?: string;
   brewery: string;
   origin?: string;
+  expoMeta?: ExpoMeta;
   imageUrls: string[];
   imageOriginals?: string[];
   imageTransforms?: Array<{ x: number; y: number; scale: number }>;
@@ -149,4 +185,28 @@ export const QUALIFICATION_OPTIONS = [
   'Japan Sake Association 大師講師',
   'Japan Sake Association Sake Concierge',
   'Japan Sake Association Sake Expert'
+];
+
+export const EXPO_BUY_INTENT_OPTIONS: Array<{ value: ExpoBuyIntent; label: string }> = [
+  { value: 'skip', label: '不買' },
+  { value: 'consider', label: '可考慮' },
+  { value: 'want', label: '想買' },
+  { value: 'must-buy', label: '必買' },
+];
+
+export const EXPO_QUICK_TAG_OPTIONS = [
+  '果香',
+  '花香',
+  '米旨',
+  '清爽',
+  '濃醇',
+  '辛口',
+  '甘口',
+  '酸度亮',
+  '尾韻長',
+  '尾韻短',
+  'CP 值高',
+  '價格偏高',
+  '想回喝',
+  '想送禮',
 ];

@@ -6,6 +6,7 @@ import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Sparkles, Clock, Star, Info } from 'lucide-react';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, getDoc, query, where } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
@@ -27,14 +28,19 @@ function SakeDetailInner() {
 
   const notesQuery = useMemoFirebase(() => {
     if (!firestore || !brand) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), where('brandName', '==', brand));
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('brandName', '==', brand),
+      where('visibility', '==', 'public'),
+      where('publicationStatus', '==', 'published')
+    );
   }, [firestore, brand]);
 
   const { data: allNotes, isLoading } = useCollection<SakeNote>(notesQuery);
 
   const filteredNotes = React.useMemo(() => {
     if (!allNotes) return [];
-    return allNotes.filter(n => n.brewery === brewery);
+    return allNotes.filter(n => n.brewery === brewery && isPublicPublishedNote(n));
   }, [allNotes, brewery]);
 
   const sortedNotes = React.useMemo(() => {

@@ -11,8 +11,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, where } from 'firebase/firestore';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
+import { deleteNoteDraft, listNoteDrafts } from '@/lib/note-draft-storage';
 import { formatSakeDisplayName } from '@/lib/utils';
 
 type Top3Group = {
@@ -51,10 +53,11 @@ export function HomeClient({
     typeof window !== 'undefined' ? localStorage.getItem('cached_username') || initialAuthBootstrap?.username || null : initialAuthBootstrap?.username || null
   );
   const [cachedLatestNotes, setCachedLatestNotes] = useState<SakeNote[] | null>(() => {
-    if (initialLatestNotes.length > 0) return initialLatestNotes;
+    if (initialLatestNotes.length > 0) return initialLatestNotes.filter(isPublicPublishedNote);
     if (typeof window === 'undefined') return initialLatestNotes;
     try {
-      return JSON.parse(localStorage.getItem('home_latest_notes_snapshot') || 'null') || initialLatestNotes;
+      const parsed = JSON.parse(localStorage.getItem('home_latest_notes_snapshot') || 'null') || initialLatestNotes;
+      return Array.isArray(parsed) ? parsed.filter(isPublicPublishedNote) : initialLatestNotes;
     } catch {
       return initialLatestNotes;
     }
@@ -71,25 +74,9 @@ export function HomeClient({
   });
 
   const loadDrafts = React.useCallback(() => {
-    try {
-      const oldRaw = localStorage.getItem('sake_note_draft');
-      if (oldRaw) {
-        const old = JSON.parse(oldRaw);
-        const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem('sake_note_drafts') || '[]');
-        existing.unshift({ ...old, id: old.id || Date.now().toString() });
-        localStorage.setItem('sake_note_drafts', JSON.stringify(existing));
-        localStorage.removeItem('sake_note_draft');
-      }
-      const raw = localStorage.getItem('sake_note_drafts');
-      if (raw) {
-        const arr = JSON.parse(raw);
-        setDrafts(arr.map((d: Record<string, unknown>) => ({ id: d.id as string, brandName: (d.brandName as string) || '未命名草稿', savedAt: (d.savedAt as string) || '' })));
-      } else {
-        setDrafts([]);
-      }
-    } catch {
-      setDrafts([]);
-    }
+    void listNoteDrafts()
+      .then((items) => setDrafts(items))
+      .catch(() => setDrafts([]));
   }, []);
 
   useEffect(() => {
@@ -99,17 +86,15 @@ export function HomeClient({
   }, [loadDrafts]);
 
   const deleteDraft = (id: string) => {
-    try {
-      const raw = localStorage.getItem('sake_note_drafts');
-      const arr: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
-      const updated = arr.filter(d => d.id !== id);
-      localStorage.setItem('sake_note_drafts', JSON.stringify(updated));
-      setDrafts(prev => {
-        const next = prev.filter(d => d.id !== id);
-        if (next.length === 0) setShowDraftPicker(false);
-        return next;
-      });
-    } catch {}
+    void deleteNoteDraft(id)
+      .then(() => {
+        setDrafts(prev => {
+          const next = prev.filter(d => d.id !== id);
+          if (next.length === 0) setShowDraftPicker(false);
+          return next;
+        });
+      })
+      .catch(() => null);
   };
 
   useEffect(() => {
@@ -151,11 +136,7 @@ export function HomeClient({
   };
 
   const handleNewNoteClick = () => {
-    if (drafts.length > 0) {
-      setShowDraftPicker(true);
-    } else {
-      router.push('/notes/new');
-    }
+    setShowDraftPicker(true);
   };
 
   const userDocRef = useMemoFirebase(() => {
@@ -197,7 +178,13 @@ export function HomeClient({
 
   const latestNotesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('tastingDate', 'desc'), limit(INITIAL_NOTES_LIMIT));
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('visibility', '==', 'public'),
+      where('publicationStatus', '==', 'published'),
+      orderBy('tastingDate', 'desc'),
+      limit(INITIAL_NOTES_LIMIT)
+    );
   }, [firestore]);
   const { data: latestNotes, metadata: latestNotesMetadata } = useCollection<SakeNote>(latestNotesQuery);
   const shouldHoldSsrLatestNotes = initialLatestNotes.length > 0 && !!latestNotesMetadata?.fromCache;
@@ -207,9 +194,9 @@ export function HomeClient({
 
   useEffect(() => {
     if (!latestNotes || (initialLatestNotes.length > 0 && latestNotesMetadata?.fromCache)) return;
-    setCachedLatestNotes(latestNotes);
+    setCachedLatestNotes(latestNotes.filter(isPublicPublishedNote));
     try {
-      localStorage.setItem('home_latest_notes_snapshot', JSON.stringify(latestNotes));
+      localStorage.setItem('home_latest_notes_snapshot', JSON.stringify(latestNotes.filter(isPublicPublishedNote)));
     } catch {}
   }, [initialLatestNotes.length, latestNotes, latestNotesMetadata?.fromCache]);
 
@@ -234,7 +221,13 @@ export function HomeClient({
 
   const rankingQuery = useMemoFirebase(() => {
     if (!firestore || (top3Cache?.groups?.length || cachedTop3Groups.length > 0 || initialTop3Groups.length > 0)) return null;
-    return query(collection(firestore, 'sakeTastingNotes'), orderBy('overallRating', 'desc'), limit(INITIAL_RANKING_LIMIT));
+    return query(
+      collection(firestore, 'sakeTastingNotes'),
+      where('visibility', '==', 'public'),
+      where('publicationStatus', '==', 'published'),
+      orderBy('overallRating', 'desc'),
+      limit(INITIAL_RANKING_LIMIT)
+    );
   }, [firestore, top3Cache?.groups?.length, cachedTop3Groups.length, initialTop3Groups.length]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
@@ -471,6 +464,15 @@ export function HomeClient({
               <div className="text-left">
                 <div className="text-sm font-bold text-white">新增空白筆記</div>
                 <div className="text-[9px] text-white/50">建立新的品飲筆記</div>
+              </div>
+            </button>
+            <button type="button" onClick={() => { setShowDraftPicker(false); router.push('/expo'); }} className="w-full flex items-center gap-3 p-4 rounded-[1.2rem] bg-white/5 border border-white/10 hover:bg-sky-500/10 hover:border-sky-400/30 active:scale-95 transition-all mb-4">
+              <div className="w-9 h-9 rounded-full bg-sky-500/10 flex items-center justify-center shrink-0">
+                <Flame className="w-5 h-5 text-sky-300" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-white">酒展快速模式</div>
+                <div className="text-[9px] text-white/50">快速記錄、比較與整理想買酒款</div>
               </div>
             </button>
             {drafts.length > 0 && (

@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { canViewNote, getExpoBuyIntentClassName, getExpoBuyIntentLabel, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, formatSakeDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -231,6 +232,8 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
   }, [snapshotKey, liveNote, isLoading, noteDocRef]);
 
   const note = liveNote ?? cachedNote;
+  const isReadable = canViewNote(note, user?.uid);
+  const isPublicNote = isPublicPublishedNote(note);
   const servingTemperatures = note?.servingTemperatures?.length
     ? note.servingTemperatures
     : note?.servingTemperature
@@ -254,10 +257,10 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
   const { data: profile } = useDoc(userDocRef);
 
   const commentsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
+    if (!firestore || !id || !note || !canViewNote(note, user?.uid)) return null;
     const commentsRef = collection(firestore, 'sakeTastingNotes', id, 'comments');
     return query(commentsRef, orderBy('createdAt', 'desc'));
-  }, [firestore, id]);
+  }, [firestore, id, note, user?.uid]);
   const { data: comments } = useCollection<SakeComment>(commentsQuery);
 
   React.useEffect(() => {
@@ -361,7 +364,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     );
   }
 
-  if (!note) {
+  if (!note || !isReadable) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center notebook-texture">
         <p className="text-muted-foreground text-xs uppercase font-bold">筆記不存在或已被刪除</p>
@@ -380,15 +383,19 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              toast({ title: '連結已複製' });
-            }}>
-              <Share2 className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => setShowShareCard(true)}>
-              <Camera className="w-5 h-5" />
-            </Button>
+            {isPublicNote && (
+              <>
+                <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast({ title: '連結已複製' });
+                }}>
+                  <Share2 className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="hover:bg-primary/10" onClick={() => setShowShareCard(true)}>
+                  <Camera className="w-5 h-5" />
+                </Button>
+              </>
+            )}
             {user?.uid === note.userId && (
               <Link href={`/notes/${note.id}/edit`}>
                 <Button type="button" variant="ghost" size="icon" className="hover:bg-primary/10 text-primary"><Edit3 className="w-5 h-5" /></Button>
@@ -437,6 +444,27 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                     </>
                   )}
                 </div>
+
+                {!isPublicNote && note.expoMeta && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Badge variant="outline" className="text-[9px] h-5 px-2 border-sky-400/30 bg-sky-500/10 text-sky-200 font-bold tracking-widest">
+                      私人快記
+                    </Badge>
+                    <Badge variant="outline" className={cn('text-[9px] h-5 px-2 font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta.buyIntent))}>
+                      {getExpoBuyIntentLabel(note.expoMeta.buyIntent)}
+                    </Badge>
+                    {note.expoMeta.booth && (
+                      <Badge variant="outline" className="text-[9px] h-5 px-2 border-white/10 bg-white/5 text-foreground/80 font-bold tracking-widest">
+                        Booth {note.expoMeta.booth}
+                      </Badge>
+                    )}
+                    {typeof note.expoMeta.price === 'number' && (
+                      <Badge variant="outline" className="text-[9px] h-5 px-2 border-amber-400/30 bg-amber-500/10 text-amber-200 font-bold tracking-widest">
+                        ${note.expoMeta.price}
+                      </Badge>
+                    )}
+                  </div>
+                )}
                 <h1 className="text-2xl md:text-3xl font-headline text-foreground gold-glow leading-tight break-words">{displayName}</h1>
 
                 {((note.alcoholPercent) || (note.sakeInfoTags && note.sakeInfoTags.length > 0)) && (
@@ -736,39 +764,47 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
             ) : null}
 
             <section className="mt-6 space-y-4">
-              <div className="flex items-center gap-2 text-primary">
-                <MessageSquare className="w-4 h-4" />
-                <h2 className="text-sm font-headline font-bold uppercase tracking-widest gold-glow">社群交流 ({comments?.length || 0})</h2>
-              </div>
-              <div className="dark-glass p-4 rounded-2xl border border-white/10 space-y-3">
-                {!profile?.username ? (
-                  <div className="flex flex-col items-center gap-2 py-2">
-                    <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest italic">設定名稱後即可留言</p>
-                    <Button onClick={() => router.push('/profile')} variant="outline" size="sm" className="rounded-full h-8 text-[10px] uppercase font-bold">設定名稱</Button>
+              {isPublicNote ? (
+                <>
+                  <div className="flex items-center gap-2 text-primary">
+                    <MessageSquare className="w-4 h-4" />
+                    <h2 className="text-sm font-headline font-bold uppercase tracking-widest gold-glow">社群交流 ({comments?.length || 0})</h2>
                   </div>
-                ) : (
-                  <>
-                    <Textarea placeholder="分享您的想法..." value={commentText} onChange={(e) => setCommentText(e.target.value)} className="bg-white/5 border-white/10 rounded-xl min-h-[60px] p-2 text-sm" />
-                    <div className="flex justify-end">
-                      <Button onClick={handleAddComment} disabled={isSubmitting || !commentText.trim()} className="rounded-full px-4 h-8 text-[10px] uppercase font-bold">發布評論</Button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="space-y-3">
-                {comments?.map((comment) => (
-                  <div key={comment.id} className="dark-glass p-4 rounded-xl border border-white/5 space-y-2">
-                    <p className="text-foreground/90 text-sm leading-relaxed">{comment.text}</p>
-                    <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                      <Link href={`/users/${comment.userId}`} className="flex items-center gap-1.5 text-primary font-bold text-xs hover:underline">
-                        <span>@{comment.username}</span>
-                        <UserBadge userId={comment.userId} />
-                      </Link>
-                      <span className="text-[9px] text-muted-foreground uppercase font-bold">{new Date(comment.createdAt).toLocaleString('zh-TW')}</span>
-                    </div>
+                  <div className="dark-glass p-4 rounded-2xl border border-white/10 space-y-3">
+                    {!profile?.username ? (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest italic">設定名稱後即可留言</p>
+                        <Button onClick={() => router.push('/profile')} variant="outline" size="sm" className="rounded-full h-8 text-[10px] uppercase font-bold">設定名稱</Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Textarea placeholder="分享您的想法..." value={commentText} onChange={(e) => setCommentText(e.target.value)} className="bg-white/5 border-white/10 rounded-xl min-h-[60px] p-2 text-sm" />
+                        <div className="flex justify-end">
+                          <Button onClick={handleAddComment} disabled={isSubmitting || !commentText.trim()} className="rounded-full px-4 h-8 text-[10px] uppercase font-bold">發布評論</Button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-3">
+                    {comments?.map((comment) => (
+                      <div key={comment.id} className="dark-glass p-4 rounded-xl border border-white/5 space-y-2">
+                        <p className="text-foreground/90 text-sm leading-relaxed">{comment.text}</p>
+                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                          <Link href={`/users/${comment.userId}`} className="flex items-center gap-1.5 text-primary font-bold text-xs hover:underline">
+                            <span>@{comment.username}</span>
+                            <UserBadge userId={comment.userId} />
+                          </Link>
+                          <span className="text-[9px] text-muted-foreground uppercase font-bold">{new Date(comment.createdAt).toLocaleString('zh-TW')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="dark-glass rounded-[1.5rem] border border-sky-400/20 bg-sky-500/5 p-5 text-[11px] text-sky-100/80">
+                  這篇目前是私人酒展快記，只有你自己看得到；補完整後發布，才會開放分享、留言與互動。
+                </div>
+              )}
             </section>
           </div>
         </div>

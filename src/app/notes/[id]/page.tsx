@@ -1,5 +1,6 @@
 import { NoteDetailClient } from '@/components/notes/NoteDetailClient';
 import { getAdminApp } from '@/lib/firebase-admin';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { SakeNote } from '@/lib/types';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -12,7 +13,8 @@ async function getInitialNote(id: string): Promise<SakeNote | null> {
     const db = getFirestore(getAdminApp());
     const snapshot = await db.collection('sakeTastingNotes').doc(id).get();
     if (!snapshot.exists) return null;
-    return toPlainNote(snapshot.id, snapshot.data() as Record<string, unknown>);
+    const note = toPlainNote(snapshot.id, snapshot.data() as Record<string, unknown>);
+    return isPublicPublishedNote(note) ? note : null;
   } catch {
     return null;
   }

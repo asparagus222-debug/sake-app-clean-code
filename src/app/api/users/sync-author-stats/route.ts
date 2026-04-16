@@ -5,7 +5,11 @@ import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVe
 
 async function syncAuthorStatsForUser(targetUid: string) {
   const db = getFirestore(getAdminApp());
-  const notesSnapshot = await db.collection('sakeTastingNotes').where('userId', '==', targetUid).get();
+  const notesSnapshot = await db.collection('sakeTastingNotes')
+    .where('userId', '==', targetUid)
+    .where('visibility', '==', 'public')
+    .where('publicationStatus', '==', 'published')
+    .get();
 
   const noteCount = notesSnapshot.size;
   const likesReceivedCount = notesSnapshot.docs.reduce((total, noteDoc) => {

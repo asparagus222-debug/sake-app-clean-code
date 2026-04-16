@@ -31,7 +31,12 @@ export async function POST(
         userId?: string;
         likedByUserIds?: string[];
         likesCount?: number;
+        visibility?: string;
+        publicationStatus?: string;
       };
+      if (noteData.visibility !== 'public' || noteData.publicationStatus !== 'published') {
+        throw new RequestAuthError('私人草稿不可按讚', 403);
+      }
       const likedByUserIds = Array.isArray(noteData.likedByUserIds) ? noteData.likedByUserIds : [];
       const likesCount = typeof noteData.likesCount === 'number' ? noteData.likesCount : likedByUserIds.length;
       const authorUid = typeof noteData.userId === 'string' ? noteData.userId : '';

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { UserProfile, SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { UserBadge } from '@/components/UserBadge';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { 
   ArrowLeft, 
   Loader2, 
@@ -33,7 +34,7 @@ import {
   setDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { doc, collection, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -55,7 +56,9 @@ export default function PublicProfilePage() {
     if (!firestore || !targetUserId) return null;
     return query(
       collection(firestore, 'sakeTastingNotes'),
-      where('userId', '==', targetUserId)
+      where('userId', '==', targetUserId),
+      where('visibility', '==', 'public'),
+      where('publicationStatus', '==', 'published')
     );
   }, [firestore, targetUserId]);
   const { data: rawNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(userNotesQuery);
@@ -83,7 +86,7 @@ export default function PublicProfilePage() {
 
   const notes = React.useMemo(() => {
     if (!rawNotes) return [];
-    return [...rawNotes].sort((a, b) => {
+    return [...rawNotes].filter(isPublicPublishedNote).sort((a, b) => {
       const dateA = new Date(a.tastingDate || a.createdAt || 0).getTime();
       const dateB = new Date(b.tastingDate || b.createdAt || 0).getTime();
       return dateB - dateA;

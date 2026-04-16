@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 async function getImageRatio(src: string): Promise<number> {
@@ -840,7 +841,7 @@ export default function EditNotePage() {
     }
   };
 
-  const handleSave = async () => {
+  const persistNote = async (publishNote: boolean) => {
     if (!firestore || !user || !note) return;
     setIsSaving(true);
     try {
@@ -895,6 +896,10 @@ export default function EditNotePage() {
         subBrand: deleteField(),
         brewery: formData.brewery,
         origin: formData.origin,
+        entryMode: publishNote ? 'standard' : (note.entryMode || 'standard'),
+        visibility: publishNote ? 'public' : (note.visibility || 'private'),
+        publicationStatus: publishNote ? 'published' : (note.publicationStatus || 'draft'),
+        publishedAt: publishNote ? (note.publishedAt || new Date().toISOString()) : (note.publishedAt || deleteField()),
         styleTags: formData.styleTags,
         servingTemperatures: formData.servingTemperatures,
         cupTypes: formData.cupTypes,
@@ -911,8 +916,15 @@ export default function EditNotePage() {
       };
       await updateDoc(doc(firestore, 'sakeTastingNotes', note.id), noteData);
       // 讓 top3 cache 失效，下次首頁載入時重算
-      deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
-      toast({ title: "修改已儲存" });
+      if (publishNote || isPublicPublishedNote(note)) {
+        deleteDoc(doc(firestore, 'meta', 'top3')).catch(() => {});
+        if (auth) {
+          await authorizedJsonFetch(auth, '/api/users/sync-author-stats', {
+            method: 'POST',
+          }).catch(() => null);
+        }
+      }
+      toast({ title: publishNote ? '已發布公開貼文' : '修改已儲存' });
       if (typeof window !== 'undefined' && window.history.length > 1) {
         router.back();
       } else {
@@ -923,6 +935,14 @@ export default function EditNotePage() {
       toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
       setIsSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    await persistNote(false);
+  };
+
+  const handlePublish = async () => {
+    await persistNote(true);
   };
 
   const handleBackToPrevious = () => {
@@ -1422,9 +1442,19 @@ export default function EditNotePage() {
         </section>
 
         <div className="flex flex-col gap-3">
+          {!isPublicPublishedNote(note) && (
+            <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-[10px] text-sky-100/80">
+              這篇目前仍是私人草稿；補完內容後可直接在同一篇發布成公開貼文。
+            </div>
+          )}
           <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存所有修改
           </Button>
+          {!isPublicPublishedNote(note) && (
+            <Button variant="outline" className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest border-emerald-400/40 text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20" onClick={handlePublish} disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發布成正式貼文
+            </Button>
+          )}
         </div>
       </div>
 

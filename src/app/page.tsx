@@ -1,6 +1,7 @@
 import { HomeClient } from '@/components/home/HomeClient';
 import { AUTH_BOOTSTRAP_COOKIE_NAME, readAuthBootstrapFromCookieValue } from '@/lib/auth-bootstrap';
 import { getAdminApp } from '@/lib/firebase-admin';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { SakeNote } from '@/lib/types';
 import { getFirestore } from 'firebase-admin/firestore';
 import { cookies } from 'next/headers';
@@ -27,6 +28,8 @@ async function getInitialLatestNotes(): Promise<SakeNote[]> {
     const db = getFirestore(getAdminApp());
     const snapshot = await db
       .collection('sakeTastingNotes')
+      .where('visibility', '==', 'public')
+      .where('publicationStatus', '==', 'published')
       .orderBy('tastingDate', 'desc')
       .limit(INITIAL_NOTES_LIMIT)
       .get();
@@ -49,10 +52,14 @@ async function getInitialTop3Groups(): Promise<Top3Group[]> {
 
     const snapshot = await db
       .collection('sakeTastingNotes')
+      .where('visibility', '==', 'public')
+      .where('publicationStatus', '==', 'published')
       .orderBy('overallRating', 'desc')
       .limit(INITIAL_RANKING_LIMIT)
       .get();
-    const rankingNotes = snapshot.docs.map(doc => toPlainNote(doc.id, doc.data() as Record<string, unknown>));
+    const rankingNotes = snapshot.docs
+      .map(doc => toPlainNote(doc.id, doc.data() as Record<string, unknown>))
+      .filter(isPublicPublishedNote);
 
     const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
     for (const note of rankingNotes) {
