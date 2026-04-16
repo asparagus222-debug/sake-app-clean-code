@@ -28,13 +28,14 @@ async function getInitialLatestNotes(): Promise<SakeNote[]> {
     const db = getFirestore(getAdminApp());
     const snapshot = await db
       .collection('sakeTastingNotes')
-      .where('visibility', '==', 'public')
-      .where('publicationStatus', '==', 'published')
       .orderBy('tastingDate', 'desc')
-      .limit(INITIAL_NOTES_LIMIT)
+      .limit(INITIAL_NOTES_LIMIT * 3)
       .get();
 
-    return snapshot.docs.map(doc => toPlainNote(doc.id, doc.data() as Record<string, unknown>));
+    return snapshot.docs
+      .map(doc => toPlainNote(doc.id, doc.data() as Record<string, unknown>))
+      .filter(isPublicPublishedNote)
+      .slice(0, INITIAL_NOTES_LIMIT);
   } catch {
     return [];
   }
@@ -52,10 +53,8 @@ async function getInitialTop3Groups(): Promise<Top3Group[]> {
 
     const snapshot = await db
       .collection('sakeTastingNotes')
-      .where('visibility', '==', 'public')
-      .where('publicationStatus', '==', 'published')
       .orderBy('overallRating', 'desc')
-      .limit(INITIAL_RANKING_LIMIT)
+      .limit(INITIAL_RANKING_LIMIT * 3)
       .get();
     const rankingNotes = snapshot.docs
       .map(doc => toPlainNote(doc.id, doc.data() as Record<string, unknown>))

@@ -1,5 +1,6 @@
 import {
   ExpoBuyIntent,
+  NoteEntryMode,
   NotePublicationStatus,
   NoteVisibility,
   SakeNote,
@@ -10,10 +11,21 @@ export const DEFAULT_NOTE_VISIBILITY: NoteVisibility = 'public';
 export const DEFAULT_NOTE_PUBLICATION_STATUS: NotePublicationStatus = 'published';
 
 export function isPublicPublishedNote(
-  note?: Pick<SakeNote, 'visibility' | 'publicationStatus'> | null
+  note?: {
+    entryMode?: SakeNote['entryMode'] | string | null;
+    visibility?: SakeNote['visibility'] | string | null;
+    publicationStatus?: SakeNote['publicationStatus'] | string | null;
+  } | null
 ) {
   if (!note) return false;
-  return note.visibility === 'public' && note.publicationStatus === 'published';
+
+  const entryMode = note.entryMode ?? ('standard' as NoteEntryMode);
+  const visibility = note.visibility ?? DEFAULT_NOTE_VISIBILITY;
+  const publicationStatus = note.publicationStatus ?? DEFAULT_NOTE_PUBLICATION_STATUS;
+
+  return entryMode !== 'expo-quick'
+    && visibility === 'public'
+    && publicationStatus === 'published';
 }
 
 export function isOwnedByUser(note: Pick<SakeNote, 'userId'> | null | undefined, uid?: string | null) {

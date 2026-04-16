@@ -180,17 +180,15 @@ export function HomeClient({
     if (!firestore) return null;
     return query(
       collection(firestore, 'sakeTastingNotes'),
-      where('visibility', '==', 'public'),
-      where('publicationStatus', '==', 'published'),
       orderBy('tastingDate', 'desc'),
-      limit(INITIAL_NOTES_LIMIT)
+      limit(INITIAL_NOTES_LIMIT * 3)
     );
   }, [firestore]);
   const { data: latestNotes, metadata: latestNotesMetadata } = useCollection<SakeNote>(latestNotesQuery);
   const shouldHoldSsrLatestNotes = initialLatestNotes.length > 0 && !!latestNotesMetadata?.fromCache;
   const displayedLatestNotes = shouldHoldSsrLatestNotes
     ? initialLatestNotes
-    : (latestNotes ?? cachedLatestNotes ?? initialLatestNotes);
+    : ((latestNotes ?? cachedLatestNotes ?? initialLatestNotes).filter(isPublicPublishedNote).slice(0, INITIAL_NOTES_LIMIT));
 
   useEffect(() => {
     if (!latestNotes || (initialLatestNotes.length > 0 && latestNotesMetadata?.fromCache)) return;
@@ -223,18 +221,17 @@ export function HomeClient({
     if (!firestore || (top3Cache?.groups?.length || cachedTop3Groups.length > 0 || initialTop3Groups.length > 0)) return null;
     return query(
       collection(firestore, 'sakeTastingNotes'),
-      where('visibility', '==', 'public'),
-      where('publicationStatus', '==', 'published'),
       orderBy('overallRating', 'desc'),
-      limit(INITIAL_RANKING_LIMIT)
+      limit(INITIAL_RANKING_LIMIT * 3)
     );
   }, [firestore, top3Cache?.groups?.length, cachedTop3Groups.length, initialTop3Groups.length]);
   const { data: rankingNotes } = useCollection<SakeNote>(rankingQuery);
 
   const top3Groups = React.useMemo(() => {
     if (rankingNotes) {
+      const publicRankingNotes = rankingNotes.filter(isPublicPublishedNote);
       const map = new Map<string, { brandName: string; brewery: string; notes: SakeNote[] }>();
-      for (const note of rankingNotes) {
+      for (const note of publicRankingNotes) {
         if (!note.brandName) continue;
         const mergedBrandName = formatSakeDisplayName(note.brandName, note.subBrand);
         const key = `${mergedBrandName}|||${note.brewery}`;

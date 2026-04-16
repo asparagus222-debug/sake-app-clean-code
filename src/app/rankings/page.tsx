@@ -9,7 +9,7 @@ import { ArrowLeft, Loader2, Trophy, Building2, CalendarDays } from 'lucide-reac
 import Link from 'next/link';
 import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 export default function RankingsPage() {
@@ -20,10 +20,8 @@ export default function RankingsPage() {
     if (!firestore) return null;
     return query(
       collection(firestore, 'sakeTastingNotes'),
-      where('visibility', '==', 'public'),
-      where('publicationStatus', '==', 'published'),
       orderBy('overallRating', 'desc'),
-      limit(500)
+      limit(1500)
     );
   }, [firestore]);
   const { data: notes, isLoading } = useCollection<SakeNote>(rankingQuery);

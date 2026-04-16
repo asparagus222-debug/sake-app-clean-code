@@ -30,9 +30,7 @@ function SakeDetailInner() {
     if (!firestore || !brand) return null;
     return query(
       collection(firestore, 'sakeTastingNotes'),
-      where('brandName', '==', brand),
-      where('visibility', '==', 'public'),
-      where('publicationStatus', '==', 'published')
+      where('brandName', '==', brand)
     );
   }, [firestore, brand]);
 

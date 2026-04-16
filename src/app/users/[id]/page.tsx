@@ -34,7 +34,7 @@ import {
   setDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -57,8 +57,7 @@ export default function PublicProfilePage() {
     return query(
       collection(firestore, 'sakeTastingNotes'),
       where('userId', '==', targetUserId),
-      where('visibility', '==', 'public'),
-      where('publicationStatus', '==', 'published')
+      orderBy('tastingDate', 'desc')
     );
   }, [firestore, targetUserId]);
   const { data: rawNotes, isLoading: isNotesLoading } = useCollection<SakeNote>(userNotesQuery);

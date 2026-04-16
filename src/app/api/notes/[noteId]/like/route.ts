@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getAdminApp } from '@/lib/firebase-admin';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 export async function POST(
@@ -31,10 +32,11 @@ export async function POST(
         userId?: string;
         likedByUserIds?: string[];
         likesCount?: number;
+        entryMode?: string;
         visibility?: string;
         publicationStatus?: string;
       };
-      if (noteData.visibility !== 'public' || noteData.publicationStatus !== 'published') {
+      if (!isPublicPublishedNote(noteData)) {
         throw new RequestAuthError('私人草稿不可按讚', 403);
       }
       const likedByUserIds = Array.isArray(noteData.likedByUserIds) ? noteData.likedByUserIds : [];

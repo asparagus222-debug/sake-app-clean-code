@@ -43,8 +43,9 @@ service cloud.firestore {
     }
 
     function noteIsPublicPublished(data) {
-      return data.visibility == 'public'
-        && data.publicationStatus == 'published';
+      return (!data.keys().hasAny(['entryMode']) || data.entryMode == 'standard')
+        && (!data.keys().hasAny(['visibility']) || data.visibility == 'public')
+        && (!data.keys().hasAny(['publicationStatus']) || data.publicationStatus == 'published');
     }
 
     function canReadNote(data) {

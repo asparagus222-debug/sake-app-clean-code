@@ -1,21 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAdminApp } from '@/lib/firebase-admin';
+import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
 
 async function syncAuthorStatsForUser(targetUid: string) {
   const db = getFirestore(getAdminApp());
   const notesSnapshot = await db.collection('sakeTastingNotes')
     .where('userId', '==', targetUid)
-    .where('visibility', '==', 'public')
-    .where('publicationStatus', '==', 'published')
     .get();
 
-  const noteCount = notesSnapshot.size;
-  const likesReceivedCount = notesSnapshot.docs.reduce((total, noteDoc) => {
-    const likesCount = noteDoc.data().likesCount;
-    return total + (typeof likesCount === 'number' ? likesCount : 0);
-  }, 0);
+  const { noteCount, likesReceivedCount } = notesSnapshot.docs.reduce((total, noteDoc) => {
+    const noteData = noteDoc.data() as {
+      entryMode?: string | null;
+      visibility?: string | null;
+      publicationStatus?: string | null;
+      likesCount?: number;
+    };
+
+    if (!isPublicPublishedNote(noteData)) {
+      return total;
+    }
+
+    return {
+      noteCount: total.noteCount + 1,
+      likesReceivedCount: total.likesReceivedCount + (typeof noteData.likesCount === 'number' ? noteData.likesCount : 0),
+    };
+  }, {
+    noteCount: 0,
+    likesReceivedCount: 0,
+  });
 
   const authorStats = {
     noteCount,
