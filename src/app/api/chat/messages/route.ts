@@ -9,6 +9,10 @@ function normalizeInputText(input: unknown) {
   return typeof input === 'string' ? input.trim() : '';
 }
 
+function normalizeMessageId(input: unknown) {
+  return typeof input === 'string' ? input.trim() : '';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const token = await requireAuthenticatedUser(request);
@@ -79,5 +83,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     return NextResponse.json({ error: '聊天室送出失敗' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = await requireAuthenticatedUser(request);
+    await requireVerifiedAppCheck(request);
+    await enforceRateLimit({ key: `chat:delete:${token.uid}`, limit: 30, windowMs: 10 * 60 * 1000 });
+
+    const body = await request.json().catch(() => ({}));
+    const messageId = normalizeMessageId(body?.messageId);
+    if (!messageId) {
+      throw new RequestAuthError('缺少訊息編號', 400);
+    }
+
+    const db = getFirestore(getAdminApp());
+    const messageRef = db.collection('chatMessages').doc(messageId);
+
+    await db.runTransaction(async (tx) => {
+      const messageSnapshot = await tx.get(messageRef);
+      if (!messageSnapshot.exists) {
+        throw new RequestAuthError('找不到這則訊息', 404);
+      }
+
+      const message = messageSnapshot.data() as { userId?: string } | undefined;
+      if (message?.userId !== token.uid) {
+        throw new RequestAuthError('只能刪除自己的訊息', 403);
+      }
+
+      tx.delete(messageRef);
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: '聊天室刪除失敗' }, { status: 500 });
   }
 }

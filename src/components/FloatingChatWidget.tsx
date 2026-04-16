@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, limit, orderBy, query } from 'firebase/firestore';
-import { Bell, Megaphone, MessagesSquare, Minimize2, Send, X } from 'lucide-react';
+import { Bell, Megaphone, MessagesSquare, Minimize2, Send, Trash2, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -82,6 +82,7 @@ export function FloatingChatWidget() {
   const [isDragging, setIsDragging] = useState(false);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -249,6 +250,27 @@ export function FloatingChatWidget() {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!auth || deletingMessageId) return;
+
+    setDeletingMessageId(messageId);
+    setSendError(null);
+    try {
+      const response = await authorizedJsonFetch(auth, '/api/chat/messages', {
+        method: 'DELETE',
+        body: JSON.stringify({ messageId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : '聊天室刪除失敗');
+      }
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : '聊天室刪除失敗');
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
   const beginDrag = (event: React.PointerEvent<HTMLElement>, allowInteractiveTarget = false) => {
     if (!widgetRef.current) return;
 
@@ -374,6 +396,22 @@ export function FloatingChatWidget() {
                             <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', isMine ? 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground' : 'border-amber-400/30 bg-amber-500/10 text-amber-300')}>
                               <Megaphone className="w-3 h-3" /> 公告
                             </span>
+                          )}
+                          {isMine && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMessage(message.id)}
+                              disabled={deletingMessageId === message.id}
+                              className={cn(
+                                'ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors',
+                                isMine
+                                  ? 'text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground'
+                                  : 'text-muted-foreground hover:bg-white/10 hover:text-foreground'
+                              )}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {deletingMessageId === message.id ? '刪除中' : '刪除'}
+                            </button>
                           )}
                         </div>
                         <p className="whitespace-pre-wrap break-words leading-relaxed">{message.text}</p>
