@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore';
-import { CalendarDays, ChevronRight, Loader2, MapPin, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronRight, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,21 +130,18 @@ export default function ExpoPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-300">Private Workspace</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-300">私人品鑑清單</p>
             <h1 className="text-2xl font-headline font-bold text-primary tracking-widest uppercase">酒展快速模式</h1>
-            <p className="text-sm text-muted-foreground mt-2">先快速記錄、回家再補完整，同一篇整理後再發布。</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/')} className="rounded-full h-10 px-5 text-xs font-bold uppercase tracking-widest">
             返回首頁
           </Button>
         </div>
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section>
           <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
-            <div className="space-y-2">
+            <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">新建活動</p>
-              <h2 className="text-lg font-bold text-foreground">下一場酒展先建起來</h2>
-              <p className="text-sm text-muted-foreground">一場酒展一個工作台，現場快記和回家比較都掛在同一場底下。</p>
             </div>
             <div className="grid gap-4">
               <Input
@@ -175,23 +172,10 @@ export default function ExpoPage() {
               />
             </div>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-muted-foreground">{profile?.username ? `目前以 ${profile.username} 身分建立` : '可先建立活動，稍後再補完整貼文'}</p>
+              <div />
               <Button onClick={handleCreateEvent} disabled={isCreating} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
                 {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />} 建立活動
               </Button>
-            </div>
-          </div>
-
-          <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-4">
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">使用方式</p>
-              <h2 className="text-lg font-bold text-foreground">現場只做必要動作</h2>
-            </div>
-            <div className="space-y-3 text-sm text-foreground/80">
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">1. 建立酒展活動</div>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">2. 每杯只記酒名、攤位、價格、風味評分</div>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">3. 回家用比較頁切排序，挑出最值得買和最值得發文的酒</div>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">4. 從同一篇進入完整編輯，補好之後再發布</div>
             </div>
           </div>
         </section>
@@ -201,9 +185,6 @@ export default function ExpoPage() {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">My Events</p>
               <h2 className="text-lg font-bold text-foreground">我的酒展工作台</h2>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              <Sparkles className="w-3 h-3 text-sky-300" /> 只顯示自己的私人活動
             </div>
           </div>
 
