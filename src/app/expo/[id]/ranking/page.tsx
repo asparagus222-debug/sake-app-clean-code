@@ -12,13 +12,120 @@ import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSort
 import { cn } from '@/lib/utils';
 
 type RankingSortMode = 'score' | 'price' | 'cp';
+type ShareCardThemeId = 'paper' | 'midnight' | 'matcha' | 'sunrise';
 
 const PAGE_SIZE = 10;
-const POSTER_BACKGROUND = '#110d0a';
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
   score: { label: '風味評分', icon: Star },
   price: { label: '價格', icon: BadgeDollarSign },
   cp: { label: 'CP 值', icon: Trophy },
+};
+
+const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
+  label: string;
+  description: string;
+  exportBackground: string;
+  shellClassName: string;
+  frameClassName: string;
+  emptyClassName: string;
+  dividerClassName: string;
+  eyebrowClassName: string;
+  titleClassName: string;
+  modeChipClassName: string;
+  modeLabelClassName: string;
+  modeValueClassName: string;
+  tableClassName: string;
+  tableHeaderClassName: string;
+  metaClassName: string;
+  valueClassName: string;
+  footerClassName: string;
+  rowBaseClassName: string;
+  headerLayout: 'split' | 'stacked' | 'centered';
+}> = {
+  paper: {
+    label: '奶油清單',
+    description: '暖白簡潔版',
+    exportBackground: '#f8f3ec',
+    shellClassName: 'border-[#e7dccf] bg-[#f8f3ec] shadow-[0_30px_80px_rgba(0,0,0,0.14)]',
+    frameClassName: 'border-[#e7dccf] bg-white text-[#2f241c]',
+    emptyClassName: 'border-[#dccdbd] bg-white/70 text-[#2f241c]',
+    dividerClassName: 'border-[#efe5d8]',
+    eyebrowClassName: 'text-[#9c7960]',
+    titleClassName: 'text-[#241912]',
+    modeChipClassName: 'border-[#ebddcf] bg-[#f8f3ec]',
+    modeLabelClassName: 'text-[#9c7960]',
+    modeValueClassName: 'text-[#241912]',
+    tableClassName: 'border-[#efe5d8] bg-[#fcfaf6]',
+    tableHeaderClassName: 'text-[#9c7960]',
+    metaClassName: 'text-[#8b6e5a]',
+    valueClassName: 'text-[#4d3a2f]',
+    footerClassName: 'border-[#efe5d8] text-[#9c7960]',
+    rowBaseClassName: 'border-[#ece5dc]',
+    headerLayout: 'split',
+  },
+  midnight: {
+    label: '夜色榜單',
+    description: '深色對比版',
+    exportBackground: '#121113',
+    shellClassName: 'border-[#3c342f] bg-[linear-gradient(180deg,#171517_0%,#111012_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.28)]',
+    frameClassName: 'border-[#312b28] bg-[#171517] text-[#f7efe5]',
+    emptyClassName: 'border-[#3a322f] bg-[#1c191b] text-[#f7efe5]',
+    dividerClassName: 'border-[#2f2926]',
+    eyebrowClassName: 'text-[#d6b79a]',
+    titleClassName: 'text-[#fff7ef]',
+    modeChipClassName: 'border-[#3a322f] bg-[#211d20]',
+    modeLabelClassName: 'text-[#d6b79a]',
+    modeValueClassName: 'text-[#fff7ef]',
+    tableClassName: 'border-[#2f2926] bg-[#1a1719]',
+    tableHeaderClassName: 'text-[#caa88c]',
+    metaClassName: 'text-[#b99679]',
+    valueClassName: 'text-[#f6eadf]',
+    footerClassName: 'border-[#2f2926] text-[#caa88c]',
+    rowBaseClassName: 'border-[#3a322f]',
+    headerLayout: 'stacked',
+  },
+  matcha: {
+    label: '抹茶手帳',
+    description: '清酒感綠調版',
+    exportBackground: '#eef1e7',
+    shellClassName: 'border-[#cfd8c4] bg-[linear-gradient(180deg,#edf2e7_0%,#e5ecdd_100%)] shadow-[0_30px_80px_rgba(54,72,40,0.16)]',
+    frameClassName: 'border-[#cfd8c4] bg-[#fbfcf7] text-[#243022]',
+    emptyClassName: 'border-[#c7d1bc] bg-[#f6f8f0] text-[#243022]',
+    dividerClassName: 'border-[#dfe7d6]',
+    eyebrowClassName: 'text-[#6c7d5f]',
+    titleClassName: 'text-[#243022]',
+    modeChipClassName: 'border-[#d9e1cf] bg-[#eef3e6]',
+    modeLabelClassName: 'text-[#6c7d5f]',
+    modeValueClassName: 'text-[#243022]',
+    tableClassName: 'border-[#dfe7d6] bg-[#f8fbf2]',
+    tableHeaderClassName: 'text-[#6c7d5f]',
+    metaClassName: 'text-[#66755b]',
+    valueClassName: 'text-[#334230]',
+    footerClassName: 'border-[#dfe7d6] text-[#6c7d5f]',
+    rowBaseClassName: 'border-[#d8e1cf]',
+    headerLayout: 'split',
+  },
+  sunrise: {
+    label: '晨曦海報',
+    description: '柔暖貼文版',
+    exportBackground: '#fff3ea',
+    shellClassName: 'border-[#f0d8c8] bg-[linear-gradient(180deg,#fff3ea_0%,#ffe8da_100%)] shadow-[0_30px_80px_rgba(183,104,58,0.16)]',
+    frameClassName: 'border-[#f0d8c8] bg-[#fffaf6] text-[#40271d]',
+    emptyClassName: 'border-[#eed7c9] bg-[#fff7f2] text-[#40271d]',
+    dividerClassName: 'border-[#f5e0d3]',
+    eyebrowClassName: 'text-[#b47656]',
+    titleClassName: 'text-[#40271d]',
+    modeChipClassName: 'border-[#f0d8c8] bg-[#fff0e6]',
+    modeLabelClassName: 'text-[#b47656]',
+    modeValueClassName: 'text-[#40271d]',
+    tableClassName: 'border-[#f5e0d3] bg-[#fffdfb]',
+    tableHeaderClassName: 'text-[#b47656]',
+    metaClassName: 'text-[#a06d52]',
+    valueClassName: 'text-[#5f3d2e]',
+    footerClassName: 'border-[#f5e0d3] text-[#b47656]',
+    rowBaseClassName: 'border-[#f0ded1]',
+    headerLayout: 'centered',
+  },
 };
 
 function formatExpoCpScore(score: number | null | undefined) {
@@ -50,29 +157,73 @@ function getRankingMetaLine(note: SakeNote) {
   return metaParts.join(' · ') || '未填酒造 / 攤位';
 }
 
-function getRankMedalStyle(rank: number) {
+function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
+  const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
+    paper: {
+      gold: 'border-[#f3c86b]/45 bg-[#fef3cf]',
+      goldRank: 'border-[#e0b248] bg-[#f3c86b] text-[#24180d]',
+      silver: 'border-[#d9dde6]/60 bg-[#f7f8fb]',
+      silverRank: 'border-[#bfc7d6] bg-[#dfe4ee] text-[#233042]',
+      bronze: 'border-[#dfb48d]/50 bg-[#fff6ef]',
+      bronzeRank: 'border-[#cd8f63] bg-[#e4b08b] text-[#2d1c14]',
+      base: 'bg-white',
+      baseRank: 'border-[#ddd3c6] bg-[#f7f1ea] text-[#57463a]',
+    },
+    midnight: {
+      gold: 'border-[#5b4a25] bg-[#2b2417]',
+      goldRank: 'border-[#ba9651] bg-[#f0be5f] text-[#24180d]',
+      silver: 'border-[#414753] bg-[#20242b]',
+      silverRank: 'border-[#8791a3] bg-[#d4d8e2] text-[#1f2937]',
+      bronze: 'border-[#5b4032] bg-[#271d1a]',
+      bronzeRank: 'border-[#c48b66] bg-[#d7a07a] text-[#2a1a14]',
+      base: 'bg-[#191719]',
+      baseRank: 'border-[#3a322f] bg-[#231f22] text-[#f1e5d8]',
+    },
+    matcha: {
+      gold: 'border-[#d7c774] bg-[#faf4d8]',
+      goldRank: 'border-[#c0a94b] bg-[#e9d16e] text-[#2d2813]',
+      silver: 'border-[#ccd3da] bg-[#f4f7fa]',
+      silverRank: 'border-[#afb8c3] bg-[#dde3ea] text-[#233042]',
+      bronze: 'border-[#d4b18f] bg-[#fbf1e8]',
+      bronzeRank: 'border-[#c88d60] bg-[#ddb08b] text-[#2d1c14]',
+      base: 'bg-[#fbfcf7]',
+      baseRank: 'border-[#cad6bf] bg-[#eef3e6] text-[#3d4c36]',
+    },
+    sunrise: {
+      gold: 'border-[#efc86f] bg-[#fff2c8]',
+      goldRank: 'border-[#dfab45] bg-[#f7c964] text-[#3b2616]',
+      silver: 'border-[#d2d8df] bg-[#f8fafc]',
+      silverRank: 'border-[#b5bfcb] bg-[#e2e7ed] text-[#2c3947]',
+      bronze: 'border-[#e6b79a] bg-[#fff1e7]',
+      bronzeRank: 'border-[#cc875a] bg-[#e8ad88] text-[#40271d]',
+      base: 'bg-[#fffaf6]',
+      baseRank: 'border-[#e5d6cb] bg-[#fff1e8] text-[#624437]',
+    },
+  };
+  const themeAccent = themeAccentMap[themeId];
+
   if (rank === 1) {
     return {
-      rowClassName: 'border-[#f3c86b]/45 bg-[#fef3cf]',
-      rankClassName: 'border-[#e0b248] bg-[#f3c86b] text-[#24180d]',
+      rowClassName: themeAccent.gold,
+      rankClassName: themeAccent.goldRank,
     };
   }
   if (rank === 2) {
     return {
-      rowClassName: 'border-[#d9dde6]/60 bg-[#f7f8fb]',
-      rankClassName: 'border-[#bfc7d6] bg-[#dfe4ee] text-[#233042]',
+      rowClassName: themeAccent.silver,
+      rankClassName: themeAccent.silverRank,
     };
   }
   if (rank === 3) {
     return {
-      rowClassName: 'border-[#dfb48d]/50 bg-[#fff6ef]',
-      rankClassName: 'border-[#cd8f63] bg-[#e4b08b] text-[#2d1c14]',
+      rowClassName: themeAccent.bronze,
+      rankClassName: themeAccent.bronzeRank,
     };
   }
 
   return {
-    rowClassName: 'border-[#ece5dc] bg-white',
-    rankClassName: 'border-[#ddd3c6] bg-[#f7f1ea] text-[#57463a]',
+    rowClassName: `${themeAccent.base} ${SHARE_CARD_THEMES[themeId].rowBaseClassName}`,
+    rankClassName: themeAccent.baseRank,
   };
 }
 
@@ -83,6 +234,7 @@ export default function ExpoRankingPage() {
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [sortMode, setSortMode] = useState<RankingSortMode>('score');
+  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('paper');
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -128,6 +280,7 @@ export default function ExpoRankingPage() {
     return rankedNotes.slice(safePageIndex * PAGE_SIZE, (safePageIndex + 1) * PAGE_SIZE);
   }, [pageIndex, rankedNotes, totalPages]);
   const currentSortMeta = SORT_MODE_META[sortMode];
+  const currentShareCardTheme = SHARE_CARD_THEMES[shareCardTheme];
   const averageScore = useMemo(() => {
     if (currentPageNotes.length === 0) return 0;
     const sum = currentPageNotes.reduce((acc, note) => acc + (note.overallRating || 0), 0);
@@ -164,7 +317,7 @@ export default function ExpoRankingPage() {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(shareCardRef.current, {
         pixelRatio: 3,
-        backgroundColor: POSTER_BACKGROUND,
+        backgroundColor: currentShareCardTheme.exportBackground,
         fetchRequestInit: { cache: 'force-cache' },
       });
       const response = await fetch(dataUrl);
@@ -311,39 +464,93 @@ export default function ExpoRankingPage() {
                 </Button>
               </div>
             </div>
+
+            <div className="mt-5 border-t border-white/10 pt-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Share Card Style</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
+                  <button
+                    key={themeId}
+                    type="button"
+                    onClick={() => setShareCardTheme(themeId)}
+                    className={cn(
+                      'rounded-[1.3rem] border px-4 py-3 text-left transition-all',
+                      shareCardTheme === themeId
+                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_12px_24px_rgba(255,209,102,0.16)]'
+                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-[#fff4e5]">{theme.label}</p>
+                        <p className="mt-1 text-[11px] text-[#d8b89a]">{theme.description}</p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <span className={cn('h-3 w-3 rounded-full border', theme.shellClassName.split(' ').slice(0, 2).join(' '))} />
+                        <span className={cn('h-3 w-3 rounded-full border', theme.tableClassName.split(' ').slice(0, 2).join(' '))} />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-3 backdrop-blur-xl">
             <div
               ref={shareCardRef}
-              className="mx-auto w-full max-w-[420px] overflow-hidden rounded-[1.7rem] border border-[#e7dccf] bg-[#f8f3ec] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.14)]"
+              className={cn('mx-auto w-full max-w-[420px] overflow-hidden rounded-[1.7rem] border p-4', currentShareCardTheme.shellClassName)}
             >
               {isNotesLoading ? (
-                <div className="flex min-h-[760px] items-center justify-center rounded-[1.4rem] border border-[#e7dccf] bg-white/70">
+                <div className={cn('flex min-h-[760px] items-center justify-center rounded-[1.4rem] border', currentShareCardTheme.emptyClassName)}>
                   <Loader2 className="h-8 w-8 animate-spin text-[#c17c45]" />
                 </div>
               ) : currentPageNotes.length === 0 ? (
-                <div className="flex min-h-[760px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-[#dccdbd] bg-white/70 px-6 text-center">
+                <div className={cn('flex min-h-[760px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed px-6 text-center', currentShareCardTheme.emptyClassName)}>
                   <Trophy className="mb-4 h-9 w-9 text-[#c17c45]" />
-                  <p className="text-lg font-bold text-[#2f241c]">目前還沒有可排名的快記</p>
-                  <p className="mt-2 text-sm leading-7 text-[#7d6758]">先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
+                  <p className={cn('text-lg font-bold', currentShareCardTheme.titleClassName)}>目前還沒有可排名的快記</p>
+                  <p className={cn('mt-2 text-sm leading-7', currentShareCardTheme.metaClassName)}>先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
                 </div>
               ) : (
-                <div className="flex min-h-[760px] flex-col rounded-[1.4rem] border border-[#e7dccf] bg-white px-3 py-3 text-[#2f241c]">
-                  <div className="border-b border-[#efe5d8] pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-bold tracking-[0.18em] text-[#9c7960]">sakepath.com</div>
-                        <h2 className="mt-2 line-clamp-2 text-[22px] font-headline font-bold leading-tight tracking-[0.03em] text-[#241912]">{event.name}</h2>
+                <div className={cn('flex min-h-[760px] flex-col rounded-[1.4rem] border px-3 py-3', currentShareCardTheme.frameClassName)}>
+                  <div className={cn('border-b pb-3', currentShareCardTheme.dividerClassName)}>
+                    {currentShareCardTheme.headerLayout === 'centered' ? (
+                      <div className="text-center">
+                        <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
+                        <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
+                        <div className={cn('mt-3 inline-flex rounded-2xl border px-3 py-2 text-center', currentShareCardTheme.modeChipClassName)}>
+                          <div>
+                            <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
+                            <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="shrink-0 rounded-2xl border border-[#ebddcf] bg-[#f8f3ec] px-3 py-2 text-right">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#9c7960]">榜單模式</div>
-                        <div className="mt-1 text-sm font-bold text-[#241912]">{currentSortMeta.label}</div>
+                    ) : currentShareCardTheme.headerLayout === 'stacked' ? (
+                      <div>
+                        <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
+                        <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
+                        <div className={cn('mt-3 inline-flex rounded-2xl border px-3 py-2', currentShareCardTheme.modeChipClassName)}>
+                          <div>
+                            <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
+                            <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
+                          <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
+                        </div>
+                        <div className={cn('shrink-0 rounded-2xl border px-3 py-2 text-right', currentShareCardTheme.modeChipClassName)}>
+                          <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
+                          <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="mt-3 rounded-[1.2rem] border border-[#efe5d8] bg-[#fcfaf6] p-2">
-                    <div className="grid grid-cols-[42px_minmax(0,1fr)_58px_62px_56px] gap-2 px-2 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-[#9c7960]">
+                  <div className={cn('mt-3 rounded-[1.2rem] border p-2', currentShareCardTheme.tableClassName)}>
+                    <div className={cn('grid grid-cols-[40px_minmax(0,1fr)_56px_46px_52px] gap-2 px-2 pb-2 text-[9px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.tableHeaderClassName)}>
                       <span>排名</span>
                       <span>酒款</span>
                       <span className="text-right">價格</span>
@@ -354,27 +561,27 @@ export default function ExpoRankingPage() {
                       {currentPageNotes.map((note, index) => {
                         const rank = pageIndex * PAGE_SIZE + index + 1;
                         const cpScore = getExpoCpScore(note);
-                        const medalStyle = getRankMedalStyle(rank);
+                        const medalStyle = getRankMedalStyle(rank, shareCardTheme);
 
                         return (
-                          <div key={note.id} className={cn('grid grid-cols-[42px_minmax(0,1fr)_58px_62px_56px] items-center gap-2 rounded-[1rem] border px-2 py-2', medalStyle.rowClassName)}>
+                          <div key={note.id} className={cn('grid grid-cols-[40px_minmax(0,1fr)_56px_46px_52px] items-center gap-2 rounded-[1rem] border px-2 py-2', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
                             <div className={cn('flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
                             <div className="min-w-0">
-                              <p className="truncate text-[12px] font-bold leading-5 text-[#241912]">{getExpoNoteDisplayName(note)}</p>
-                              <p className="truncate text-[9px] font-bold tracking-[0.04em] text-[#8b6e5a]">{getRankingMetaLine(note)}</p>
+                              <p className={cn('break-words text-[11px] font-bold leading-4', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
+                              <p className={cn('mt-1 break-words text-[8px] font-bold leading-3 tracking-[0.04em]', currentShareCardTheme.metaClassName)}>{getRankingMetaLine(note)}</p>
                             </div>
-                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{formatFlavorRating(note.overallRating)}</div>
-                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{formatExpoCpScore(cpScore)}</div>
+                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
+                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#efe5d8] pt-3 text-[9px] font-bold uppercase tracking-[0.16em] text-[#9c7960]">
+                  <div className={cn('mt-auto flex items-center justify-between gap-3 border-t pt-3 text-[9px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.footerClassName)}>
                     <div>酒展快記排行榜</div>
-                    <div>CP = (風味評分^1.5 / 價格) x 3160</div>
+                    <div>CP = (風味評分^1.5 / 價格) x 調整係數</div>
                   </div>
                 </div>
               )}
