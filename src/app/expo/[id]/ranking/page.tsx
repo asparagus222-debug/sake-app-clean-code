@@ -30,6 +30,26 @@ function formatFlavorRating(score: number) {
   return score.toFixed(1);
 }
 
+function formatExpoQuickTagLabel(tag: string) {
+  const separator = '::';
+  const separatorIndex = tag.indexOf(separator);
+  return separatorIndex >= 0 ? tag.slice(separatorIndex + separator.length) : tag;
+}
+
+function getRankingMetaLine(note: SakeNote) {
+  const metaParts = [note.brewery, note.expoMeta?.booth ? `攤位 ${note.expoMeta.booth}` : null].filter(Boolean);
+  const tagSummary = (note.expoMeta?.quickTags || [])
+    .slice(0, 2)
+    .map((tag) => formatExpoQuickTagLabel(tag))
+    .join(' / ');
+
+  if (tagSummary) {
+    metaParts.push(tagSummary);
+  }
+
+  return metaParts.join(' · ') || '未填酒造 / 攤位';
+}
+
 function getRankMedalStyle(rank: number) {
   if (rank === 1) {
     return {
@@ -108,17 +128,22 @@ export default function ExpoRankingPage() {
     return rankedNotes.slice(safePageIndex * PAGE_SIZE, (safePageIndex + 1) * PAGE_SIZE);
   }, [pageIndex, rankedNotes, totalPages]);
   const currentSortMeta = SORT_MODE_META[sortMode];
-  const averageScore = currentPageNotes.length > 0
-    ? currentPageNotes.reduce((sum, note) => sum + note.overallRating, 0) / currentPageNotes.length
-    : 0;
-  const averageCpScore = (() => {
-    const scoredNotes = currentPageNotes
-      .map((note) => getExpoCpScore(note))
-      .filter((score): score is number => score !== null);
+  const averageScore = useMemo(() => {
+    if (currentPageNotes.length === 0) return 0;
+    const sum = currentPageNotes.reduce((acc, note) => acc + (note.overallRating || 0), 0);
+    return sum / currentPageNotes.length;
+  }, [currentPageNotes]);
 
-    if (scoredNotes.length === 0) return null;
-    return scoredNotes.reduce((sum, score) => sum + score, 0) / scoredNotes.length;
-  })();
+  const averageCpScore = useMemo(() => {
+    if (currentPageNotes.length === 0) return 0;
+    const validCpScores = currentPageNotes
+      .map(note => getExpoCpScore(note))
+      .filter((score): score is number => score !== null && score !== undefined);
+    if (validCpScores.length === 0) return 0;
+    const sum = validCpScores.reduce((acc, score) => acc + score, 0);
+    return sum / validCpScores.length;
+  }, [currentPageNotes]);
+
 
   React.useEffect(() => {
     setPageIndex(0);
@@ -307,26 +332,12 @@ export default function ExpoRankingPage() {
                   <div className="border-b border-[#efe5d8] pb-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9c7960]">Expo Check-in</div>
+                        <div className="text-[10px] font-bold tracking-[0.18em] text-[#9c7960]">sakepath.com</div>
                         <h2 className="mt-2 line-clamp-2 text-[22px] font-headline font-bold leading-tight tracking-[0.03em] text-[#241912]">{event.name}</h2>
                       </div>
                       <div className="shrink-0 rounded-2xl border border-[#ebddcf] bg-[#f8f3ec] px-3 py-2 text-right">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#9c7960]">第 {pageIndex + 1} 頁</div>
+                        <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#9c7960]">榜單模式</div>
                         <div className="mt-1 text-sm font-bold text-[#241912]">{currentSortMeta.label}</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">本頁杯數</div>
-                        <div className="mt-1 text-lg font-headline text-[#241912]">{currentPageNotes.length}</div>
-                      </div>
-                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">平均風味</div>
-                        <div className="mt-1 text-lg font-headline text-[#241912]">{averageScore.toFixed(1)}</div>
-                      </div>
-                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
-                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">平均 CP</div>
-                        <div className="mt-1 text-lg font-headline text-[#241912]">{formatExpoCpScore(averageCpScore)}</div>
                       </div>
                     </div>
                   </div>
@@ -350,7 +361,7 @@ export default function ExpoRankingPage() {
                             <div className={cn('flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
                             <div className="min-w-0">
                               <p className="truncate text-[12px] font-bold leading-5 text-[#241912]">{getExpoNoteDisplayName(note)}</p>
-                              <p className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b6e5a]">{note.brewery || note.expoMeta?.booth || '未填酒造 / 攤位'}</p>
+                              <p className="truncate text-[9px] font-bold tracking-[0.04em] text-[#8b6e5a]">{getRankingMetaLine(note)}</p>
                             </div>
                             <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
                             <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{formatFlavorRating(note.overallRating)}</div>
