@@ -23,7 +23,6 @@ const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star
 
 const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   label: string;
-  description: string;
   exportBackground: string;
   shellClassName: string;
   frameClassName: string;
@@ -43,8 +42,7 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   previewSwatchClassName: string;
 }> = {
   'cream-light': {
-    label: '奶油清單 A',
-    description: '暖白淺色',
+    label: '奶白',
     exportBackground: '#f8f3ec',
     shellClassName: 'border-[#e7dccf] bg-[#f8f3ec] shadow-[0_30px_80px_rgba(0,0,0,0.14)]',
     frameClassName: 'border-[#e7dccf] bg-white text-[#2f241c]',
@@ -64,8 +62,7 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
     previewSwatchClassName: 'border-[#e7dccf] bg-[#f8f3ec]',
   },
   'sand-light': {
-    label: '奶油清單 B',
-    description: '杏沙淺色',
+    label: '杏沙',
     exportBackground: '#f7efe5',
     shellClassName: 'border-[#e6d5c6] bg-[linear-gradient(180deg,#f7efe5_0%,#f3e5d8_100%)] shadow-[0_30px_80px_rgba(120,88,58,0.12)]',
     frameClassName: 'border-[#e6d5c6] bg-[#fffaf4] text-[#34261d]',
@@ -85,8 +82,7 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
     previewSwatchClassName: 'border-[#e6d5c6] bg-[#f3e5d8]',
   },
   'cocoa-dark': {
-    label: '奶油清單 C',
-    description: '可可深色',
+    label: '可可',
     exportBackground: '#1a1513',
     shellClassName: 'border-[#45362f] bg-[linear-gradient(180deg,#241d1a_0%,#171210_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.28)]',
     frameClassName: 'border-[#3f322c] bg-[#211b18] text-[#f7eee6]',
@@ -106,8 +102,7 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
     previewSwatchClassName: 'border-[#45362f] bg-[#241d1a]',
   },
   'graphite-dark': {
-    label: '奶油清單 D',
-    description: '石墨深色',
+    label: '石墨',
     exportBackground: '#151619',
     shellClassName: 'border-[#393d44] bg-[linear-gradient(180deg,#1d1f24_0%,#14161a_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.3)]',
     frameClassName: 'border-[#353941] bg-[#1c1f25] text-[#f4efe8]',
@@ -137,9 +132,12 @@ function formatFlavorRating(score: number) {
   return score.toFixed(1);
 }
 
-function getRankingMetaLine(note: SakeNote) {
-  const metaParts = [note.brewery, note.expoMeta?.booth ? `攤位 ${note.expoMeta.booth}` : null].filter(Boolean);
-  return metaParts.join(' · ') || '未填酒造 / 攤位';
+function getRankingBrewery(note: SakeNote) {
+  return note.brewery?.trim() || '未填酒造';
+}
+
+function getRankingBooth(note: SakeNote) {
+  return note.expoMeta?.booth?.trim() ? `攤位 ${note.expoMeta.booth.trim()}` : '未填攤位';
 }
 
 function getRankingAuthorNote(note: SakeNote) {
@@ -457,28 +455,25 @@ export default function ExpoRankingPage() {
 
             <div className="mt-5 border-t border-white/10 pt-5">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Share Card Colors</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="mt-3 grid grid-cols-4 gap-2">
                 {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
                   <button
                     key={themeId}
                     type="button"
                     onClick={() => setShareCardTheme(themeId)}
                     className={cn(
-                      'rounded-[1.3rem] border px-4 py-3 text-left transition-all',
+                      'rounded-full border px-2.5 py-2 text-center transition-all',
                       shareCardTheme === themeId
                         ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_12px_24px_rgba(255,209,102,0.16)]'
                         : 'border-white/10 bg-white/5 hover:bg-white/10'
                     )}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold text-[#fff4e5]">{theme.label}</p>
-                        <p className="mt-1 text-[11px] text-[#d8b89a]">{theme.description}</p>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="flex gap-1">
+                        <span className={cn('h-2.5 w-2.5 rounded-full border', theme.previewSwatchClassName)} />
+                        <span className={cn('h-2.5 w-2.5 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
                       </div>
-                      <div className="flex gap-1.5">
-                        <span className={cn('h-3 w-3 rounded-full border', theme.previewSwatchClassName)} />
-                        <span className={cn('h-3 w-3 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
-                      </div>
+                      <p className="text-[11px] font-bold text-[#fff4e5]">{theme.label}</p>
                     </div>
                   </button>
                 ))}
@@ -516,13 +511,6 @@ export default function ExpoRankingPage() {
                   </div>
 
                   <div className={cn('mt-3 rounded-[1.2rem] border p-2', currentShareCardTheme.tableClassName)}>
-                    <div className={cn('grid grid-cols-[34px_minmax(0,1.25fr)_52px_40px_46px] gap-2 px-2 pb-1.5 text-[8px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.tableHeaderClassName)}>
-                      <span>排名</span>
-                      <span>酒款</span>
-                      <span className="text-right">價格</span>
-                      <span className="text-right">風味</span>
-                      <span className="text-right">CP</span>
-                    </div>
                     <div className="space-y-1.5">
                       {currentPageNotes.map((note, index) => {
                         const rank = pageIndex * PAGE_SIZE + index + 1;
@@ -530,16 +518,33 @@ export default function ExpoRankingPage() {
                         const medalStyle = getRankMedalStyle(rank, shareCardTheme);
 
                         return (
-                          <div key={note.id} className={cn('grid grid-cols-[34px_minmax(0,1.25fr)_52px_40px_46px] items-start gap-2 rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
-                            <div className={cn('mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
-                            <div className="min-w-0">
-                              <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
-                              <p className={cn('mt-0.5 break-words text-[7.5px] font-bold leading-3 tracking-[0.04em]', currentShareCardTheme.metaClassName)}>{getRankingMetaLine(note)}</p>
-                              <p className={cn('mt-0.5 break-words text-[7.5px] font-medium leading-3 tracking-[0.02em]', currentShareCardTheme.metaClassName)}>備註：{getRankingAuthorNote(note)}</p>
+                          <div key={note.id} className={cn('rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
+                            <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-2">
+                              <div className={cn('mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
+                              <div className="min-w-0">
+                                <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
+                                <p className={cn('mt-0.5 break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBrewery(note)}</p>
+                                <p className={cn('break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBooth(note)}</p>
+                              </div>
                             </div>
-                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
-                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
+                            <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
+                              <div className="space-y-0.5">
+                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
+                                <div>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>風味</div>
+                                <div>{formatFlavorRating(note.overallRating)}</div>
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                <div>{formatExpoCpScore(cpScore)}</div>
+                              </div>
+                              <div className="space-y-0.5 min-w-0">
+                                <div className={cn('text-[7px] uppercase tracking-[0.12em] opacity-0', currentShareCardTheme.tableHeaderClassName)}>註</div>
+                                <div className="break-words text-[7.5px] leading-3">{getRankingAuthorNote(note)}</div>
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
