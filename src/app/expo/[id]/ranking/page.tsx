@@ -4,23 +4,22 @@ import React, { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Medal, Share2, ShoppingBag, Sparkles, Star, Ticket, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Medal, Share2, Sparkles, Star, Ticket, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoEvent, SakeNote } from '@/lib/types';
-import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice } from '@/lib/note-lifecycle';
+import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice } from '@/lib/note-lifecycle';
 import { cn } from '@/lib/utils';
 
-type RankingSortMode = 'intent' | 'score' | 'price' | 'cp';
+type RankingSortMode = 'score' | 'price' | 'cp';
 
 const PAGE_SIZE = 10;
 const POSTER_BACKGROUND = '#110d0a';
-const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof ShoppingBag; subtitle: string }> = {
-  intent: { label: '想買程度', icon: ShoppingBag, subtitle: '先看這場最想回購與帶走的清單' },
-  score: { label: '風味評分', icon: Star, subtitle: '把風味完成度最高的酒款排在前面' },
-  price: { label: '價格', icon: BadgeDollarSign, subtitle: '按照現場價格快速比較出手順序' },
-  cp: { label: 'CP 值', icon: Trophy, subtitle: '使用風味評分^1.5 ÷ 價格 × 3160 的公式排序' },
+const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
+  score: { label: '風味評分', icon: Star },
+  price: { label: '價格', icon: BadgeDollarSign },
+  cp: { label: 'CP 值', icon: Trophy },
 };
 
 function formatExpoCpScore(score: number | null | undefined) {
@@ -68,7 +67,7 @@ export default function ExpoRankingPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
-  const [sortMode, setSortMode] = useState<RankingSortMode>('intent');
+  const [sortMode, setSortMode] = useState<RankingSortMode>('score');
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -93,14 +92,8 @@ export default function ExpoRankingPage() {
   const rankedNotes = useMemo(() => {
     const notes = [...(rawNotes || [])];
     return notes.sort((left, right) => {
-      if (sortMode === 'intent') {
-        return getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
-          || right.overallRating - left.overallRating
-          || (right.createdAt || '').localeCompare(left.createdAt || '');
-      }
       if (sortMode === 'score') {
         return right.overallRating - left.overallRating
-          || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
           || (right.createdAt || '').localeCompare(left.createdAt || '');
       }
       if (sortMode === 'price') {
@@ -123,7 +116,6 @@ export default function ExpoRankingPage() {
   const averageScore = currentPageNotes.length > 0
     ? currentPageNotes.reduce((sum, note) => sum + note.overallRating, 0) / currentPageNotes.length
     : 0;
-  const mustBuyCount = currentPageNotes.filter((note) => note.expoMeta?.buyIntent === 'must-buy').length;
   const averageCpScore = (() => {
     const scoredNotes = currentPageNotes
       .map((note) => getExpoCpScore(note))
@@ -238,7 +230,6 @@ export default function ExpoRankingPage() {
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
             {[
-              { value: 'intent', label: '想買程度', icon: ShoppingBag },
               { value: 'score', label: '風味評分', icon: Star },
               { value: 'price', label: '價格', icon: BadgeDollarSign },
               { value: 'cp', label: 'CP 值', icon: Trophy },
@@ -269,8 +260,8 @@ export default function ExpoRankingPage() {
                 <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{currentPageNotes.length}</div>
               </div>
               <div className="rounded-[1.4rem] border border-white/10 bg-[#1a130f] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">必買數</div>
-                <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{mustBuyCount}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">平均風味</div>
+                <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
               </div>
               <div className="rounded-[1.4rem] border border-white/10 bg-[#1a130f] px-4 py-3">
                 <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">平均 CP</div>
@@ -344,8 +335,8 @@ export default function ExpoRankingPage() {
                       <div className="mt-1 text-lg font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
                     </div>
                     <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">必買數</div>
-                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{mustBuyCount}</div>
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">本頁杯數</div>
+                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{currentPageNotes.length}</div>
                     </div>
                     <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
                       <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均 CP</div>
@@ -369,9 +360,6 @@ export default function ExpoRankingPage() {
                               <div className="flex items-center gap-1.5">
                                 <Badge variant="outline" className={cn('h-5 px-1.5 text-[9px] font-bold tracking-widest', medalStyle.badgeClassName)}>
                                   {medalStyle.label}
-                                </Badge>
-                                <Badge variant="outline" className={cn('h-5 px-1.5 text-[9px] font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta?.buyIntent))}>
-                                  {getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}
                                 </Badge>
                               </div>
                               <p className="mt-1 truncate text-[13px] font-bold text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>

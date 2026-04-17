@@ -1,5 +1,4 @@
 import {
-  ExpoBuyIntent,
   NoteEntryMode,
   NotePublicationStatus,
   NoteVisibility,
@@ -34,48 +33,6 @@ export function isOwnedByUser(note: Pick<SakeNote, 'userId'> | null | undefined,
 
 export function canViewNote(note: SakeNote | null | undefined, uid?: string | null) {
   return isPublicPublishedNote(note) || isOwnedByUser(note, uid);
-}
-
-export function getExpoBuyIntentRank(intent?: ExpoBuyIntent | null) {
-  switch (intent) {
-    case 'must-buy':
-      return 4;
-    case 'want':
-      return 3;
-    case 'consider':
-      return 2;
-    case 'skip':
-    default:
-      return 1;
-  }
-}
-
-export function getExpoBuyIntentLabel(intent?: ExpoBuyIntent | null) {
-  switch (intent) {
-    case 'must-buy':
-      return '必買';
-    case 'want':
-      return '想買';
-    case 'consider':
-      return '可考慮';
-    case 'skip':
-    default:
-      return '不買';
-  }
-}
-
-export function getExpoBuyIntentClassName(intent?: ExpoBuyIntent | null) {
-  switch (intent) {
-    case 'must-buy':
-      return 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30';
-    case 'want':
-      return 'bg-sky-500/15 text-sky-300 border-sky-400/30';
-    case 'consider':
-      return 'bg-amber-500/15 text-amber-300 border-amber-400/30';
-    case 'skip':
-    default:
-      return 'bg-white/10 text-muted-foreground border-white/10';
-  }
 }
 
 export function getSortableExpoPrice(note: Pick<SakeNote, 'expoMeta'>) {

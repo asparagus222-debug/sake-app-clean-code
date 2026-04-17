@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { canViewNote, getExpoBuyIntentClassName, getExpoBuyIntentLabel, isPublicPublishedNote } from '@/lib/note-lifecycle';
+import { canViewNote, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, formatSakeDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -449,9 +449,6 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
                   <div className="flex flex-wrap gap-2 mt-2">
                     <Badge variant="outline" className="text-[9px] h-5 px-2 border-sky-400/30 bg-sky-500/10 text-sky-200 font-bold tracking-widest">
                       私人快記
-                    </Badge>
-                    <Badge variant="outline" className={cn('text-[9px] h-5 px-2 font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta.buyIntent))}>
-                      {getExpoBuyIntentLabel(note.expoMeta.buyIntent)}
                     </Badge>
                     {note.expoMeta.booth && (
                       <Badge variant="outline" className="text-[9px] h-5 px-2 border-white/10 bg-white/5 text-foreground/80 font-bold tracking-widest">

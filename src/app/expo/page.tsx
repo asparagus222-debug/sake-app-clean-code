@@ -189,7 +189,7 @@ export default function ExpoPage() {
             </div>
             <div className="space-y-3 text-sm text-foreground/80">
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">1. 建立酒展活動</div>
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">2. 每杯只記酒名、攤位、價格、分數、想買程度</div>
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">2. 每杯只記酒名、攤位、價格、風味評分</div>
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">3. 回家用比較頁切排序，挑出最值得買和最值得發文的酒</div>
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">4. 從同一篇進入完整編輯，補好之後再發布</div>
             </div>

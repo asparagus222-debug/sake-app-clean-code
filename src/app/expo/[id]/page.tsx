@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, PencilLine, ShoppingBag, Star, Store, Trash2, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, PencilLine, Star, Store, Trash2, Trophy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,12 +22,12 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { ExpoBuyIntent, ExpoEvent, EXPO_BUY_INTENT_OPTIONS, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
-import { getExpoBuyIntentClassName, getExpoBuyIntentLabel, getExpoBuyIntentRank, getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
+import { ExpoEvent, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
+import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type SortMode = 'intent' | 'score' | 'price' | 'cp';
+type SortMode = 'score' | 'price' | 'cp';
 
 function formatFlavorRating(score: number) {
   return score.toFixed(1);
@@ -44,14 +44,13 @@ export default function ExpoEventPage() {
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>('intent');
+  const [sortMode, setSortMode] = useState<SortMode>('score');
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
     booth: '',
     price: '',
     overallRating: 7.0,
-    buyIntent: 'consider' as ExpoBuyIntent,
     quickTags: [] as string[],
     quickNote: '',
   });
@@ -82,31 +81,23 @@ export default function ExpoEventPage() {
   const sortedNotes = useMemo(() => {
     const notes = [...(rawNotes || [])];
     return notes.sort((left, right) => {
-      if (sortMode === 'intent') {
-        return getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
-          || right.overallRating - left.overallRating
-          || (right.createdAt || '').localeCompare(left.createdAt || '');
-      }
       if (sortMode === 'score') {
         return right.overallRating - left.overallRating
-          || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
           || (right.createdAt || '').localeCompare(left.createdAt || '');
       }
       if (sortMode === 'cp') {
         return getSortableExpoCpScore(right) - getSortableExpoCpScore(left)
           || right.overallRating - left.overallRating
-          || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
           || (right.createdAt || '').localeCompare(left.createdAt || '');
       }
       return getSortableExpoPrice(left) - getSortableExpoPrice(right)
-        || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
+        || right.overallRating - left.overallRating
         || (right.createdAt || '').localeCompare(left.createdAt || '');
     });
   }, [rawNotes, sortMode]);
 
   const counts = useMemo(() => ({
     total: rawNotes?.length || 0,
-    mustBuy: rawNotes?.filter((note) => note.expoMeta?.buyIntent === 'must-buy').length || 0,
     published: rawNotes?.filter((note) => isPublicPublishedNote(note)).length || 0,
   }), [rawNotes]);
 
@@ -126,7 +117,6 @@ export default function ExpoEventPage() {
       brandName: '',
       price: '',
       overallRating: 7.0,
-      buyIntent: 'consider',
       quickTags: [],
       quickNote: '',
     }));
@@ -171,7 +161,6 @@ export default function ExpoEventPage() {
           booth: formData.booth.trim(),
           price: Number.isFinite(price) ? price : null,
           currency: 'TWD',
-          buyIntent: formData.buyIntent,
           quickTags: formData.quickTags,
           quickNote: formData.quickNote.trim(),
           isPurchased: false,
@@ -191,7 +180,6 @@ export default function ExpoEventPage() {
             booth: formData.booth.trim(),
             price: Number.isFinite(price) ? price : null,
             currency: 'TWD',
-            buyIntent: formData.buyIntent,
             quickTags: formData.quickTags,
             quickNote: formData.quickNote.trim(),
             isPurchased: false,
@@ -219,7 +207,6 @@ export default function ExpoEventPage() {
       booth: note.expoMeta?.booth || '',
       price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
       overallRating: note.overallRating || 7.0,
-      buyIntent: note.expoMeta?.buyIntent || 'consider',
       quickTags: note.expoMeta?.quickTags || [],
       quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
     });
@@ -317,14 +304,10 @@ export default function ExpoEventPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
                 <div className="text-lg font-headline font-bold text-primary">{counts.total}</div>
                 <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">總杯數</div>
-              </div>
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-center">
-                <div className="text-lg font-headline font-bold text-emerald-300">{counts.mustBuy}</div>
-                <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-200/70">必買</div>
               </div>
               <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-center">
                 <div className="text-lg font-headline font-bold text-sky-300">{counts.published}</div>
@@ -375,27 +358,6 @@ export default function ExpoEventPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">想買程度</p>
-              <div className="grid grid-cols-2 gap-2">
-                {EXPO_BUY_INTENT_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, buyIntent: option.value }))}
-                    className={cn(
-                      'rounded-2xl border px-4 py-3 text-sm font-bold transition-all',
-                      formData.buyIntent === option.value
-                        ? getExpoBuyIntentClassName(option.value)
-                        : 'border-white/10 bg-white/5 text-muted-foreground'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速標籤</p>
               <div className="space-y-3">
                 {EXPO_QUICK_TAG_GROUPS.map((group) => (
@@ -442,37 +404,36 @@ export default function ExpoEventPage() {
 
           <div className="space-y-4">
             <div className="dark-glass rounded-[2rem] border border-white/10 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Compare View</p>
                   <h2 className="text-lg font-bold text-foreground">本場比較清單</h2>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/expo/${eventId}/ranking`}>
-                    <Button variant="outline" className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">
-                      <Trophy className="w-3 h-3 mr-1.5" /> 排名打卡頁
+                <Link href={`/expo/${eventId}/ranking`}>
+                  <Button className="rounded-full h-10 bg-[#ffd166] px-5 text-[10px] font-bold uppercase tracking-widest text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.28)] hover:bg-[#ffe08f]">
+                    <Trophy className="w-3.5 h-3.5 mr-1.5" /> 排名打卡頁
+                  </Button>
+                </Link>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {[
+                  { value: 'score', label: '風味評分', icon: Star },
+                  { value: 'price', label: '價格', icon: CircleDollarSign },
+                  { value: 'cp', label: 'CP 值', icon: BadgeDollarSign },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={sortMode === option.value ? 'default' : 'outline'}
+                      onClick={() => setSortMode(option.value as SortMode)}
+                      className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
+                    >
+                      <Icon className="w-3 h-3 mr-1.5" /> {option.label}
                     </Button>
-                  </Link>
-                  {[
-                    { value: 'intent', label: '想買程度', icon: ShoppingBag },
-                    { value: 'score', label: '風味評分', icon: Star },
-                    { value: 'price', label: '價格', icon: CircleDollarSign },
-                    { value: 'cp', label: 'CP 值', icon: BadgeDollarSign },
-                  ].map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <Button
-                        key={option.value}
-                        type="button"
-                        variant={sortMode === option.value ? 'default' : 'outline'}
-                        onClick={() => setSortMode(option.value as SortMode)}
-                        className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest"
-                      >
-                        <Icon className="w-3 h-3 mr-1.5" /> {option.label}
-                      </Button>
-                    );
-                  })}
-                </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -491,9 +452,6 @@ export default function ExpoEventPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <Badge variant="outline" className={cn('text-[9px] h-5 px-2 font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta?.buyIntent))}>
-                            {getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}
-                          </Badge>
                           {isPublicPublishedNote(note) && (
                             <Badge variant="outline" className="text-[9px] h-5 px-2 border-emerald-400/30 bg-emerald-500/10 text-emerald-200 font-bold tracking-widest">
                               已發布

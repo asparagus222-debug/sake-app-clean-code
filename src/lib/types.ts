@@ -33,7 +33,7 @@ export type ExpoMeta = {
   booth: string;
   price?: number | null;
   currency?: string;
-  buyIntent: ExpoBuyIntent;
+  buyIntent?: ExpoBuyIntent;
   quickTags?: string[];
   quickNote?: string;
   isPurchased?: boolean;
@@ -202,13 +202,6 @@ export const QUALIFICATION_OPTIONS = [
   'Japan Sake Association 大師講師',
   'Japan Sake Association Sake Concierge',
   'Japan Sake Association Sake Expert'
-];
-
-export const EXPO_BUY_INTENT_OPTIONS: Array<{ value: ExpoBuyIntent; label: string }> = [
-  { value: 'skip', label: '不買' },
-  { value: 'consider', label: '可考慮' },
-  { value: 'want', label: '想買' },
-  { value: 'must-buy', label: '必買' },
 ];
 
 export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
