@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 type RankingSortMode = 'score' | 'price' | 'cp';
 type ShareCardThemeId = 'cream-light' | 'sand-light' | 'cocoa-dark' | 'graphite-dark';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
   score: { label: '風味評分', icon: Star },
   price: { label: '價格', icon: BadgeDollarSign },
@@ -137,7 +137,7 @@ function getRankingBrewery(note: SakeNote) {
 }
 
 function getRankingBooth(note: SakeNote) {
-  return note.expoMeta?.booth?.trim() ? `攤位 ${note.expoMeta.booth.trim()}` : '攤位';
+  return note.expoMeta?.booth?.trim() || '攤位';
 }
 
 function formatExpoQuickTagLabel(tag: string) {
@@ -379,7 +379,7 @@ export default function ExpoRankingPage() {
             <h1 className="mt-3 text-3xl font-headline font-bold tracking-[0.16em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
             <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Trophy className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><ClipboardList className="w-3 h-3 text-[#ffb86b]" /> 每頁 10 名</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><ClipboardList className="w-3 h-3 text-[#ffb86b]" /> 每頁 5 名</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Sparkles className="w-3 h-3 text-[#ffb86b]" /> {currentSortMeta.label} 模式</span>
             </div>
           </div>
@@ -534,18 +534,22 @@ export default function ExpoRankingPage() {
                             <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-2">
                               <div className={cn('mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
                               <div className="min-w-0">
-                                <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
-                                <p className={cn('mt-0.5 break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBrewery(note)}</p>
-                                <p className={cn('break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBooth(note)}</p>
-                                {styleTags.length > 0 && (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    {styleTags.map((tag) => (
-                                      <span key={`${note.id}-${tag}`} className={cn('rounded-full border px-1.5 py-0.5 text-[6.5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
-                                        {tag}
-                                      </span>
-                                    ))}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
+                                    <p className={cn('mt-0.5 break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBrewery(note)}</p>
+                                    <p className={cn('break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBooth(note)}</p>
                                   </div>
-                                )}
+                                  {styleTags.length > 0 && (
+                                    <div className="flex max-w-[44%] flex-wrap justify-end gap-1 pt-0.5">
+                                      {styleTags.map((tag) => (
+                                        <span key={`${note.id}-${tag}`} className={cn('rounded-full border px-1.5 py-0.5 text-[6.5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
