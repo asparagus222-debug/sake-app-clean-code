@@ -12,7 +12,7 @@ import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSort
 import { cn } from '@/lib/utils';
 
 type RankingSortMode = 'score' | 'price' | 'cp';
-type ShareCardThemeId = 'paper' | 'midnight' | 'matcha' | 'sunrise';
+type ShareCardThemeId = 'cream-light' | 'sand-light' | 'cocoa-dark' | 'graphite-dark';
 
 const PAGE_SIZE = 10;
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
@@ -40,11 +40,11 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   valueClassName: string;
   footerClassName: string;
   rowBaseClassName: string;
-  headerLayout: 'split' | 'stacked' | 'centered';
+  previewSwatchClassName: string;
 }> = {
-  paper: {
-    label: '奶油清單',
-    description: '暖白簡潔版',
+  'cream-light': {
+    label: '奶油清單 A',
+    description: '暖白淺色',
     exportBackground: '#f8f3ec',
     shellClassName: 'border-[#e7dccf] bg-[#f8f3ec] shadow-[0_30px_80px_rgba(0,0,0,0.14)]',
     frameClassName: 'border-[#e7dccf] bg-white text-[#2f241c]',
@@ -61,70 +61,70 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
     valueClassName: 'text-[#4d3a2f]',
     footerClassName: 'border-[#efe5d8] text-[#9c7960]',
     rowBaseClassName: 'border-[#ece5dc]',
-    headerLayout: 'split',
+    previewSwatchClassName: 'border-[#e7dccf] bg-[#f8f3ec]',
   },
-  midnight: {
-    label: '夜色榜單',
-    description: '深色對比版',
-    exportBackground: '#121113',
-    shellClassName: 'border-[#3c342f] bg-[linear-gradient(180deg,#171517_0%,#111012_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.28)]',
-    frameClassName: 'border-[#312b28] bg-[#171517] text-[#f7efe5]',
-    emptyClassName: 'border-[#3a322f] bg-[#1c191b] text-[#f7efe5]',
-    dividerClassName: 'border-[#2f2926]',
-    eyebrowClassName: 'text-[#d6b79a]',
-    titleClassName: 'text-[#fff7ef]',
-    modeChipClassName: 'border-[#3a322f] bg-[#211d20]',
-    modeLabelClassName: 'text-[#d6b79a]',
-    modeValueClassName: 'text-[#fff7ef]',
-    tableClassName: 'border-[#2f2926] bg-[#1a1719]',
-    tableHeaderClassName: 'text-[#caa88c]',
-    metaClassName: 'text-[#b99679]',
-    valueClassName: 'text-[#f6eadf]',
-    footerClassName: 'border-[#2f2926] text-[#caa88c]',
-    rowBaseClassName: 'border-[#3a322f]',
-    headerLayout: 'stacked',
+  'sand-light': {
+    label: '奶油清單 B',
+    description: '杏沙淺色',
+    exportBackground: '#f7efe5',
+    shellClassName: 'border-[#e6d5c6] bg-[linear-gradient(180deg,#f7efe5_0%,#f3e5d8_100%)] shadow-[0_30px_80px_rgba(120,88,58,0.12)]',
+    frameClassName: 'border-[#e6d5c6] bg-[#fffaf4] text-[#34261d]',
+    emptyClassName: 'border-[#ddcbbb] bg-[#fff7f0] text-[#34261d]',
+    dividerClassName: 'border-[#efdfd2]',
+    eyebrowClassName: 'text-[#a37c63]',
+    titleClassName: 'text-[#34261d]',
+    modeChipClassName: 'border-[#e6d5c6] bg-[#f8efe6]',
+    modeLabelClassName: 'text-[#a37c63]',
+    modeValueClassName: 'text-[#34261d]',
+    tableClassName: 'border-[#efdfd2] bg-[#fffdfa]',
+    tableHeaderClassName: 'text-[#a37c63]',
+    metaClassName: 'text-[#8f6e59]',
+    valueClassName: 'text-[#5a4336]',
+    footerClassName: 'border-[#efdfd2] text-[#a37c63]',
+    rowBaseClassName: 'border-[#eadcd1]',
+    previewSwatchClassName: 'border-[#e6d5c6] bg-[#f3e5d8]',
   },
-  matcha: {
-    label: '抹茶手帳',
-    description: '清酒感綠調版',
-    exportBackground: '#eef1e7',
-    shellClassName: 'border-[#cfd8c4] bg-[linear-gradient(180deg,#edf2e7_0%,#e5ecdd_100%)] shadow-[0_30px_80px_rgba(54,72,40,0.16)]',
-    frameClassName: 'border-[#cfd8c4] bg-[#fbfcf7] text-[#243022]',
-    emptyClassName: 'border-[#c7d1bc] bg-[#f6f8f0] text-[#243022]',
-    dividerClassName: 'border-[#dfe7d6]',
-    eyebrowClassName: 'text-[#6c7d5f]',
-    titleClassName: 'text-[#243022]',
-    modeChipClassName: 'border-[#d9e1cf] bg-[#eef3e6]',
-    modeLabelClassName: 'text-[#6c7d5f]',
-    modeValueClassName: 'text-[#243022]',
-    tableClassName: 'border-[#dfe7d6] bg-[#f8fbf2]',
-    tableHeaderClassName: 'text-[#6c7d5f]',
-    metaClassName: 'text-[#66755b]',
-    valueClassName: 'text-[#334230]',
-    footerClassName: 'border-[#dfe7d6] text-[#6c7d5f]',
-    rowBaseClassName: 'border-[#d8e1cf]',
-    headerLayout: 'split',
+  'cocoa-dark': {
+    label: '奶油清單 C',
+    description: '可可深色',
+    exportBackground: '#1a1513',
+    shellClassName: 'border-[#45362f] bg-[linear-gradient(180deg,#241d1a_0%,#171210_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.28)]',
+    frameClassName: 'border-[#3f322c] bg-[#211b18] text-[#f7eee6]',
+    emptyClassName: 'border-[#43362f] bg-[#27201d] text-[#f7eee6]',
+    dividerClassName: 'border-[#382d28]',
+    eyebrowClassName: 'text-[#d8b89c]',
+    titleClassName: 'text-[#fff6ef]',
+    modeChipClassName: 'border-[#43362f] bg-[#2b2320]',
+    modeLabelClassName: 'text-[#d8b89c]',
+    modeValueClassName: 'text-[#fff6ef]',
+    tableClassName: 'border-[#382d28] bg-[#26201d]',
+    tableHeaderClassName: 'text-[#cfae92]',
+    metaClassName: 'text-[#c09e82]',
+    valueClassName: 'text-[#f4e8dd]',
+    footerClassName: 'border-[#382d28] text-[#cfae92]',
+    rowBaseClassName: 'border-[#40342e]',
+    previewSwatchClassName: 'border-[#45362f] bg-[#241d1a]',
   },
-  sunrise: {
-    label: '晨曦海報',
-    description: '柔暖貼文版',
-    exportBackground: '#fff3ea',
-    shellClassName: 'border-[#f0d8c8] bg-[linear-gradient(180deg,#fff3ea_0%,#ffe8da_100%)] shadow-[0_30px_80px_rgba(183,104,58,0.16)]',
-    frameClassName: 'border-[#f0d8c8] bg-[#fffaf6] text-[#40271d]',
-    emptyClassName: 'border-[#eed7c9] bg-[#fff7f2] text-[#40271d]',
-    dividerClassName: 'border-[#f5e0d3]',
-    eyebrowClassName: 'text-[#b47656]',
-    titleClassName: 'text-[#40271d]',
-    modeChipClassName: 'border-[#f0d8c8] bg-[#fff0e6]',
-    modeLabelClassName: 'text-[#b47656]',
-    modeValueClassName: 'text-[#40271d]',
-    tableClassName: 'border-[#f5e0d3] bg-[#fffdfb]',
-    tableHeaderClassName: 'text-[#b47656]',
-    metaClassName: 'text-[#a06d52]',
-    valueClassName: 'text-[#5f3d2e]',
-    footerClassName: 'border-[#f5e0d3] text-[#b47656]',
-    rowBaseClassName: 'border-[#f0ded1]',
-    headerLayout: 'centered',
+  'graphite-dark': {
+    label: '奶油清單 D',
+    description: '石墨深色',
+    exportBackground: '#151619',
+    shellClassName: 'border-[#393d44] bg-[linear-gradient(180deg,#1d1f24_0%,#14161a_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.3)]',
+    frameClassName: 'border-[#353941] bg-[#1c1f25] text-[#f4efe8]',
+    emptyClassName: 'border-[#40444c] bg-[#23262d] text-[#f4efe8]',
+    dividerClassName: 'border-[#31353d]',
+    eyebrowClassName: 'text-[#c9bea8]',
+    titleClassName: 'text-[#fbf7f0]',
+    modeChipClassName: 'border-[#40444c] bg-[#252931]',
+    modeLabelClassName: 'text-[#c9bea8]',
+    modeValueClassName: 'text-[#fbf7f0]',
+    tableClassName: 'border-[#31353d] bg-[#22262d]',
+    tableHeaderClassName: 'text-[#c9bea8]',
+    metaClassName: 'text-[#b9ad98]',
+    valueClassName: 'text-[#efe7db]',
+    footerClassName: 'border-[#31353d] text-[#c9bea8]',
+    rowBaseClassName: 'border-[#3d424a]',
+    previewSwatchClassName: 'border-[#393d44] bg-[#1d1f24]',
   },
 };
 
@@ -137,29 +137,19 @@ function formatFlavorRating(score: number) {
   return score.toFixed(1);
 }
 
-function formatExpoQuickTagLabel(tag: string) {
-  const separator = '::';
-  const separatorIndex = tag.indexOf(separator);
-  return separatorIndex >= 0 ? tag.slice(separatorIndex + separator.length) : tag;
-}
-
 function getRankingMetaLine(note: SakeNote) {
   const metaParts = [note.brewery, note.expoMeta?.booth ? `攤位 ${note.expoMeta.booth}` : null].filter(Boolean);
-  const tagSummary = (note.expoMeta?.quickTags || [])
-    .slice(0, 2)
-    .map((tag) => formatExpoQuickTagLabel(tag))
-    .join(' / ');
-
-  if (tagSummary) {
-    metaParts.push(tagSummary);
-  }
-
   return metaParts.join(' · ') || '未填酒造 / 攤位';
+}
+
+function getRankingAuthorNote(note: SakeNote) {
+  const noteText = note.expoMeta?.quickNote?.trim() || note.userDescription?.trim() || note.description?.trim() || '';
+  return noteText || '未填作者備註';
 }
 
 function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
   const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
-    paper: {
+    'cream-light': {
       gold: 'border-[#f3c86b]/45 bg-[#fef3cf]',
       goldRank: 'border-[#e0b248] bg-[#f3c86b] text-[#24180d]',
       silver: 'border-[#d9dde6]/60 bg-[#f7f8fb]',
@@ -169,35 +159,35 @@ function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
       base: 'bg-white',
       baseRank: 'border-[#ddd3c6] bg-[#f7f1ea] text-[#57463a]',
     },
-    midnight: {
+    'sand-light': {
+      gold: 'border-[#e8c57a]/45 bg-[#fff2d7]',
+      goldRank: 'border-[#d9ac4a] bg-[#efc76c] text-[#2b1d11]',
+      silver: 'border-[#d8dde3]/55 bg-[#f8fafc]',
+      silverRank: 'border-[#bfc7d3] bg-[#dfe5ec] text-[#253241]',
+      bronze: 'border-[#dfb896]/45 bg-[#fff3ea]',
+      bronzeRank: 'border-[#cc9062] bg-[#e2b18d] text-[#2e1d15]',
+      base: 'bg-[#fffaf4]',
+      baseRank: 'border-[#dfd0c3] bg-[#f7ede3] text-[#624d40]',
+    },
+    'cocoa-dark': {
       gold: 'border-[#5b4a25] bg-[#2b2417]',
       goldRank: 'border-[#ba9651] bg-[#f0be5f] text-[#24180d]',
-      silver: 'border-[#414753] bg-[#20242b]',
-      silverRank: 'border-[#8791a3] bg-[#d4d8e2] text-[#1f2937]',
+      silver: 'border-[#4b4e57] bg-[#262a31]',
+      silverRank: 'border-[#8b96aa] bg-[#d7dce6] text-[#202936]',
       bronze: 'border-[#5b4032] bg-[#271d1a]',
       bronzeRank: 'border-[#c48b66] bg-[#d7a07a] text-[#2a1a14]',
-      base: 'bg-[#191719]',
-      baseRank: 'border-[#3a322f] bg-[#231f22] text-[#f1e5d8]',
+      base: 'bg-[#211b18]',
+      baseRank: 'border-[#4b3d35] bg-[#2a2320] text-[#f1e5d8]',
     },
-    matcha: {
-      gold: 'border-[#d7c774] bg-[#faf4d8]',
-      goldRank: 'border-[#c0a94b] bg-[#e9d16e] text-[#2d2813]',
-      silver: 'border-[#ccd3da] bg-[#f4f7fa]',
-      silverRank: 'border-[#afb8c3] bg-[#dde3ea] text-[#233042]',
-      bronze: 'border-[#d4b18f] bg-[#fbf1e8]',
-      bronzeRank: 'border-[#c88d60] bg-[#ddb08b] text-[#2d1c14]',
-      base: 'bg-[#fbfcf7]',
-      baseRank: 'border-[#cad6bf] bg-[#eef3e6] text-[#3d4c36]',
-    },
-    sunrise: {
-      gold: 'border-[#efc86f] bg-[#fff2c8]',
-      goldRank: 'border-[#dfab45] bg-[#f7c964] text-[#3b2616]',
-      silver: 'border-[#d2d8df] bg-[#f8fafc]',
-      silverRank: 'border-[#b5bfcb] bg-[#e2e7ed] text-[#2c3947]',
-      bronze: 'border-[#e6b79a] bg-[#fff1e7]',
-      bronzeRank: 'border-[#cc875a] bg-[#e8ad88] text-[#40271d]',
-      base: 'bg-[#fffaf6]',
-      baseRank: 'border-[#e5d6cb] bg-[#fff1e8] text-[#624437]',
+    'graphite-dark': {
+      gold: 'border-[#5c5432] bg-[#2b291f]',
+      goldRank: 'border-[#c1a560] bg-[#e8c66d] text-[#252013]',
+      silver: 'border-[#4a515a] bg-[#262b33]',
+      silverRank: 'border-[#99a3b1] bg-[#dce1e7] text-[#1d2733]',
+      bronze: 'border-[#605047] bg-[#2b221f]',
+      bronzeRank: 'border-[#cb9170] bg-[#d8a184] text-[#291c16]',
+      base: 'bg-[#1c1f25]',
+      baseRank: 'border-[#4a515a] bg-[#262a31] text-[#ece3d8]',
     },
   };
   const themeAccent = themeAccentMap[themeId];
@@ -234,7 +224,7 @@ export default function ExpoRankingPage() {
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [sortMode, setSortMode] = useState<RankingSortMode>('score');
-  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('paper');
+  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('cream-light');
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -466,7 +456,7 @@ export default function ExpoRankingPage() {
             </div>
 
             <div className="mt-5 border-t border-white/10 pt-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Share Card Style</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Share Card Colors</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
                   <button
@@ -486,8 +476,8 @@ export default function ExpoRankingPage() {
                         <p className="mt-1 text-[11px] text-[#d8b89a]">{theme.description}</p>
                       </div>
                       <div className="flex gap-1.5">
-                        <span className={cn('h-3 w-3 rounded-full border', theme.shellClassName.split(' ').slice(0, 2).join(' '))} />
-                        <span className={cn('h-3 w-3 rounded-full border', theme.tableClassName.split(' ').slice(0, 2).join(' '))} />
+                        <span className={cn('h-3 w-3 rounded-full border', theme.previewSwatchClassName)} />
+                        <span className={cn('h-3 w-3 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
                       </div>
                     </div>
                   </button>
@@ -513,44 +503,20 @@ export default function ExpoRankingPage() {
               ) : (
                 <div className={cn('flex min-h-[760px] flex-col rounded-[1.4rem] border px-3 py-3', currentShareCardTheme.frameClassName)}>
                   <div className={cn('border-b pb-3', currentShareCardTheme.dividerClassName)}>
-                    {currentShareCardTheme.headerLayout === 'centered' ? (
-                      <div className="text-center">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
                         <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
                         <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
-                        <div className={cn('mt-3 inline-flex rounded-2xl border px-3 py-2 text-center', currentShareCardTheme.modeChipClassName)}>
-                          <div>
-                            <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
-                            <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
-                          </div>
-                        </div>
                       </div>
-                    ) : currentShareCardTheme.headerLayout === 'stacked' ? (
-                      <div>
-                        <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
-                        <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
-                        <div className={cn('mt-3 inline-flex rounded-2xl border px-3 py-2', currentShareCardTheme.modeChipClassName)}>
-                          <div>
-                            <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
-                            <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
-                          </div>
-                        </div>
+                      <div className={cn('shrink-0 rounded-2xl border px-3 py-2 text-right', currentShareCardTheme.modeChipClassName)}>
+                        <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
+                        <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
                       </div>
-                    ) : (
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className={cn('text-[10px] font-bold tracking-[0.18em]', currentShareCardTheme.eyebrowClassName)}>sakepath.com</div>
-                          <h2 className={cn('mt-2 break-words text-[22px] font-headline font-bold leading-tight tracking-[0.03em]', currentShareCardTheme.titleClassName)}>{event.name}</h2>
-                        </div>
-                        <div className={cn('shrink-0 rounded-2xl border px-3 py-2 text-right', currentShareCardTheme.modeChipClassName)}>
-                          <div className={cn('text-[9px] font-bold uppercase tracking-[0.22em]', currentShareCardTheme.modeLabelClassName)}>榜單模式</div>
-                          <div className={cn('mt-1 text-sm font-bold', currentShareCardTheme.modeValueClassName)}>{currentSortMeta.label}</div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
 
                   <div className={cn('mt-3 rounded-[1.2rem] border p-2', currentShareCardTheme.tableClassName)}>
-                    <div className={cn('grid grid-cols-[40px_minmax(0,1fr)_56px_46px_52px] gap-2 px-2 pb-2 text-[9px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.tableHeaderClassName)}>
+                    <div className={cn('grid grid-cols-[34px_minmax(0,1.25fr)_52px_40px_46px] gap-2 px-2 pb-1.5 text-[8px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.tableHeaderClassName)}>
                       <span>排名</span>
                       <span>酒款</span>
                       <span className="text-right">價格</span>
@@ -564,15 +530,16 @@ export default function ExpoRankingPage() {
                         const medalStyle = getRankMedalStyle(rank, shareCardTheme);
 
                         return (
-                          <div key={note.id} className={cn('grid grid-cols-[40px_minmax(0,1fr)_56px_46px_52px] items-center gap-2 rounded-[1rem] border px-2 py-2', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
-                            <div className={cn('flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
+                          <div key={note.id} className={cn('grid grid-cols-[34px_minmax(0,1.25fr)_52px_40px_46px] items-start gap-2 rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
+                            <div className={cn('mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
                             <div className="min-w-0">
-                              <p className={cn('break-words text-[11px] font-bold leading-4', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
-                              <p className={cn('mt-1 break-words text-[8px] font-bold leading-3 tracking-[0.04em]', currentShareCardTheme.metaClassName)}>{getRankingMetaLine(note)}</p>
+                              <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
+                              <p className={cn('mt-0.5 break-words text-[7.5px] font-bold leading-3 tracking-[0.04em]', currentShareCardTheme.metaClassName)}>{getRankingMetaLine(note)}</p>
+                              <p className={cn('mt-0.5 break-words text-[7.5px] font-medium leading-3 tracking-[0.02em]', currentShareCardTheme.metaClassName)}>備註：{getRankingAuthorNote(note)}</p>
                             </div>
-                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
-                            <div className={cn('text-right text-[10px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
+                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
+                            <div className={cn('pt-0.5 text-right text-[9px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
                           </div>
                         );
                       })}
