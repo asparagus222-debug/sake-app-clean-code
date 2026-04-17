@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, Building2, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Medal, Share2, ShoppingBag, Sparkles, Star, Store, Ticket, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Medal, Share2, ShoppingBag, Sparkles, Star, Ticket, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -20,12 +20,42 @@ const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Shop
   intent: { label: '想買程度', icon: ShoppingBag, subtitle: '先看這場最想回購與帶走的清單' },
   score: { label: '整體分數', icon: Star, subtitle: '把整體表現最亮眼的酒款排在前面' },
   price: { label: '價格', icon: BadgeDollarSign, subtitle: '按照現場價格快速比較出手順序' },
-  cp: { label: 'CP 值', icon: Trophy, subtitle: '固定線性縮放到 0-10，排序高低不受公式改版影響' },
+  cp: { label: 'CP 值', icon: Trophy, subtitle: '顯示分數放大到 0-10，排序仍維持原始 CP 高低' },
 };
 
 function formatExpoCpScore(score: number | null | undefined) {
   if (score === null || score === undefined) return '--';
   return score.toFixed(2);
+}
+
+function getRankMedalStyle(rank: number) {
+  if (rank === 1) {
+    return {
+      badgeClassName: 'border-yellow-300/50 bg-yellow-300/18 text-yellow-100',
+      rankClassName: 'border-yellow-300/40 bg-yellow-300/16 text-yellow-100',
+      label: '金',
+    };
+  }
+  if (rank === 2) {
+    return {
+      badgeClassName: 'border-slate-300/45 bg-slate-200/16 text-slate-100',
+      rankClassName: 'border-slate-300/35 bg-slate-200/12 text-slate-100',
+      label: '銀',
+    };
+  }
+  if (rank === 3) {
+    return {
+      badgeClassName: 'border-amber-500/45 bg-amber-500/16 text-amber-100',
+      rankClassName: 'border-amber-500/35 bg-amber-500/12 text-amber-100',
+      label: '銅',
+    };
+  }
+
+  return {
+    badgeClassName: 'border-white/10 bg-white/5 text-[#e8d5c1]',
+    rankClassName: 'border-white/10 bg-white/5 text-[#fff4e5]',
+    label: `${rank}`,
+  };
 }
 
 export default function ExpoRankingPage() {
@@ -86,8 +116,6 @@ export default function ExpoRankingPage() {
     const safePageIndex = Math.min(pageIndex, totalPages - 1);
     return rankedNotes.slice(safePageIndex * PAGE_SIZE, (safePageIndex + 1) * PAGE_SIZE);
   }, [pageIndex, rankedNotes, totalPages]);
-  const topThreeNotes = currentPageNotes.slice(0, 3);
-  const remainingNotes = currentPageNotes.slice(3);
   const currentSortMeta = SORT_MODE_META[sortMode];
   const averageScore = currentPageNotes.length > 0
     ? currentPageNotes.reduce((sum, note) => sum + note.overallRating, 0) / currentPageNotes.length
@@ -184,7 +212,7 @@ export default function ExpoRankingPage() {
             </button>
             <h1 className="mt-3 text-3xl font-headline font-bold tracking-[0.16em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-[#f4dec5]/78">
-              這頁現在是獨立可分享的海報式畫面。CP 值已改成固定線性縮放到 0-10，分數高低順序不會因為這次正規化而改變。
+              這頁現在是手機一頁看完的獨立分享海報。CP 顯示值會放大到 0-10，比較好讀；但排名仍然沿用原始 CP 高低，不會被顯示公式干擾。
             </p>
             <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Ticket className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
@@ -277,7 +305,7 @@ export default function ExpoRankingPage() {
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-3 backdrop-blur-xl">
             <div
               ref={shareCardRef}
-              className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,215,175,0.16),_transparent_28%),linear-gradient(180deg,_rgba(42,26,21,0.98)_0%,_rgba(18,13,11,0.98)_100%)] p-5 shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
+              className="relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[1.7rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,215,175,0.16),_transparent_28%),linear-gradient(180deg,_rgba(42,26,21,0.98)_0%,_rgba(18,13,11,0.98)_100%)] p-3 shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
             >
               <div className="pointer-events-none absolute inset-0 opacity-80">
                 <div className="absolute left-6 top-6 h-28 w-28 rounded-full bg-[#f19245]/18 blur-3xl" />
@@ -296,121 +324,74 @@ export default function ExpoRankingPage() {
                   <p className="mt-2 text-sm leading-7 text-[#e4c4a5]/72">先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
                 </div>
               ) : (
-                <div className="relative space-y-5">
-                  <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Ticket className="h-3 w-3" /> Expo Check-in</span>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Medal className="h-3 w-3" /> Page {pageIndex + 1}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Ticket className="h-3 w-3" /> Expo Check-in</span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Medal className="h-3 w-3" /> P.{pageIndex + 1}</span>
                       </div>
-                      <h2 className="mt-4 text-[28px] font-headline font-bold leading-tight tracking-[0.08em] text-[#fff4e5]">{event.name}</h2>
-                      <p className="mt-2 max-w-2xl text-sm leading-7 text-[#e8cdb0]/76">{currentSortMeta.subtitle}</p>
+                      <h2 className="mt-3 line-clamp-2 text-[20px] font-headline font-bold leading-tight tracking-[0.05em] text-[#fff4e5]">{event.name}</h2>
+                      <p className="mt-1 text-[11px] leading-5 text-[#e8cdb0]/76">{currentSortMeta.subtitle}</p>
                     </div>
-                    <div className="shrink-0 rounded-[1.4rem] border border-[#f19245]/25 bg-[#f19245]/12 px-4 py-3 text-right">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">榜單模式</div>
-                      <div className="mt-2 text-xl font-headline text-[#fff4e5]">{currentSortMeta.label}</div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">本頁平均分</div>
-                      <div className="mt-2 text-3xl font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
-                    </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">必買杯數</div>
-                      <div className="mt-2 text-3xl font-headline text-[#fff4e5]">{mustBuyCount}</div>
-                    </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">平均 CP</div>
-                      <div className="mt-2 text-3xl font-headline text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
+                    <div className="shrink-0 rounded-[1.1rem] border border-[#f19245]/25 bg-[#f19245]/12 px-3 py-2 text-right">
+                      <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">榜單</div>
+                      <div className="mt-1 text-sm font-headline text-[#fff4e5]">{currentSortMeta.label}</div>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 lg:grid-cols-[1.08fr_0.92fr]">
-                    <div className="grid gap-3">
-                      {topThreeNotes.map((note, index) => {
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均分</div>
+                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
+                    </div>
+                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">必買數</div>
+                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{mustBuyCount}</div>
+                    </div>
+                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均 CP</div>
+                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex-1 rounded-[1.2rem] border border-white/10 bg-black/15 p-2.5">
+                    <div className="space-y-1.5">
+                      {currentPageNotes.map((note, index) => {
                         const rank = pageIndex * PAGE_SIZE + index + 1;
                         const cpScore = getExpoCpScore(note);
+                        const medalStyle = getRankMedalStyle(rank);
+
                         return (
-                          <div key={note.id} className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-4">
-                            <div className="flex items-start gap-4">
-                              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.2rem] border border-[#f19245]/30 bg-[#f19245]/12 text-xl font-headline font-bold text-[#ffcf99]">
-                                {rank}
+                          <div key={note.id} className="flex items-center gap-2 rounded-[1rem] border border-white/8 bg-white/[0.03] px-2.5 py-2">
+                            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-headline font-bold', medalStyle.rankClassName)}>
+                              {rank}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className={cn('h-5 px-1.5 text-[9px] font-bold tracking-widest', medalStyle.badgeClassName)}>
+                                  {medalStyle.label}
+                                </Badge>
+                                <Badge variant="outline" className={cn('h-5 px-1.5 text-[9px] font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta?.buyIntent))}>
+                                  {getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}
+                                </Badge>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="mb-2 flex flex-wrap items-center gap-2">
-                                  <Badge variant="outline" className={cn('h-5 px-2 text-[9px] font-bold tracking-widest', getExpoBuyIntentClassName(note.expoMeta?.buyIntent))}>
-                                    {getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}
-                                  </Badge>
-                                  <Badge variant="outline" className="h-5 border-[#f19245]/30 bg-[#f19245]/10 px-2 text-[9px] font-bold tracking-widest text-[#ffcf99]">
-                                    TOP {rank}
-                                  </Badge>
-                                </div>
-                                <p className="text-lg font-bold leading-snug text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>
-                                <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
-                                  {note.brewery && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3 text-[#ffb86b]" /> {note.brewery}</span>}
-                                  <span className="inline-flex items-center gap-1"><Store className="h-3 w-3 text-[#ffb86b]" /> 攤位 {note.expoMeta?.booth || '-'}</span>
-                                  <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-[#ffb86b]" /> {note.overallRating}/10</span>
-                                </div>
-                                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                  <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2">
-                                    <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#c7a78a]">價格</div>
-                                    <div className="mt-1 text-sm font-bold text-[#fff4e5]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                                  </div>
-                                  <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2">
-                                    <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#c7a78a]">CP 值</div>
-                                    <div className="mt-1 text-sm font-bold text-[#fff4e5]">{formatExpoCpScore(cpScore)}</div>
-                                  </div>
-                                  <div className="rounded-2xl border border-white/10 bg-black/15 px-3 py-2 sm:col-span-1 col-span-2">
-                                    <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#c7a78a]">快速備註</div>
-                                    <div className="mt-1 line-clamp-2 text-sm text-[#f1dcc6]/82">{note.expoMeta?.quickNote || '未填備註'}</div>
-                                  </div>
-                                </div>
+                              <p className="mt-1 truncate text-[13px] font-bold text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>
+                              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ceb093]">
+                                <span>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</span>
+                                <span>{note.overallRating}/10</span>
+                                <span>CP {formatExpoCpScore(cpScore)}</span>
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-
-                    <div className="rounded-[1.6rem] border border-white/10 bg-black/15 p-4">
-                      <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">4-10 名</div>
-                          <div className="mt-1 text-lg font-bold text-[#fff4e5]">本頁延伸榜單</div>
-                        </div>
-                        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#ffcf99]">
-                          Page {pageIndex + 1}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-2">
-                        {remainingNotes.map((note, index) => {
-                          const rank = pageIndex * PAGE_SIZE + index + 4;
-                          return (
-                            <div key={note.id} className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-3 py-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-headline font-bold text-[#fff4e5]">
-                                {rank}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-bold text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>
-                                <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-[#cfad90]">
-                                  <span>{getExpoBuyIntentLabel(note.expoMeta?.buyIntent)}</span>
-                                  <span>{note.overallRating}/10</span>
-                                  <span>CP {formatExpoCpScore(getExpoCpScore(note))}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-[11px] text-[#c8a98e]">
+                  <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2 text-[9px] text-[#c8a98e]">
                     <div>酒展快記排行榜</div>
-                    <div>CP = 原始公式 ÷ 4，僅做固定比例縮放</div>
+                    <div>顯示 CP = min(10, 原始 CP x 20)</div>
                   </div>
                 </div>
               )}

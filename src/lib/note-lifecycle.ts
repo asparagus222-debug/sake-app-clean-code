@@ -82,7 +82,7 @@ export function getSortableExpoPrice(note: Pick<SakeNote, 'expoMeta'>) {
   return typeof note.expoMeta?.price === 'number' ? note.expoMeta.price : Number.POSITIVE_INFINITY;
 }
 
-const EXPO_CP_SCORE_SCALE = 4;
+const EXPO_CP_DISPLAY_MULTIPLIER = 20;
 
 export function getExpoRawCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
   const price = note.expoMeta?.price;
@@ -95,11 +95,11 @@ export function getExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'
   const rawScore = getExpoRawCpScore(note);
   if (rawScore === null) return null;
 
-  return rawScore / EXPO_CP_SCORE_SCALE;
+  return Math.min(10, Math.max(0, rawScore * EXPO_CP_DISPLAY_MULTIPLIER));
 }
 
 export function getSortableExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
-  return getExpoCpScore(note) ?? Number.NEGATIVE_INFINITY;
+  return getExpoRawCpScore(note) ?? Number.NEGATIVE_INFINITY;
 }
 
 export function getExpoNoteDisplayName(note: Pick<SakeNote, 'brandName' | 'brewery' | 'expoMeta'>) {
