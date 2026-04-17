@@ -82,11 +82,20 @@ export function getSortableExpoPrice(note: Pick<SakeNote, 'expoMeta'>) {
   return typeof note.expoMeta?.price === 'number' ? note.expoMeta.price : Number.POSITIVE_INFINITY;
 }
 
-export function getExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
+const EXPO_CP_SCORE_SCALE = 4;
+
+export function getExpoRawCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
   const price = note.expoMeta?.price;
   if (typeof price !== 'number' || price <= 0) return null;
 
   return (note.overallRating * getExpoBuyIntentRank(note.expoMeta?.buyIntent)) / price;
+}
+
+export function getExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
+  const rawScore = getExpoRawCpScore(note);
+  if (rawScore === null) return null;
+
+  return rawScore / EXPO_CP_SCORE_SCALE;
 }
 
 export function getSortableExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
