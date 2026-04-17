@@ -28,9 +28,47 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type SortMode = 'score' | 'price' | 'cp';
+const EXPO_QUICK_TAG_SEPARATOR = '::';
+
+const EXPO_QUICK_TAG_CATEGORY_BY_LABEL = EXPO_QUICK_TAG_GROUPS.reduce<Record<string, string[]>>((accumulator, group) => {
+  group.tags.forEach((tag) => {
+    accumulator[tag] = [...(accumulator[tag] || []), group.category];
+  });
+  return accumulator;
+}, {});
 
 function formatFlavorRating(score: number) {
   return score.toFixed(1);
+}
+
+function getExpoQuickTagKey(category: string, tag: string) {
+  return `${category}${EXPO_QUICK_TAG_SEPARATOR}${tag}`;
+}
+
+function getExpoQuickTagLabel(tag: string) {
+  const separatorIndex = tag.indexOf(EXPO_QUICK_TAG_SEPARATOR);
+  return separatorIndex >= 0 ? tag.slice(separatorIndex + EXPO_QUICK_TAG_SEPARATOR.length) : tag;
+}
+
+function normalizeExpoQuickTags(tags: string[] | undefined) {
+  return (tags || []).map((tag) => {
+    if (tag.includes(EXPO_QUICK_TAG_SEPARATOR)) return tag;
+
+    const categories = EXPO_QUICK_TAG_CATEGORY_BY_LABEL[tag] || [];
+    if (categories.length === 1) {
+      return getExpoQuickTagKey(categories[0], tag);
+    }
+
+    return tag;
+  });
+}
+
+function isExpoQuickTagSelected(selectedTags: string[], category: string, tag: string) {
+  const scopedTag = getExpoQuickTagKey(category, tag);
+  if (selectedTags.includes(scopedTag)) return true;
+
+  const categories = EXPO_QUICK_TAG_CATEGORY_BY_LABEL[tag] || [];
+  return categories.length === 1 && selectedTags.includes(tag);
 }
 
 export default function ExpoEventPage() {
@@ -101,12 +139,13 @@ export default function ExpoEventPage() {
     published: rawNotes?.filter((note) => isPublicPublishedNote(note)).length || 0,
   }), [rawNotes]);
 
-  const toggleQuickTag = (tag: string) => {
+  const toggleQuickTag = (category: string, tag: string) => {
+    const scopedTag = getExpoQuickTagKey(category, tag);
     setFormData((prev) => ({
       ...prev,
-      quickTags: prev.quickTags.includes(tag)
-        ? prev.quickTags.filter((item) => item !== tag)
-        : [...prev.quickTags, tag],
+      quickTags: prev.quickTags.includes(scopedTag)
+        ? prev.quickTags.filter((item) => item !== scopedTag)
+        : [...prev.quickTags.filter((item) => item !== tag), scopedTag],
     }));
   };
 
@@ -207,7 +246,7 @@ export default function ExpoEventPage() {
       booth: note.expoMeta?.booth || '',
       price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
       overallRating: note.overallRating || 7.0,
-      quickTags: note.expoMeta?.quickTags || [],
+      quickTags: normalizeExpoQuickTags(note.expoMeta?.quickTags),
       quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -366,12 +405,12 @@ export default function ExpoEventPage() {
                     <div className="flex flex-wrap gap-2">
                       {group.tags.map((tag) => (
                         <button
-                          key={tag}
+                          key={`${group.category}-${tag}`}
                           type="button"
-                          onClick={() => toggleQuickTag(tag)}
+                          onClick={() => toggleQuickTag(group.category, tag)}
                           className={cn(
                             'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all',
-                            formData.quickTags.includes(tag)
+                            isExpoQuickTagSelected(formData.quickTags, group.category, tag)
                               ? 'border-primary bg-primary text-white shadow-lg'
                               : 'border-white/10 bg-white/5 text-muted-foreground'
                           )}
@@ -505,7 +544,7 @@ export default function ExpoEventPage() {
                       <div className="flex flex-wrap gap-2">
                         {note.expoMeta.quickTags.map((tag) => (
                           <Badge key={tag} variant="outline" className="text-[9px] h-5 px-2 border-primary/20 bg-primary/10 text-primary font-bold tracking-widest">
-                            {tag}
+                            {getExpoQuickTagLabel(tag)}
                           </Badge>
                         ))}
                       </div>

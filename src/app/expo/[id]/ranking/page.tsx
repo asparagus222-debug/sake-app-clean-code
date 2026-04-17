@@ -4,8 +4,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Medal, Share2, Sparkles, Star, Ticket, Trophy } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Share2, Sparkles, Star, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoEvent, SakeNote } from '@/lib/types';
@@ -34,30 +33,26 @@ function formatFlavorRating(score: number) {
 function getRankMedalStyle(rank: number) {
   if (rank === 1) {
     return {
-      badgeClassName: 'border-yellow-300/50 bg-yellow-300/18 text-yellow-100',
-      rankClassName: 'border-yellow-300/40 bg-yellow-300/16 text-yellow-100',
-      label: '金',
+      rowClassName: 'border-[#f3c86b]/45 bg-[#fef3cf]',
+      rankClassName: 'border-[#e0b248] bg-[#f3c86b] text-[#24180d]',
     };
   }
   if (rank === 2) {
     return {
-      badgeClassName: 'border-slate-300/45 bg-slate-200/16 text-slate-100',
-      rankClassName: 'border-slate-300/35 bg-slate-200/12 text-slate-100',
-      label: '銀',
+      rowClassName: 'border-[#d9dde6]/60 bg-[#f7f8fb]',
+      rankClassName: 'border-[#bfc7d6] bg-[#dfe4ee] text-[#233042]',
     };
   }
   if (rank === 3) {
     return {
-      badgeClassName: 'border-amber-500/45 bg-amber-500/16 text-amber-100',
-      rankClassName: 'border-amber-500/35 bg-amber-500/12 text-amber-100',
-      label: '銅',
+      rowClassName: 'border-[#dfb48d]/50 bg-[#fff6ef]',
+      rankClassName: 'border-[#cd8f63] bg-[#e4b08b] text-[#2d1c14]',
     };
   }
 
   return {
-    badgeClassName: 'border-white/10 bg-white/5 text-[#e8d5c1]',
-    rankClassName: 'border-white/10 bg-white/5 text-[#fff4e5]',
-    label: `${rank}`,
+    rowClassName: 'border-[#ece5dc] bg-white',
+    rankClassName: 'border-[#ddd3c6] bg-[#f7f1ea] text-[#57463a]',
   };
 }
 
@@ -207,7 +202,7 @@ export default function ExpoRankingPage() {
             </button>
             <h1 className="mt-3 text-3xl font-headline font-bold tracking-[0.16em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
             <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Ticket className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Trophy className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><ClipboardList className="w-3 h-3 text-[#ffb86b]" /> 每頁 10 名</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Sparkles className="w-3 h-3 text-[#ffb86b]" /> {currentSortMeta.label} 模式</span>
             </div>
@@ -295,56 +290,55 @@ export default function ExpoRankingPage() {
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-3 backdrop-blur-xl">
             <div
               ref={shareCardRef}
-              className="relative mx-auto aspect-[9/16] w-full max-w-[390px] overflow-hidden rounded-[1.7rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,215,175,0.16),_transparent_28%),linear-gradient(180deg,_rgba(42,26,21,0.98)_0%,_rgba(18,13,11,0.98)_100%)] p-3 shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
+              className="mx-auto w-full max-w-[420px] overflow-hidden rounded-[1.7rem] border border-[#e7dccf] bg-[#f8f3ec] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.14)]"
             >
-              <div className="pointer-events-none absolute inset-0 opacity-80">
-                <div className="absolute left-6 top-6 h-28 w-28 rounded-full bg-[#f19245]/18 blur-3xl" />
-                <div className="absolute right-8 top-20 h-40 w-40 rounded-full bg-[#fff0cf]/8 blur-3xl" />
-                <div className="absolute bottom-0 left-1/3 h-36 w-36 rounded-full bg-[#d26f37]/12 blur-3xl" />
-              </div>
-
               {isNotesLoading ? (
-                <div className="relative flex min-h-[560px] items-center justify-center rounded-[1.5rem] border border-white/10 bg-black/10">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#ffcf99]" />
+                <div className="flex min-h-[760px] items-center justify-center rounded-[1.4rem] border border-[#e7dccf] bg-white/70">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#c17c45]" />
                 </div>
               ) : currentPageNotes.length === 0 ? (
-                <div className="relative flex min-h-[560px] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-white/10 bg-black/10 px-6 text-center">
-                  <Trophy className="mb-4 h-9 w-9 text-[#ffcf99]" />
-                  <p className="text-lg font-bold text-[#fff4e5]">目前還沒有可排名的快記</p>
-                  <p className="mt-2 text-sm leading-7 text-[#e4c4a5]/72">先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
+                <div className="flex min-h-[760px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-[#dccdbd] bg-white/70 px-6 text-center">
+                  <Trophy className="mb-4 h-9 w-9 text-[#c17c45]" />
+                  <p className="text-lg font-bold text-[#2f241c]">目前還沒有可排名的快記</p>
+                  <p className="mt-2 text-sm leading-7 text-[#7d6758]">先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
                 </div>
               ) : (
-                <div className="relative flex h-full flex-col">
-                  <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Ticket className="h-3 w-3" /> Expo Check-in</span>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Medal className="h-3 w-3" /> P.{pageIndex + 1}</span>
+                <div className="flex min-h-[760px] flex-col rounded-[1.4rem] border border-[#e7dccf] bg-white px-3 py-3 text-[#2f241c]">
+                  <div className="border-b border-[#efe5d8] pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9c7960]">Expo Check-in</div>
+                        <h2 className="mt-2 line-clamp-2 text-[22px] font-headline font-bold leading-tight tracking-[0.03em] text-[#241912]">{event.name}</h2>
                       </div>
-                      <h2 className="mt-3 line-clamp-2 text-[20px] font-headline font-bold leading-tight tracking-[0.05em] text-[#fff4e5]">{event.name}</h2>
+                      <div className="shrink-0 rounded-2xl border border-[#ebddcf] bg-[#f8f3ec] px-3 py-2 text-right">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#9c7960]">第 {pageIndex + 1} 頁</div>
+                        <div className="mt-1 text-sm font-bold text-[#241912]">{currentSortMeta.label}</div>
+                      </div>
                     </div>
-                    <div className="shrink-0 rounded-[1.1rem] border border-[#f19245]/25 bg-[#f19245]/12 px-3 py-2 text-right">
-                      <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">榜單</div>
-                      <div className="mt-1 text-sm font-headline text-[#fff4e5]">{currentSortMeta.label}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均風味</div>
-                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
-                    </div>
-                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">本頁杯數</div>
-                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{currentPageNotes.length}</div>
-                    </div>
-                    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均 CP</div>
-                      <div className="mt-1 text-lg font-headline text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">本頁杯數</div>
+                        <div className="mt-1 text-lg font-headline text-[#241912]">{currentPageNotes.length}</div>
+                      </div>
+                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">平均風味</div>
+                        <div className="mt-1 text-lg font-headline text-[#241912]">{averageScore.toFixed(1)}</div>
+                      </div>
+                      <div className="rounded-2xl border border-[#efe5d8] bg-[#fcfaf6] px-3 py-2.5">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9c7960]">平均 CP</div>
+                        <div className="mt-1 text-lg font-headline text-[#241912]">{formatExpoCpScore(averageCpScore)}</div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-3 flex-1 rounded-[1.2rem] border border-white/10 bg-black/15 p-2.5">
+                  <div className="mt-3 rounded-[1.2rem] border border-[#efe5d8] bg-[#fcfaf6] p-2">
+                    <div className="grid grid-cols-[42px_minmax(0,1fr)_58px_62px_56px] gap-2 px-2 pb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-[#9c7960]">
+                      <span>排名</span>
+                      <span>酒款</span>
+                      <span className="text-right">價格</span>
+                      <span className="text-right">風味</span>
+                      <span className="text-right">CP</span>
+                    </div>
                     <div className="space-y-1.5">
                       {currentPageNotes.map((note, index) => {
                         const rank = pageIndex * PAGE_SIZE + index + 1;
@@ -352,30 +346,22 @@ export default function ExpoRankingPage() {
                         const medalStyle = getRankMedalStyle(rank);
 
                         return (
-                          <div key={note.id} className="flex items-center gap-2 rounded-[1rem] border border-white/8 bg-white/[0.03] px-2.5 py-2">
-                            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-headline font-bold', medalStyle.rankClassName)}>
-                              {rank}
+                          <div key={note.id} className={cn('grid grid-cols-[42px_minmax(0,1fr)_58px_62px_56px] items-center gap-2 rounded-[1rem] border px-2 py-2', medalStyle.rowClassName)}>
+                            <div className={cn('flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[12px] font-bold leading-5 text-[#241912]">{getExpoNoteDisplayName(note)}</p>
+                              <p className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[#8b6e5a]">{note.brewery || note.expoMeta?.booth || '未填酒造 / 攤位'}</p>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <Badge variant="outline" className={cn('h-5 px-1.5 text-[9px] font-bold tracking-widest', medalStyle.badgeClassName)}>
-                                  {medalStyle.label}
-                                </Badge>
-                              </div>
-                              <p className="mt-1 truncate text-[13px] font-bold text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>
-                              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ceb093]">
-                                <span>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</span>
-                                <span>風味 {formatFlavorRating(note.overallRating)}/10</span>
-                                <span>CP {formatExpoCpScore(cpScore)}</span>
-                              </div>
-                            </div>
+                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{formatFlavorRating(note.overallRating)}</div>
+                            <div className="text-right text-[11px] font-bold text-[#4d3a2f]">{formatExpoCpScore(cpScore)}</div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2 text-[9px] text-[#c8a98e]">
+                  <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#efe5d8] pt-3 text-[9px] font-bold uppercase tracking-[0.16em] text-[#9c7960]">
                     <div>酒展快記排行榜</div>
                     <div>CP = (風味評分^1.5 / 價格) x 3160</div>
                   </div>
