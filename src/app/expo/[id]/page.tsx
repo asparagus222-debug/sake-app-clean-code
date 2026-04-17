@@ -370,32 +370,6 @@ export default function ExpoEventPage() {
                 <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-11 rounded-2xl bg-white/5 border-white/10" />
               </div>
               <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">作者備註</p>
-                <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
-              </div>
-              <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">風味評分</p>
-                  <p className="text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
-                </div>
-                <Slider
-                  min={1}
-                  max={10}
-                  step={0.1}
-                  value={[formData.overallRating]}
-                  onValueChange={(value) => {
-                    const nextValue = value[0];
-                    if (nextValue === undefined) return;
-                    setFormData((prev) => ({ ...prev, overallRating: Number(nextValue.toFixed(1)) }));
-                  }}
-                  className="py-2"
-                />
-                <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-                  <span>1.0</span>
-                  <span>10.0</span>
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -423,6 +397,35 @@ export default function ExpoEventPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">作者備註</p>
+                <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
+              </div>
+              <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">風味評分</p>
+                  <p className="text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
+                </div>
+                <Slider
+                  min={1}
+                  max={10}
+                  step={0.1}
+                  value={[formData.overallRating]}
+                  onValueChange={(value) => {
+                    const nextValue = value[0];
+                    if (nextValue === undefined) return;
+                    setFormData((prev) => ({ ...prev, overallRating: Number(nextValue.toFixed(1)) }));
+                  }}
+                  className="py-2"
+                />
+                <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                  <span>1.0</span>
+                  <span>10.0</span>
+                </div>
               </div>
             </div>
 

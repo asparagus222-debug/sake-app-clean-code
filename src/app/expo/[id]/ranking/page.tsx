@@ -42,24 +42,24 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   previewSwatchClassName: string;
 }> = {
   'cream-light': {
-    label: '奶白',
-    exportBackground: '#eef7ef',
-    shellClassName: 'border-[#cfe5d2] bg-[linear-gradient(180deg,#eef7ef_0%,#e2f1e4_100%)] shadow-[0_30px_80px_rgba(72,112,82,0.14)]',
-    frameClassName: 'border-[#cfe5d2] bg-[#fcfffc] text-[#243226]',
-    emptyClassName: 'border-[#c5ddc9] bg-[#f8fdf8] text-[#243226]',
-    dividerClassName: 'border-[#dbeadf]',
-    eyebrowClassName: 'text-[#6f9075]',
-    titleClassName: 'text-[#243226]',
-    modeChipClassName: 'border-[#cfe5d2] bg-[#eef7ef]',
-    modeLabelClassName: 'text-[#6f9075]',
-    modeValueClassName: 'text-[#243226]',
-    tableClassName: 'border-[#dbeadf] bg-[#fafffa]',
-    tableHeaderClassName: 'text-[#6f9075]',
-    metaClassName: 'text-[#67806b]',
-    valueClassName: 'text-[#35523a]',
-    footerClassName: 'border-[#dbeadf] text-[#6f9075]',
-    rowBaseClassName: 'border-[#d7e7da]',
-    previewSwatchClassName: 'border-[#cfe5d2] bg-[#e2f1e4]',
+    label: '櫻花',
+    exportBackground: '#fff1f6',
+    shellClassName: 'border-[#f0ccd8] bg-[linear-gradient(180deg,#fff1f6_0%,#ffe5ef_100%)] shadow-[0_30px_80px_rgba(182,105,136,0.14)]',
+    frameClassName: 'border-[#f0ccd8] bg-[#fffafb] text-[#4a2b36]',
+    emptyClassName: 'border-[#e8c3d0] bg-[#fff5f8] text-[#4a2b36]',
+    dividerClassName: 'border-[#f5dbe4]',
+    eyebrowClassName: 'text-[#b46f86]',
+    titleClassName: 'text-[#4a2b36]',
+    modeChipClassName: 'border-[#f0ccd8] bg-[#fff0f5]',
+    modeLabelClassName: 'text-[#b46f86]',
+    modeValueClassName: 'text-[#4a2b36]',
+    tableClassName: 'border-[#f5dbe4] bg-[#fffdfd]',
+    tableHeaderClassName: 'text-[#b46f86]',
+    metaClassName: 'text-[#9a6274]',
+    valueClassName: 'text-[#6a4050]',
+    footerClassName: 'border-[#f5dbe4] text-[#b46f86]',
+    rowBaseClassName: 'border-[#f1d7e1]',
+    previewSwatchClassName: 'border-[#f0ccd8] bg-[#ffe5ef]',
   },
   'sand-light': {
     label: '杏沙',
@@ -158,14 +158,14 @@ function getRankingAuthorNote(note: SakeNote) {
 function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
   const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
     'cream-light': {
-      gold: 'border-[#f3c86b]/45 bg-[#fef3cf]',
-      goldRank: 'border-[#e0b248] bg-[#f3c86b] text-[#24180d]',
-      silver: 'border-[#d9dde6]/60 bg-[#f7f8fb]',
-      silverRank: 'border-[#bfc7d6] bg-[#dfe4ee] text-[#233042]',
-      bronze: 'border-[#dfb48d]/50 bg-[#fff6ef]',
-      bronzeRank: 'border-[#cd8f63] bg-[#e4b08b] text-[#2d1c14]',
-      base: 'bg-white',
-      baseRank: 'border-[#ddd3c6] bg-[#f7f1ea] text-[#57463a]',
+      gold: 'border-[#f0c76c]/45 bg-[#fff4d9]',
+      goldRank: 'border-[#d9a746] bg-[#f0c76c] text-[#2b1c11]',
+      silver: 'border-[#eadce4]/70 bg-[#fff9fc]',
+      silverRank: 'border-[#cbb8c5] bg-[#efe2ea] text-[#49313b]',
+      bronze: 'border-[#edc0b2]/60 bg-[#fff2ee]',
+      bronzeRank: 'border-[#d88e76] bg-[#eab29f] text-[#3a231c]',
+      base: 'bg-[#fffafb]',
+      baseRank: 'border-[#e6ccd7] bg-[#fff0f5] text-[#734b59]',
     },
     'sand-light': {
       gold: 'border-[#e8c57a]/45 bg-[#fff2d7]',
@@ -500,13 +500,13 @@ export default function ExpoRankingPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-[#c17c45]" />
                 </div>
               ) : currentPageNotes.length === 0 ? (
-                <div className={cn('flex min-h-[760px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed px-6 text-center', currentShareCardTheme.emptyClassName)}>
+                <div className={cn('flex min-h-[520px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed px-6 text-center', currentShareCardTheme.emptyClassName)}>
                   <Trophy className="mb-4 h-9 w-9 text-[#c17c45]" />
                   <p className={cn('text-lg font-bold', currentShareCardTheme.titleClassName)}>目前還沒有可排名的快記</p>
                   <p className={cn('mt-2 text-sm leading-7', currentShareCardTheme.metaClassName)}>先回工作台新增幾杯，這裡就會變成可以直接截圖或匯出的打卡頁。</p>
                 </div>
               ) : (
-                <div className={cn('flex min-h-[760px] flex-col rounded-[1.4rem] border px-3 py-3', currentShareCardTheme.frameClassName)}>
+                <div className={cn('flex flex-col rounded-[1.4rem] border px-3 py-3', currentShareCardTheme.frameClassName)}>
                   <div className={cn('border-b pb-3', currentShareCardTheme.dividerClassName)}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -576,7 +576,7 @@ export default function ExpoRankingPage() {
                     </div>
                   </div>
 
-                  <div className={cn('mt-auto flex items-center justify-between gap-3 border-t pt-3 text-[9px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.footerClassName)}>
+                  <div className={cn('mt-3 flex items-center justify-between gap-3 border-t pt-3 text-[9px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.footerClassName)}>
                     <div>酒展快記排行榜</div>
                     <div>CP = (風味評分^1.5 / 價格) x 調整係數</div>
                   </div>
