@@ -43,23 +43,23 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
 }> = {
   'cream-light': {
     label: '奶白',
-    exportBackground: '#f8f3ec',
-    shellClassName: 'border-[#e7dccf] bg-[#f8f3ec] shadow-[0_30px_80px_rgba(0,0,0,0.14)]',
-    frameClassName: 'border-[#e7dccf] bg-white text-[#2f241c]',
-    emptyClassName: 'border-[#dccdbd] bg-white/70 text-[#2f241c]',
-    dividerClassName: 'border-[#efe5d8]',
-    eyebrowClassName: 'text-[#9c7960]',
-    titleClassName: 'text-[#241912]',
-    modeChipClassName: 'border-[#ebddcf] bg-[#f8f3ec]',
-    modeLabelClassName: 'text-[#9c7960]',
-    modeValueClassName: 'text-[#241912]',
-    tableClassName: 'border-[#efe5d8] bg-[#fcfaf6]',
-    tableHeaderClassName: 'text-[#9c7960]',
-    metaClassName: 'text-[#8b6e5a]',
-    valueClassName: 'text-[#4d3a2f]',
-    footerClassName: 'border-[#efe5d8] text-[#9c7960]',
-    rowBaseClassName: 'border-[#ece5dc]',
-    previewSwatchClassName: 'border-[#e7dccf] bg-[#f8f3ec]',
+    exportBackground: '#eef7ef',
+    shellClassName: 'border-[#cfe5d2] bg-[linear-gradient(180deg,#eef7ef_0%,#e2f1e4_100%)] shadow-[0_30px_80px_rgba(72,112,82,0.14)]',
+    frameClassName: 'border-[#cfe5d2] bg-[#fcfffc] text-[#243226]',
+    emptyClassName: 'border-[#c5ddc9] bg-[#f8fdf8] text-[#243226]',
+    dividerClassName: 'border-[#dbeadf]',
+    eyebrowClassName: 'text-[#6f9075]',
+    titleClassName: 'text-[#243226]',
+    modeChipClassName: 'border-[#cfe5d2] bg-[#eef7ef]',
+    modeLabelClassName: 'text-[#6f9075]',
+    modeValueClassName: 'text-[#243226]',
+    tableClassName: 'border-[#dbeadf] bg-[#fafffa]',
+    tableHeaderClassName: 'text-[#6f9075]',
+    metaClassName: 'text-[#67806b]',
+    valueClassName: 'text-[#35523a]',
+    footerClassName: 'border-[#dbeadf] text-[#6f9075]',
+    rowBaseClassName: 'border-[#d7e7da]',
+    previewSwatchClassName: 'border-[#cfe5d2] bg-[#e2f1e4]',
   },
   'sand-light': {
     label: '杏沙',
@@ -133,16 +133,26 @@ function formatFlavorRating(score: number) {
 }
 
 function getRankingBrewery(note: SakeNote) {
-  return note.brewery?.trim() || '未填酒造';
+  return note.brewery?.trim() || '酒造';
 }
 
 function getRankingBooth(note: SakeNote) {
-  return note.expoMeta?.booth?.trim() ? `攤位 ${note.expoMeta.booth.trim()}` : '未填攤位';
+  return note.expoMeta?.booth?.trim() ? `攤位 ${note.expoMeta.booth.trim()}` : '攤位';
+}
+
+function formatExpoQuickTagLabel(tag: string) {
+  const separator = '::';
+  const separatorIndex = tag.indexOf(separator);
+  return separatorIndex >= 0 ? tag.slice(separatorIndex + separator.length) : tag;
+}
+
+function getRankingStyleTags(note: SakeNote) {
+  return (note.expoMeta?.quickTags || []).slice(0, 3).map((tag) => formatExpoQuickTagLabel(tag));
 }
 
 function getRankingAuthorNote(note: SakeNote) {
   const noteText = note.expoMeta?.quickNote?.trim() || note.userDescription?.trim() || note.description?.trim() || '';
-  return noteText || '未填作者備註';
+  return noteText;
 }
 
 function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
@@ -516,6 +526,8 @@ export default function ExpoRankingPage() {
                         const rank = pageIndex * PAGE_SIZE + index + 1;
                         const cpScore = getExpoCpScore(note);
                         const medalStyle = getRankMedalStyle(rank, shareCardTheme);
+                        const styleTags = getRankingStyleTags(note);
+                        const authorNote = getRankingAuthorNote(note);
 
                         return (
                           <div key={note.id} className={cn('rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
@@ -525,6 +537,15 @@ export default function ExpoRankingPage() {
                                 <p className={cn('break-words text-[10px] font-bold leading-3.5', currentShareCardTheme.titleClassName)}>{getExpoNoteDisplayName(note)}</p>
                                 <p className={cn('mt-0.5 break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBrewery(note)}</p>
                                 <p className={cn('break-words text-[7px] font-bold leading-3 tracking-[0.05em]', currentShareCardTheme.metaClassName)}>{getRankingBooth(note)}</p>
+                                {styleTags.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {styleTags.map((tag) => (
+                                      <span key={`${note.id}-${tag}`} className={cn('rounded-full border px-1.5 py-0.5 text-[6.5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
@@ -542,7 +563,7 @@ export default function ExpoRankingPage() {
                               </div>
                               <div className="space-y-0.5 min-w-0">
                                 <div className={cn('text-[7px] uppercase tracking-[0.12em] opacity-0', currentShareCardTheme.tableHeaderClassName)}>註</div>
-                                <div className="break-words text-[7.5px] leading-3">{getRankingAuthorNote(note)}</div>
+                                <div className="break-words text-[7.5px] leading-3">{authorNote}</div>
                               </div>
                             </div>
                           </div>
