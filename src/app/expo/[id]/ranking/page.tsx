@@ -18,14 +18,18 @@ const PAGE_SIZE = 10;
 const POSTER_BACKGROUND = '#110d0a';
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof ShoppingBag; subtitle: string }> = {
   intent: { label: '想買程度', icon: ShoppingBag, subtitle: '先看這場最想回購與帶走的清單' },
-  score: { label: '整體分數', icon: Star, subtitle: '把整體表現最亮眼的酒款排在前面' },
+  score: { label: '風味評分', icon: Star, subtitle: '把風味完成度最高的酒款排在前面' },
   price: { label: '價格', icon: BadgeDollarSign, subtitle: '按照現場價格快速比較出手順序' },
-  cp: { label: 'CP 值', icon: Trophy, subtitle: '顯示分數放大到 0-10，排序仍維持原始 CP 高低' },
+  cp: { label: 'CP 值', icon: Trophy, subtitle: '使用風味評分^1.5 ÷ 價格 × 3160 的公式排序' },
 };
 
 function formatExpoCpScore(score: number | null | undefined) {
   if (score === null || score === undefined) return '--';
-  return score.toFixed(2);
+  return score.toFixed(1);
+}
+
+function formatFlavorRating(score: number) {
+  return score.toFixed(1);
 }
 
 function getRankMedalStyle(rank: number) {
@@ -106,7 +110,6 @@ export default function ExpoRankingPage() {
       }
       return getSortableExpoCpScore(right) - getSortableExpoCpScore(left)
         || right.overallRating - left.overallRating
-        || getExpoBuyIntentRank(right.expoMeta?.buyIntent) - getExpoBuyIntentRank(left.expoMeta?.buyIntent)
         || (right.createdAt || '').localeCompare(left.createdAt || '');
     });
   }, [rawNotes, sortMode]);
@@ -211,9 +214,6 @@ export default function ExpoRankingPage() {
               <ArrowLeft className="w-3 h-3" /> 返回酒展工作台
             </button>
             <h1 className="mt-3 text-3xl font-headline font-bold tracking-[0.16em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#f4dec5]/78">
-              這頁現在是手機一頁看完的獨立分享海報。CP 顯示值會放大到 0-10，比較好讀；但排名仍然沿用原始 CP 高低，不會被顯示公式干擾。
-            </p>
             <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Ticket className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><ClipboardList className="w-3 h-3 text-[#ffb86b]" /> 每頁 10 名</span>
@@ -222,9 +222,9 @@ export default function ExpoRankingPage() {
           </div>
           <div className="hidden shrink-0 md:flex md:items-center md:gap-2">
             <Link href={`/expo/${eventId}`}>
-              <Button variant="outline" className="rounded-full h-10 border-white/15 bg-white/5 px-5 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-white/10">回工作台</Button>
+              <Button variant="outline" className="rounded-full h-10 border-[#ffd08f]/35 bg-[#3b2418] px-5 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-[#563222]">回工作台</Button>
             </Link>
-            <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} className="rounded-full h-10 bg-[#f19245] px-5 text-xs font-bold uppercase tracking-widest text-[#1a120d] hover:bg-[#ffab60]">
+            <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} className="rounded-full h-10 bg-[#ffd166] px-5 text-xs font-bold uppercase tracking-widest text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.28)] hover:bg-[#ffe08f]">
               {isExporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Share2 className="mr-1.5 h-4 w-4" />} 分享圖片
             </Button>
           </div>
@@ -235,12 +235,11 @@ export default function ExpoRankingPage() {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Ranking Mode</p>
               <h2 className="mt-2 text-lg font-bold text-[#fff4e5]">切換這張打卡圖的榜單邏輯</h2>
-              <p className="mt-2 text-sm leading-6 text-[#e4c4a5]/72">每切一次排序，都會重組這一頁的前十名並可直接匯出。</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
             {[
               { value: 'intent', label: '想買程度', icon: ShoppingBag },
-              { value: 'score', label: '整體分數', icon: Star },
+              { value: 'score', label: '風味評分', icon: Star },
               { value: 'price', label: '價格', icon: BadgeDollarSign },
               { value: 'cp', label: 'CP 值', icon: Trophy },
             ].map((option) => {
@@ -252,10 +251,10 @@ export default function ExpoRankingPage() {
                   variant={sortMode === option.value ? 'default' : 'outline'}
                   onClick={() => setSortMode(option.value as RankingSortMode)}
                   className={cn(
-                    'rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest',
+                    'rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest transition-all',
                     sortMode === option.value
-                      ? 'bg-[#f19245] text-[#1a120d] hover:bg-[#ffab60]'
-                      : 'border-white/15 bg-white/5 text-[#f6dfc5] hover:bg-white/10'
+                      ? 'bg-[#ffd166] text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.25)] hover:bg-[#ffe08f]'
+                      : 'border-[#ffd08f]/25 bg-[#2f1d15] text-[#f6dfc5] hover:bg-[#45281c]'
                   )}
                 >
                   <Icon className="w-3 h-3 mr-1.5" /> {option.label}
@@ -332,7 +331,6 @@ export default function ExpoRankingPage() {
                         <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Medal className="h-3 w-3" /> P.{pageIndex + 1}</span>
                       </div>
                       <h2 className="mt-3 line-clamp-2 text-[20px] font-headline font-bold leading-tight tracking-[0.05em] text-[#fff4e5]">{event.name}</h2>
-                      <p className="mt-1 text-[11px] leading-5 text-[#e8cdb0]/76">{currentSortMeta.subtitle}</p>
                     </div>
                     <div className="shrink-0 rounded-[1.1rem] border border-[#f19245]/25 bg-[#f19245]/12 px-3 py-2 text-right">
                       <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]">榜單</div>
@@ -342,7 +340,7 @@ export default function ExpoRankingPage() {
 
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均分</div>
+                      <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-[#d9b495]">平均風味</div>
                       <div className="mt-1 text-lg font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
                     </div>
                     <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-2.5">
@@ -379,7 +377,7 @@ export default function ExpoRankingPage() {
                               <p className="mt-1 truncate text-[13px] font-bold text-[#fff4e5]">{getExpoNoteDisplayName(note)}</p>
                               <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#ceb093]">
                                 <span>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</span>
-                                <span>{note.overallRating}/10</span>
+                                <span>風味 {formatFlavorRating(note.overallRating)}/10</span>
                                 <span>CP {formatExpoCpScore(cpScore)}</span>
                               </div>
                             </div>
@@ -391,7 +389,7 @@ export default function ExpoRankingPage() {
 
                   <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2 text-[9px] text-[#c8a98e]">
                     <div>酒展快記排行榜</div>
-                    <div>顯示 CP = min(10, 原始 CP x 20)</div>
+                    <div>CP = (風味評分^1.5 / 價格) x 3160</div>
                   </div>
                 </div>
               )}
@@ -399,13 +397,13 @@ export default function ExpoRankingPage() {
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-2 md:hidden">
               <Link href={`/expo/${eventId}`}>
-                <Button variant="outline" className="rounded-full h-10 border-white/15 bg-white/5 px-5 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-white/10">回工作台</Button>
+                <Button variant="outline" className="rounded-full h-10 border-[#ffd08f]/35 bg-[#3b2418] px-5 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-[#563222]">回工作台</Button>
               </Link>
               <div className="flex items-center gap-2">
-                <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} className="rounded-full h-10 bg-[#f19245] px-5 text-xs font-bold uppercase tracking-widest text-[#1a120d] hover:bg-[#ffab60]">
+                <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} className="rounded-full h-10 bg-[#ffd166] px-5 text-xs font-bold uppercase tracking-widest text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.28)] hover:bg-[#ffe08f]">
                   {isExporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Share2 className="mr-1.5 h-4 w-4" />} 分享
                 </Button>
-                <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} variant="outline" className="rounded-full h-10 border-white/15 bg-white/5 px-4 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-white/10">
+                <Button onClick={handleExport} disabled={isExporting || currentPageNotes.length === 0} variant="outline" className="rounded-full h-10 border-[#ffd08f]/35 bg-[#3b2418] px-4 text-xs font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-[#563222]">
                   <Download className="h-4 w-4" />
                 </Button>
               </div>

@@ -29,6 +29,10 @@ import { cn } from '@/lib/utils';
 
 type SortMode = 'intent' | 'score' | 'price' | 'cp';
 
+function formatFlavorRating(score: number) {
+  return score.toFixed(1);
+}
+
 export default function ExpoEventPage() {
   const params = useParams();
   const router = useRouter();
@@ -46,7 +50,7 @@ export default function ExpoEventPage() {
     brewery: '',
     booth: '',
     price: '',
-    overallRating: 7,
+    overallRating: 7.0,
     buyIntent: 'consider' as ExpoBuyIntent,
     quickTags: [] as string[],
     quickNote: '',
@@ -121,7 +125,7 @@ export default function ExpoEventPage() {
       ...prev,
       brandName: '',
       price: '',
-      overallRating: 7,
+      overallRating: 7.0,
       buyIntent: 'consider',
       quickTags: [],
       quickNote: '',
@@ -214,7 +218,7 @@ export default function ExpoEventPage() {
       brewery: note.brewery || '',
       booth: note.expoMeta?.booth || '',
       price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
-      overallRating: note.overallRating || 7,
+      overallRating: note.overallRating || 7.0,
       buyIntent: note.expoMeta?.buyIntent || 'consider',
       quickTags: note.expoMeta?.quickTags || [],
       quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
@@ -347,24 +351,24 @@ export default function ExpoEventPage() {
                 <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
                 <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">整體分數</p>
-                    <p className="text-sm font-bold text-primary">{formData.overallRating}/10</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">風味評分</p>
+                    <p className="text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
                   </div>
                   <Slider
                     min={1}
                     max={10}
-                    step={1}
+                    step={0.1}
                     value={[formData.overallRating]}
                     onValueChange={(value) => {
                       const nextValue = value[0];
-                      if (!nextValue) return;
-                      setFormData((prev) => ({ ...prev, overallRating: nextValue }));
+                      if (nextValue === undefined) return;
+                      setFormData((prev) => ({ ...prev, overallRating: Number(nextValue.toFixed(1)) }));
                     }}
                     className="py-2"
                   />
                   <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-                    <span>1</span>
-                    <span>10</span>
+                    <span>1.0</span>
+                    <span>10.0</span>
                   </div>
                 </div>
               </div>
@@ -451,7 +455,7 @@ export default function ExpoEventPage() {
                   </Link>
                   {[
                     { value: 'intent', label: '想買程度', icon: ShoppingBag },
-                    { value: 'score', label: '整體分數', icon: Star },
+                    { value: 'score', label: '風味評分', icon: Star },
                     { value: 'price', label: '價格', icon: CircleDollarSign },
                     { value: 'cp', label: 'CP 值', icon: BadgeDollarSign },
                   ].map((option) => {
@@ -501,7 +505,7 @@ export default function ExpoEventPage() {
                           {note.brewery && <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3 text-primary/70" /> {note.brewery}</span>}
                           <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> 攤位 {note.expoMeta?.booth || '-'}</span>
                           <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> {typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '未記價格'}</span>
-                          <span className="inline-flex items-center gap-1"><Star className="w-3 h-3 text-primary/70" /> {note.overallRating}/10</span>
+                          <span className="inline-flex items-center gap-1"><Star className="w-3 h-3 text-primary/70" /> 風味 {formatFlavorRating(note.overallRating)}/10</span>
                           <span className="inline-flex items-center gap-1"><BadgeDollarSign className="w-3 h-3 text-primary/70" /> CP {getExpoCpScore(note)?.toFixed(2) ?? '--'}</span>
                         </div>
                       </div>

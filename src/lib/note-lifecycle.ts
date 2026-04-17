@@ -82,20 +82,18 @@ export function getSortableExpoPrice(note: Pick<SakeNote, 'expoMeta'>) {
   return typeof note.expoMeta?.price === 'number' ? note.expoMeta.price : Number.POSITIVE_INFINITY;
 }
 
-const EXPO_CP_DISPLAY_MULTIPLIER = 20;
-
 export function getExpoRawCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
   const price = note.expoMeta?.price;
   if (typeof price !== 'number' || price <= 0) return null;
 
-  return (note.overallRating * getExpoBuyIntentRank(note.expoMeta?.buyIntent)) / price;
+  return ((note.overallRating ** 1.5) / price) * 3160;
 }
 
 export function getExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
   const rawScore = getExpoRawCpScore(note);
   if (rawScore === null) return null;
 
-  return Math.min(10, Math.max(0, rawScore * EXPO_CP_DISPLAY_MULTIPLIER));
+  return rawScore;
 }
 
 export function getSortableExpoCpScore(note: Pick<SakeNote, 'overallRating' | 'expoMeta'>) {
