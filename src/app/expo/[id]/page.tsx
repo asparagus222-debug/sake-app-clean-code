@@ -149,6 +149,7 @@ export default function ExpoEventPage() {
   const imageSearchRequestIdRef = useRef(0);
   const brandInputEditedAtRef = useRef(0);
   const breweryInputEditedAtRef = useRef(0);
+  const lastAiAppliedRef = useRef<{ brandName: string; brewery: string } | null>(null);
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -229,6 +230,29 @@ export default function ExpoEventPage() {
     toast({ title: '已取消圖片辨識' });
   };
 
+  const clearRecognitionData = () => {
+    imageSearchAbortRef.current?.abort();
+    imageSearchAbortRef.current = null;
+    imageSearchRequestIdRef.current += 1;
+    setIsImageSearching(false);
+    setQuickImagePreview(null);
+    setQuickImageUrl(null);
+    setFormData((prev) => {
+      const aiApplied = lastAiAppliedRef.current;
+      if (!aiApplied) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        brandName: prev.brandName === aiApplied.brandName ? '' : prev.brandName,
+        brewery: prev.brewery === aiApplied.brewery ? '' : prev.brewery,
+      };
+    });
+    lastAiAppliedRef.current = null;
+    toast({ title: '已清除辨識資料' });
+  };
+
   const handleImageSearchFile = async (file: File) => {
     if (!auth) {
       toast({ variant: 'destructive', title: '請先登入後再使用圖片辨識' });
@@ -270,6 +294,11 @@ export default function ExpoEventPage() {
 
       const nextBrandName = data.extracted?.brandName?.trim() || '';
       const nextBrewery = data.extracted?.brewery?.trim() || '';
+
+      lastAiAppliedRef.current = {
+        brandName: nextBrandName,
+        brewery: nextBrewery,
+      };
 
       setFormData((prev) => ({
         ...prev,
@@ -318,6 +347,7 @@ export default function ExpoEventPage() {
     setEditingNoteId(null);
     setQuickImagePreview(null);
     setQuickImageUrl(null);
+    lastAiAppliedRef.current = null;
     setFormData((prev) => ({
       ...prev,
       brandName: '',
@@ -415,6 +445,7 @@ export default function ExpoEventPage() {
     setEditingNoteId(note.id);
     setQuickImagePreview(note.imageUrls?.[0] || null);
     setQuickImageUrl(note.imageUrls?.[0] || null);
+    lastAiAppliedRef.current = null;
     setFormData({
       brandName: note.brandName || '',
       brewery: note.brewery || '',
@@ -533,45 +564,68 @@ export default function ExpoEventPage() {
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
-              <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
-            </div>
-
-            <div className="grid gap-4">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
-                <Input value={formData.brandName} onChange={(event) => {
-                  brandInputEditedAtRef.current = Date.now();
-                  setFormData((prev) => ({ ...prev, brandName: event.target.value }));
-                }} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-                <div className="flex items-center gap-2">
-                  {isImageSearching ? (
-                    <Button type="button" variant="outline" className="h-11 w-11 rounded-2xl border-white/10 bg-white/5 p-0" onClick={cancelImageSearch}>
-                      <X className="h-4 w-4" />
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2 lg:max-w-[16rem]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
+                <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
+              </div>
+              <div className="w-full lg:max-w-[31rem] rounded-[1.6rem] border border-white/10 bg-white/5 p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 輔助辨識</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">可先拍照帶入酒名與酒造，辨識中可直接取消。</p>
+                  </div>
+                  {(quickImagePreview || quickImageUrl || isImageSearching) && (
+                    <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-8 rounded-full px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                      <X className="mr-1.5 h-3.5 w-3.5" /> 取消辨識資料
                     </Button>
-                  ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="outline" className="h-11 w-11 rounded-2xl border-white/10 bg-white/5 p-0">
-                          <Camera className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
-                          <ImagePlus className="h-4 w-4" /> 從圖片選擇
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
-                          <Camera className="h-4 w-4" /> 開啟相機
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  {quickImagePreview && (
-                    <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                      <Image src={quickImagePreview} alt="快記縮圖" fill unoptimized className="object-cover" />
-                    </div>
                   )}
                 </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                  <div className="relative overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#141419] min-h-[112px]">
+                    {quickImagePreview ? (
+                      <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-cover" />
+                    ) : (
+                      <div className="flex h-full min-h-[112px] items-center justify-center px-4 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                        尚未加入辨識圖片
+                      </div>
+                    )}
+                    {isImageSearching && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/62 backdrop-blur-sm">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-white">
+                          <span>AI</span>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 sm:flex-col sm:items-stretch">
+                    {isImageSearching ? (
+                      <Button type="button" variant="outline" className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
+                        <X className="mr-1.5 h-4 w-4" /> 取消辨識
+                      </Button>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="outline" className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-[10px] font-bold uppercase tracking-widest">
+                            <Camera className="mr-1.5 h-4 w-4" /> 選擇圖片
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
+                            <ImagePlus className="h-4 w-4" /> 從圖片選擇
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
+                            <Camera className="h-4 w-4" /> 開啟相機
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+
                 <input
                   ref={galleryInputRef}
                   type="file"
@@ -600,6 +654,13 @@ export default function ExpoEventPage() {
                   }}
                 />
               </div>
+            </div>
+
+            <div className="grid gap-4">
+              <Input value={formData.brandName} onChange={(event) => {
+                brandInputEditedAtRef.current = Date.now();
+                setFormData((prev) => ({ ...prev, brandName: event.target.value }));
+              }} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input value={formData.brewery} onChange={(event) => {
                   breweryInputEditedAtRef.current = Date.now();
