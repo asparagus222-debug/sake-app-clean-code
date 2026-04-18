@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { ArrowLeft, BadgeDollarSign, Building2, Camera, CircleDollarSign, ClipboardList, ImagePlus, Loader2, Star, Store, Trash2, PencilLine, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, Building2, Camera, CircleDollarSign, ClipboardList, ImagePlus, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,6 +121,11 @@ function resizeImageDataUri(dataUri: string, maxDimension = 1024) {
   });
 }
 
+function getInlineQuickImageFallback(dataUri: string | null) {
+  if (!dataUri) return [] as string[];
+  return dataUri.length <= 700000 ? [dataUri] : [] as string[];
+}
+
 export default function ExpoEventPage() {
   const params = useParams();
   const router = useRouter();
@@ -140,6 +145,10 @@ export default function ExpoEventPage() {
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const imageSearchAbortRef = useRef<AbortController | null>(null);
+  const imageSearchRequestIdRef = useRef(0);
+  const brandInputEditedAtRef = useRef(0);
+  const breweryInputEditedAtRef = useRef(0);
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -206,24 +215,54 @@ export default function ExpoEventPage() {
     }));
   };
 
+  useEffect(() => {
+    return () => {
+      imageSearchAbortRef.current?.abort();
+    };
+  }, []);
+
+  const cancelImageSearch = () => {
+    imageSearchAbortRef.current?.abort();
+    imageSearchAbortRef.current = null;
+    imageSearchRequestIdRef.current += 1;
+    setIsImageSearching(false);
+    toast({ title: '已取消圖片辨識' });
+  };
+
   const handleImageSearchFile = async (file: File) => {
     if (!auth) {
       toast({ variant: 'destructive', title: '請先登入後再使用圖片辨識' });
       return;
     }
 
+    imageSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    imageSearchAbortRef.current = controller;
+    const requestId = imageSearchRequestIdRef.current + 1;
+    imageSearchRequestIdRef.current = requestId;
+    const searchStartedAt = Date.now();
+
     setIsImageSearching(true);
     try {
       const dataUri = await readFileAsDataUri(file);
       const resizedDataUri = await resizeImageDataUri(dataUri);
+      if (controller.signal.aborted || imageSearchRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setQuickImagePreview(resizedDataUri);
       setQuickImageUrl(null);
 
       const response = await authorizedJsonFetch(auth, '/api/ai/vision-web-detect', {
         method: 'POST',
         body: JSON.stringify({ photoDataUri: resizedDataUri }),
+        signal: controller.signal,
       });
       const data = await response.json() as VisionResult & { error?: string };
+
+      if (controller.signal.aborted || imageSearchRequestIdRef.current !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(data.error || '以圖搜圖失敗');
@@ -234,8 +273,8 @@ export default function ExpoEventPage() {
 
       setFormData((prev) => ({
         ...prev,
-        brandName: nextBrandName || prev.brandName,
-        brewery: nextBrewery || prev.brewery,
+        brandName: nextBrandName && brandInputEditedAtRef.current <= searchStartedAt ? nextBrandName : prev.brandName,
+        brewery: nextBrewery && breweryInputEditedAtRef.current <= searchStartedAt ? nextBrewery : prev.brewery,
       }));
 
       toast({
@@ -243,22 +282,36 @@ export default function ExpoEventPage() {
         description: nextBrandName || nextBrewery ? '已帶入可辨識到的銘柄與酒造。' : '已載入圖片，但這張圖沒有明確辨識結果。',
       });
     } catch (error: any) {
+      if (error?.name === 'AbortError' || controller.signal.aborted || imageSearchRequestIdRef.current !== requestId) {
+        return;
+      }
+
       toast({ variant: 'destructive', title: '圖片辨識失敗', description: error.message || '請換一張圖片再試一次' });
     } finally {
-      setIsImageSearching(false);
+      if (imageSearchAbortRef.current === controller) {
+        imageSearchAbortRef.current = null;
+      }
+      if (imageSearchRequestIdRef.current === requestId) {
+        setIsImageSearching(false);
+      }
     }
   };
 
   const resolveQuickImageUrls = async () => {
     if (!quickImagePreview) return [] as string[];
     if (quickImageUrl) return [quickImageUrl];
-    if (!storage || !user) return [] as string[];
+    if (!storage || !user) return getInlineQuickImageFallback(quickImagePreview);
 
-    const storageRef = ref(storage, `expo-quick/${user.uid}/${eventId}/${Date.now()}.jpg`);
-    await uploadString(storageRef, quickImagePreview, 'data_url');
-    const downloadUrl = await getDownloadURL(storageRef);
-    setQuickImageUrl(downloadUrl);
-    return [downloadUrl];
+    try {
+      const storageRef = ref(storage, `expo-quick/${user.uid}/${eventId}/${Date.now()}.jpg`);
+      await uploadString(storageRef, quickImagePreview, 'data_url');
+      const downloadUrl = await getDownloadURL(storageRef);
+      setQuickImageUrl(downloadUrl);
+      return [downloadUrl];
+    } catch (error) {
+      console.error('expo quick image upload failed:', error);
+      return getInlineQuickImageFallback(quickImagePreview);
+    }
   };
 
   const resetForm = () => {
@@ -286,17 +339,7 @@ export default function ExpoEventPage() {
     try {
       const now = new Date().toISOString();
       const price = formData.price.trim() ? Number(formData.price) : null;
-      let imageUrls: string[] = [];
-      try {
-        imageUrls = await resolveQuickImageUrls();
-      } catch (error: any) {
-        console.error('expo quick image upload failed:', error);
-        toast({
-          variant: 'destructive',
-          title: '圖片未能附上',
-          description: '這次先只儲存文字快記；若需要縮圖可再重選一次圖片。',
-        });
-      }
+      const imageUrls = await resolveQuickImageUrls();
       const noteData = {
         userId: user.uid,
         username: profile?.username || '',
@@ -497,23 +540,32 @@ export default function ExpoEventPage() {
 
             <div className="grid gap-4">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
-                <Input value={formData.brandName} onChange={(event) => setFormData((prev) => ({ ...prev, brandName: event.target.value }))} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.brandName} onChange={(event) => {
+                  brandInputEditedAtRef.current = Date.now();
+                  setFormData((prev) => ({ ...prev, brandName: event.target.value }));
+                }} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
                 <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" className="h-11 w-11 rounded-2xl border-white/10 bg-white/5 p-0" disabled={isImageSearching}>
-                        {isImageSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
-                        <ImagePlus className="h-4 w-4" /> 從圖片選擇
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
-                        <Camera className="h-4 w-4" /> 開啟相機
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {isImageSearching ? (
+                    <Button type="button" variant="outline" className="h-11 w-11 rounded-2xl border-white/10 bg-white/5 p-0" onClick={cancelImageSearch}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" className="h-11 w-11 rounded-2xl border-white/10 bg-white/5 p-0">
+                          <Camera className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
+                          <ImagePlus className="h-4 w-4" /> 從圖片選擇
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
+                          <Camera className="h-4 w-4" /> 開啟相機
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   {quickImagePreview && (
                     <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
                       <Image src={quickImagePreview} alt="快記縮圖" fill unoptimized className="object-cover" />
@@ -549,7 +601,10 @@ export default function ExpoEventPage() {
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Input value={formData.brewery} onChange={(event) => setFormData((prev) => ({ ...prev, brewery: event.target.value }))} placeholder="酒造 / 品牌" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.brewery} onChange={(event) => {
+                  breweryInputEditedAtRef.current = Date.now();
+                  setFormData((prev) => ({ ...prev, brewery: event.target.value }));
+                }} placeholder="酒造 / 品牌" className="h-11 rounded-2xl bg-white/5 border-white/10" />
                 <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-11 rounded-2xl bg-white/5 border-white/10" />
               </div>
               <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
