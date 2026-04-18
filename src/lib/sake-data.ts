@@ -124,3 +124,51 @@ export function normalizeSakeInfo(
   // ③ 無匹配，原樣回傳
   return { brandName, brewery, origin };
 }
+
+export function inferOriginFromSakeInfo(
+  brandName: string,
+  brewery: string,
+  knownBrands: Array<{ brandName: string; brewery: string; origin?: string }> = []
+): string {
+  const cleanedBrandName = cleanSakeName(brandName);
+  const cleanedBrewery = cleanSakeName(brewery);
+
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');
+  const buildBrandKeys = (s: string) => {
+    const cleaned = cleanSakeName(s);
+    const parts = cleaned.split(/[\s\u3000\/]+/).map(norm).filter(Boolean);
+    return new Set([norm(cleaned), ...parts]);
+  };
+
+  const brandKeys = buildBrandKeys(cleanedBrandName);
+  const normalizedBrewery = norm(cleanedBrewery);
+
+  for (const known of knownBrands) {
+    const knownBrewery = norm(known.brewery || '');
+    if (known.origin && normalizedBrewery.length >= 2 && normalizedBrewery === knownBrewery) {
+      return known.origin;
+    }
+
+    const knownBrandKeys = buildBrandKeys(known.brandName || '');
+    const brandMatch = [...knownBrandKeys].some((key) => key.length >= 2 && brandKeys.has(key));
+    if (known.origin && brandMatch) {
+      return known.origin;
+    }
+  }
+
+  for (const entry of SAKE_DATABASE) {
+    const entryBrewery = norm(entry.brewery);
+    if (normalizedBrewery.length >= 2 && normalizedBrewery === entryBrewery) {
+      return entry.location;
+    }
+
+    const entryBrandKeys = buildBrandKeys(entry.brand);
+    const brandMatch = [...entryBrandKeys].some((key) => key.length >= 2 && brandKeys.has(key));
+    if (brandMatch) {
+      return entry.location;
+    }
+  }
+
+  return '';
+}

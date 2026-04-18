@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
+import { cleanSakeName, inferOriginFromSakeInfo } from '@/lib/sake-data';
 
 /**
  * Cloud Vision API — TEXT_DETECTION + WEB_DETECTION（單一請求）+ Gemini 萃取
@@ -110,14 +111,26 @@ ${pageTitles || '無'}
 規則：
 1. 銘柄優先從 OCR 文字中找，再參考 Web Entities 確認
 2. 酒精濃度從 OCR 文字讀取（格式如「16度」「16%」）
-3. 不確定的欄位填空字串，不要猜測
-4. 保持日文原文
+3. 若已能明確確認酒造，且相關網頁標題或常識足以確定酒造所在地，origin 可回填對應縣名
+4. 只有在銘柄、酒造與產地都無法明確確認時，才把欄位留空，不要亂猜
+5. 保持日文原文
 
 {"brandName":"","brewery":"","origin":"","alcoholPercent":""}`;
 
         const result = await model.generateContent(prompt);
         const raw = result.response.text().trim().replace(/^```json\n?|```$/g, '').trim();
-        extracted = JSON.parse(raw);
+        const parsed = JSON.parse(raw) as { brandName?: string; brewery?: string; origin?: string; alcoholPercent?: string };
+        const brandName = cleanSakeName(parsed.brandName || '');
+        const brewery = cleanSakeName(parsed.brewery || '');
+        const origin = cleanSakeName(parsed.origin || '') || inferOriginFromSakeInfo(brandName, brewery);
+        const alcoholPercent = cleanSakeName(parsed.alcoholPercent || '');
+
+        extracted = {
+          brandName,
+          brewery,
+          origin,
+          alcoholPercent,
+        };
       } catch (e) {
         console.error('[Vision→Gemini] extraction failed:', e);
       }
