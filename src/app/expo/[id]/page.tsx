@@ -565,8 +565,8 @@ export default function ExpoEventPage() {
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="dark-glass rounded-[2rem] border border-white/10 p-5 space-y-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:items-start">
-              <div className="space-y-1.5 lg:pt-1">
+            <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-3">
+              <div className="space-y-1.5 pt-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
@@ -655,7 +655,7 @@ export default function ExpoEventPage() {
             </div>
 
             <div className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <Input value={formData.brandName} onChange={(event) => {
                   brandInputEditedAtRef.current = Date.now();
                   setFormData((prev) => ({ ...prev, brandName: event.target.value }));
@@ -665,7 +665,7 @@ export default function ExpoEventPage() {
                   setFormData((prev) => ({ ...prev, brewery: event.target.value }));
                 }} placeholder="酒造 / 品牌" className="h-10 rounded-2xl bg-white/5 border-white/10" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+              <div className="grid grid-cols-2 gap-3">
                 <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-10 rounded-2xl bg-white/5 border-white/10" />
                 <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-10 rounded-2xl bg-white/5 border-white/10" />
               </div>
