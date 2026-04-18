@@ -706,9 +706,7 @@ export default function ExpoEventPage() {
                   {quickImagePreview ? (
                     <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-contain object-center p-1" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground/35">
-                      <Camera className="h-5 w-5" />
-                    </div>
+                    <div className="h-full w-full" />
                   )}
                   {isImageSearching && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/62 backdrop-blur-sm">
