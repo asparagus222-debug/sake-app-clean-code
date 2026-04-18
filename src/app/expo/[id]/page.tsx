@@ -563,54 +563,54 @@ export default function ExpoEventPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2 lg:max-w-[16rem]">
+          <div className="dark-glass rounded-[2rem] border border-white/10 p-5 space-y-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:items-start">
+              <div className="space-y-1.5 lg:pt-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
-              <div className="w-full lg:max-w-[31rem] rounded-[1.6rem] border border-white/10 bg-white/5 p-3 sm:p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+              <div className="rounded-[1.45rem] border border-white/10 bg-white/5 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 輔助辨識</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">可先拍照帶入酒名與酒造，辨識中可直接取消。</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">拍照帶入酒名與酒造。</p>
                   </div>
                   {(quickImagePreview || quickImageUrl || isImageSearching) && (
-                    <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-8 rounded-full px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                      <X className="mr-1.5 h-3.5 w-3.5" /> 取消辨識資料
+                    <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-7 rounded-full px-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                      <X className="mr-1 h-3 w-3" /> 清除
                     </Button>
                   )}
                 </div>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                  <div className="relative overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#141419] min-h-[112px]">
+                <div className="mt-2.5 grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
+                  <div className="relative overflow-hidden rounded-[1.2rem] border border-white/10 bg-[#141419] min-h-[82px]">
                     {quickImagePreview ? (
                       <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-cover" />
                     ) : (
-                      <div className="flex h-full min-h-[112px] items-center justify-center px-4 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                      <div className="flex h-full min-h-[82px] items-center justify-center px-3 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                         尚未加入辨識圖片
                       </div>
                     )}
                     {isImageSearching && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/62 backdrop-blur-sm">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-white">
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-white">
                           <span>AI</span>
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex gap-2 sm:flex-col sm:items-stretch">
+                  <div className="flex gap-2 sm:w-[112px] sm:flex-col sm:items-stretch">
                     {isImageSearching ? (
-                      <Button type="button" variant="outline" className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
-                        <X className="mr-1.5 h-4 w-4" /> 取消辨識
+                      <Button type="button" variant="outline" className="h-10 rounded-2xl border-white/10 bg-white/5 px-3 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
+                        <X className="mr-1 h-3.5 w-3.5" /> 取消
                       </Button>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button type="button" variant="outline" className="h-11 rounded-2xl border-white/10 bg-white/5 px-4 text-[10px] font-bold uppercase tracking-widest">
-                            <Camera className="mr-1.5 h-4 w-4" /> 選擇圖片
+                          <Button type="button" variant="outline" className="h-10 rounded-2xl border-white/10 bg-white/5 px-3 text-[10px] font-bold uppercase tracking-widest">
+                            <Camera className="mr-1 h-3.5 w-3.5" /> 選圖
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
@@ -656,27 +656,29 @@ export default function ExpoEventPage() {
               </div>
             </div>
 
-            <div className="grid gap-4">
-              <Input value={formData.brandName} onChange={(event) => {
-                brandInputEditedAtRef.current = Date.now();
-                setFormData((prev) => ({ ...prev, brandName: event.target.value }));
-              }} placeholder="酒名 / 銘柄" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input value={formData.brandName} onChange={(event) => {
+                  brandInputEditedAtRef.current = Date.now();
+                  setFormData((prev) => ({ ...prev, brandName: event.target.value }));
+                }} placeholder="酒名 / 銘柄" className="h-10 rounded-2xl bg-white/5 border-white/10" />
                 <Input value={formData.brewery} onChange={(event) => {
                   breweryInputEditedAtRef.current = Date.now();
                   setFormData((prev) => ({ ...prev, brewery: event.target.value }));
-                }} placeholder="酒造 / 品牌" className="h-11 rounded-2xl bg-white/5 border-white/10" />
-                <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+                }} placeholder="酒造 / 品牌" className="h-10 rounded-2xl bg-white/5 border-white/10" />
               </div>
-              <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-11 rounded-2xl bg-white/5 border-white/10" />
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                <Input value={formData.booth} onChange={(event) => setFormData((prev) => ({ ...prev, booth: event.target.value }))} placeholder="攤位" className="h-10 rounded-2xl bg-white/5 border-white/10" />
+                <Input type="number" inputMode="numeric" value={formData.price} onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))} placeholder="價格" className="h-10 rounded-2xl bg-white/5 border-white/10" />
+              </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速標籤</p>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {EXPO_QUICK_TAG_GROUPS.map((group) => (
-                  <div key={group.category} className="rounded-[1.4rem] border border-white/10 bg-white/5 p-3">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
+                  <div key={group.category} className="rounded-[1.25rem] border border-white/10 bg-white/5 p-2.5">
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
                     <div className="flex flex-wrap gap-2">
                       {group.tags.map((tag) => (
                         <button
@@ -684,7 +686,7 @@ export default function ExpoEventPage() {
                           type="button"
                           onClick={() => toggleQuickTag(group.category, tag)}
                           className={cn(
-                            'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all',
+                            'rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-widest transition-all',
                             isExpoQuickTagSelected(formData.quickTags, group.category, tag)
                               ? 'border-primary bg-primary text-white shadow-lg'
                               : 'border-white/10 bg-white/5 text-muted-foreground'
@@ -699,13 +701,13 @@ export default function ExpoEventPage() {
               </div>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
               <div className="space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">作者備註</p>
-                <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[110px] rounded-2xl bg-white/5 border-white/10" />
+                <Textarea value={formData.quickNote} onChange={(event) => setFormData((prev) => ({ ...prev, quickNote: event.target.value }))} placeholder="一句備註，例如：米旨漂亮、價格高但值得、尾韻短" className="min-h-[88px] rounded-2xl bg-white/5 border-white/10" />
               </div>
-              <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="rounded-[1.25rem] border border-white/10 bg-white/5 px-3.5 py-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">風味評分</p>
                   <p className="text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
                 </div>
@@ -719,24 +721,24 @@ export default function ExpoEventPage() {
                     if (nextValue === undefined) return;
                     setFormData((prev) => ({ ...prev, overallRating: Number(nextValue.toFixed(1)) }));
                   }}
-                  className="py-2"
+                  className="py-1.5"
                 />
-                <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                <div className="mt-1.5 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
                   <span>1.0</span>
                   <span>10.0</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-muted-foreground">銘柄、品牌、攤位三者至少填一項即可送出；送出後保留當前攤位與酒造，方便下一杯繼續記。</p>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] leading-5 text-muted-foreground">銘柄、品牌、攤位至少填一項即可；送出後保留攤位與酒造，方便下一杯繼續記。</p>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
                 {editingNoteId && (
-                  <Button type="button" variant="outline" onClick={resetForm} className="rounded-full h-11 px-5 text-xs font-bold uppercase tracking-widest">
+                  <Button type="button" variant="outline" onClick={resetForm} className="rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest">
                     取消編輯
                   </Button>
                 )}
-                <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-11 px-6 text-xs font-bold uppercase tracking-widest">
+                <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-10 px-5 text-[10px] font-bold uppercase tracking-widest">
                   {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} {editingNoteId ? '更新快記' : '儲存快記'}
                 </Button>
               </div>
