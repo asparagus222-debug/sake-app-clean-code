@@ -40,7 +40,7 @@ type SortMode = 'score' | 'price' | 'cp';
 const EXPO_QUICK_TAG_SEPARATOR = '::';
 const AROMA_CATEGORY = '香氣';
 const AROMA_INTENSITY_OPTIONS = ['弱', '中', '強'] as const;
-const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成'] as const;
+const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成', '乳酸', '果酸'] as const;
 
 type AromaIntensity = (typeof AROMA_INTENSITY_OPTIONS)[number];
 type AromaProfile = (typeof AROMA_PROFILE_OPTIONS)[number];
