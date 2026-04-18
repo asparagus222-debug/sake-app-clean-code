@@ -214,16 +214,20 @@ export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
     tags: ['無', '微', '中等', '刺激'],
   },
   {
+    category: '甘辛口',
+    tags: ['偏甘口', '甘辛平衡', '偏辛口'],
+  },
+  {
+    category: '酸度',
+    tags: ['低酸', '酸感平衡', '明亮酸度'],
+  },
+  {
     category: '口感',
     tags: ['清爽', '圓潤', '醇厚'],
   },
   {
     category: '尾韻',
     tags: ['俐落', '中等', '綿長'],
-  },
-  {
-    category: '甘辛口',
-    tags: ['偏甘口', '甘辛平衡', '偏辛口'],
   },
   {
     category: '酒精味',

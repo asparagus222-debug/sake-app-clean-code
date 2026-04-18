@@ -571,55 +571,55 @@ export default function ExpoEventPage() {
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
               <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
-                  {(quickImagePreview || quickImageUrl || isImageSearching) && (
-                    <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-7 rounded-full px-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                      <X className="mr-1 h-3 w-3" /> 清除
-                    </Button>
-                  )}
-                </div>
+                <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-2">
+                  <div className="flex min-h-[108px] flex-col justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
+                    <div className="space-y-2">
+                      {isImageSearching ? (
+                        <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
+                          <X className="mr-1 h-3.5 w-3.5" /> 取消
+                        </Button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest">
+                              <Camera className="mr-1 h-3.5 w-3.5" /> 選圖
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-40">
+                            <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
+                              <ImagePlus className="h-4 w-4" /> 從圖片選擇
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
+                              <Camera className="h-4 w-4" /> 開啟相機
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
 
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_96px] sm:items-stretch">
-                  <div className="relative overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419] min-h-[68px]">
+                      {(quickImagePreview || quickImageUrl || isImageSearching) && (
+                        <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-7 w-full rounded-full px-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                          <X className="mr-1 h-3 w-3" /> 清除
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="relative ml-auto w-[76px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419] h-[108px]">
                     {quickImagePreview ? (
-                      <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-cover" />
+                      <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-cover object-center" />
                     ) : (
-                      <div className="flex h-full min-h-[68px] items-center justify-center px-3 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                        加入圖片
+                      <div className="flex h-full items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                        酒瓶圖
                       </div>
                     )}
                     {isImageSearching && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/62 backdrop-blur-sm">
-                        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-white">
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-white">
                           <span>AI</span>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 sm:flex-col sm:items-stretch">
-                    {isImageSearching ? (
-                      <Button type="button" variant="outline" className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
-                        <X className="mr-1 h-3.5 w-3.5" /> 取消
-                      </Button>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" variant="outline" className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-[10px] font-bold uppercase tracking-widest">
-                            <Camera className="mr-1 h-3.5 w-3.5" /> 選圖
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onSelect={() => galleryInputRef.current?.click()}>
-                            <ImagePlus className="h-4 w-4" /> 從圖片選擇
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
-                            <Camera className="h-4 w-4" /> 開啟相機
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     )}
                   </div>
                 </div>
