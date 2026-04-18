@@ -34,10 +34,12 @@ type SortMode = 'score' | 'price' | 'cp';
 const EXPO_QUICK_TAG_SEPARATOR = '::';
 const AROMA_CATEGORY = '香氣';
 const AROMA_INTENSITY_OPTIONS = ['弱', '中', '強'] as const;
-const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成', '乳酸', '果酸'] as const;
+const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成'] as const;
+const AROMA_NOTE_OPTIONS = ['乳酸', '果酸'] as const;
 
 type AromaIntensity = (typeof AROMA_INTENSITY_OPTIONS)[number];
 type AromaProfile = (typeof AROMA_PROFILE_OPTIONS)[number];
+type AromaNote = (typeof AROMA_NOTE_OPTIONS)[number];
 type RecognitionAppliedFields = {
   brandName: boolean;
   brewery: boolean;
@@ -102,12 +104,12 @@ function parseAromaQuickTag(tag: string) {
   return null;
 }
 
-function isAromaQuickTag(tag: string) {
-  return parseAromaQuickTag(tag) !== null;
+function isAromaStandaloneQuickTag(tag: string) {
+  return AROMA_NOTE_OPTIONS.includes(getExpoQuickTagLabel(tag) as AromaNote);
 }
 
 function removeAromaQuickTags(tags: string[]) {
-  return tags.filter((tag) => !isAromaQuickTag(tag));
+  return tags.filter((tag) => parseAromaQuickTag(tag) === null && !isAromaStandaloneQuickTag(tag));
 }
 
 function isExpoQuickTagSelected(selectedTags: string[], category: string, tag: string) {
@@ -180,7 +182,7 @@ export default function ExpoEventPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('score');
   const [isQuickTagsExpanded, setIsQuickTagsExpanded] = useState(false);
-  const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profiles: AromaProfile[] }>({ intensity: null, profiles: [] });
+  const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profiles: AromaProfile[]; notes: AromaNote[] }>({ intensity: null, profiles: [], notes: [] });
   const [recognitionSnapshot, setRecognitionSnapshot] = useState<RecognitionSnapshot | null>(null);
   const [quickImagePreview, setQuickImagePreview] = useState<string | null>(null);
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
@@ -257,13 +259,20 @@ export default function ExpoEventPage() {
     }));
   };
 
-  const updateAromaSelection = (field: 'intensity' | 'profile', value: AromaIntensity | AromaProfile) => {
+  const updateAromaSelection = (field: 'intensity' | 'profile' | 'note', value: AromaIntensity | AromaProfile | AromaNote) => {
     setAromaSelection((prev) => {
       const nextSelection = field === 'intensity'
         ? {
             ...prev,
             intensity: prev.intensity === value ? null : value as AromaIntensity,
           }
+        : field === 'note'
+          ? {
+              ...prev,
+              notes: prev.notes.includes(value as AromaNote)
+                ? prev.notes.filter((note) => note !== value)
+                : [...prev.notes, value as AromaNote],
+            }
         : {
             ...prev,
             profiles: prev.profiles.includes(value as AromaProfile)
@@ -273,7 +282,14 @@ export default function ExpoEventPage() {
 
       setFormData((current) => {
         const quickTagsWithoutAroma = removeAromaQuickTags(current.quickTags);
-        if (!nextSelection.intensity || nextSelection.profiles.length === 0) {
+        const nextAromaTags = [
+          ...(nextSelection.intensity
+            ? nextSelection.profiles.map((profile) => getExpoQuickTagKey(AROMA_CATEGORY, `${nextSelection.intensity}｜${profile}`))
+            : []),
+          ...nextSelection.notes.map((note) => getExpoQuickTagKey(AROMA_CATEGORY, note)),
+        ];
+
+        if (nextAromaTags.length === 0) {
           return {
             ...current,
             quickTags: quickTagsWithoutAroma,
@@ -284,7 +300,7 @@ export default function ExpoEventPage() {
           ...current,
           quickTags: [
             ...quickTagsWithoutAroma,
-            ...nextSelection.profiles.map((profile) => getExpoQuickTagKey(AROMA_CATEGORY, `${nextSelection.intensity}｜${profile}`)),
+            ...nextAromaTags,
           ],
         };
       });
@@ -448,7 +464,7 @@ export default function ExpoEventPage() {
 
   const resetForm = () => {
     setEditingNoteId(null);
-    setAromaSelection({ intensity: null, profiles: [] });
+    setAromaSelection({ intensity: null, profiles: [], notes: [] });
     setRecognitionSnapshot(null);
     setQuickImagePreview(null);
     setQuickImageUrl(null);
@@ -552,6 +568,9 @@ export default function ExpoEventPage() {
   const handleEditQuickNote = (note: SakeNote) => {
     const normalizedQuickTags = normalizeExpoQuickTags(note.expoMeta?.quickTags);
     const parsedAromas = normalizedQuickTags.map((tag) => parseAromaQuickTag(tag)).filter((value): value is NonNullable<ReturnType<typeof parseAromaQuickTag>> => value !== null);
+    const parsedAromaNotes = normalizedQuickTags
+      .filter((tag) => isAromaStandaloneQuickTag(tag))
+      .map((tag) => getExpoQuickTagLabel(tag) as AromaNote);
 
     setEditingNoteId(note.id);
     setQuickImagePreview(note.imageUrls?.[0] || null);
@@ -560,6 +579,7 @@ export default function ExpoEventPage() {
     setAromaSelection({
       intensity: parsedAromas[0]?.intensity || null,
       profiles: parsedAromas.map((item) => item.profile),
+      notes: parsedAromaNotes,
     });
     setFormData({
       brandName: note.brandName || '',
@@ -831,9 +851,32 @@ export default function ExpoEventPage() {
                                 {profile}
                               </button>
                             ))}
+                            <span className="px-1 text-[10px] text-muted-foreground">|</span>
+                            {AROMA_NOTE_OPTIONS.map((note) => (
+                              <button
+                                key={note}
+                                type="button"
+                                onClick={() => updateAromaSelection('note', note)}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                  aromaSelection.notes.includes(note)
+                                    ? 'border-primary bg-primary text-white shadow-lg'
+                                    : 'border-white/10 bg-white/5 text-muted-foreground'
+                                )}
+                              >
+                                {note}
+                              </button>
+                            ))}
                           </div>
                           <p className="text-[9px] text-muted-foreground">
-                            {aromaSelection.intensity && aromaSelection.profiles.length > 0 ? `已合併為 ${aromaSelection.profiles.map((profile) => `${aromaSelection.intensity}｜${profile}`).join('、')}` : '先選強度，再選一個以上香氣類型'}
+                            {((aromaSelection.intensity && aromaSelection.profiles.length > 0) || aromaSelection.notes.length > 0)
+                              ? `已合併為 ${[
+                                  ...(aromaSelection.intensity
+                                    ? aromaSelection.profiles.map((profile) => `${aromaSelection.intensity}｜${profile}`)
+                                    : []),
+                                  ...aromaSelection.notes,
+                                ].join('、')}`
+                              : '先選強度與花果/米旨/熟成，乳酸與果酸可獨立勾選'}
                           </p>
                         </div>
                       ) : (
