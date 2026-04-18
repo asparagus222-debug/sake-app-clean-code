@@ -43,10 +43,12 @@ type AromaNote = (typeof AROMA_NOTE_OPTIONS)[number];
 type RecognitionAppliedFields = {
   brandName: boolean;
   brewery: boolean;
+  origin: boolean;
 };
 type RecognitionSnapshot = {
   brandName: string;
   brewery: string;
+  origin: string;
   appliedFields: RecognitionAppliedFields;
 };
 
@@ -124,6 +126,7 @@ type VisionResult = {
   extracted: {
     brandName?: string;
     brewery?: string;
+    origin?: string;
   } | null;
 };
 
@@ -191,6 +194,7 @@ export default function ExpoEventPage() {
   const imageSearchRequestIdRef = useRef(0);
   const brandInputEditedAtRef = useRef(0);
   const breweryInputEditedAtRef = useRef(0);
+  const originInputEditedAtRef = useRef(0);
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -247,7 +251,7 @@ export default function ExpoEventPage() {
     total: rawNotes?.length || 0,
     published: rawNotes?.filter((note) => isPublicPublishedNote(note)).length || 0,
   }), [rawNotes]);
-  const hasRecognitionData = Boolean(recognitionSnapshot && (recognitionSnapshot.brandName || recognitionSnapshot.brewery));
+  const hasRecognitionData = Boolean(recognitionSnapshot && (recognitionSnapshot.brandName || recognitionSnapshot.brewery || recognitionSnapshot.origin));
 
   const toggleQuickTag = (category: string, tag: string) => {
     const scopedTag = getExpoQuickTagKey(category, tag);
@@ -322,6 +326,7 @@ export default function ExpoEventPage() {
       ...prev,
       brandName: prev.brandName === snapshot.brandName ? '' : prev.brandName,
       brewery: prev.brewery === snapshot.brewery ? '' : prev.brewery,
+      origin: prev.origin === snapshot.origin ? '' : prev.origin,
     }));
     setRecognitionSnapshot(null);
     if (showToast) {
@@ -391,15 +396,18 @@ export default function ExpoEventPage() {
 
       const nextBrandName = data.extracted?.brandName?.trim() || '';
       const nextBrewery = data.extracted?.brewery?.trim() || '';
+      const nextOrigin = data.extracted?.origin?.trim() || '';
 
       const appliedFields = {
         brandName: Boolean(nextBrandName && brandInputEditedAtRef.current <= searchStartedAt),
         brewery: Boolean(nextBrewery && breweryInputEditedAtRef.current <= searchStartedAt),
+        origin: Boolean(nextOrigin && originInputEditedAtRef.current <= searchStartedAt),
       };
 
       setRecognitionSnapshot({
         brandName: nextBrandName,
         brewery: nextBrewery,
+        origin: nextOrigin,
         appliedFields,
       });
 
@@ -407,11 +415,12 @@ export default function ExpoEventPage() {
         ...prev,
         brandName: appliedFields.brandName ? nextBrandName : prev.brandName,
         brewery: appliedFields.brewery ? nextBrewery : prev.brewery,
+        origin: appliedFields.origin ? nextOrigin : prev.origin,
       }));
 
       toast({
         title: '已完成簡單搜圖',
-        description: nextBrandName || nextBrewery ? '已帶入可辨識到的銘柄與酒造。' : '已載入圖片，但這張圖沒有明確辨識結果。',
+        description: nextBrandName || nextBrewery || nextOrigin ? '已帶入可辨識到的銘柄、酒造與產地。' : '已載入圖片，但這張圖沒有明確辨識結果。',
       });
     } catch (error: any) {
       if (error?.name === 'AbortError' || controller.signal.aborted || imageSearchRequestIdRef.current !== requestId) {
@@ -714,7 +723,10 @@ export default function ExpoEventPage() {
                   breweryInputEditedAtRef.current = Date.now();
                   setFormData((prev) => ({ ...prev, brewery: event.target.value }));
                 }} placeholder="酒造 / 品牌" className="h-10 rounded-2xl bg-white/5 border-white/10" />
-                <Input value={formData.origin} onChange={(event) => setFormData((prev) => ({ ...prev, origin: event.target.value }))} placeholder="產地 / 縣" className="h-10 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.origin} onChange={(event) => {
+                  originInputEditedAtRef.current = Date.now();
+                  setFormData((prev) => ({ ...prev, origin: event.target.value }));
+                }} placeholder="產地 / 縣" className="h-10 rounded-2xl bg-white/5 border-white/10" />
               </div>
               <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-2.5">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
