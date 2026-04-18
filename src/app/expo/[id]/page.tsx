@@ -286,7 +286,17 @@ export default function ExpoEventPage() {
     try {
       const now = new Date().toISOString();
       const price = formData.price.trim() ? Number(formData.price) : null;
-      const imageUrls = await resolveQuickImageUrls();
+      let imageUrls: string[] = [];
+      try {
+        imageUrls = await resolveQuickImageUrls();
+      } catch (error: any) {
+        console.error('expo quick image upload failed:', error);
+        toast({
+          variant: 'destructive',
+          title: '圖片未能附上',
+          description: '這次先只儲存文字快記；若需要縮圖可再重選一次圖片。',
+        });
+      }
       const noteData = {
         userId: user.uid,
         username: profile?.username || '',
@@ -346,8 +356,12 @@ export default function ExpoEventPage() {
         toast({ title: '酒展快記已儲存' });
       }
       resetForm();
-    } catch {
-      toast({ variant: 'destructive', title: editingNoteId ? '快記更新失敗' : '快記儲存失敗' });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: editingNoteId ? '快記更新失敗' : '快記儲存失敗',
+        description: error?.message || '請再試一次',
+      });
       setIsSaving(false);
       return;
     }
