@@ -207,7 +207,7 @@ export const QUALIFICATION_OPTIONS = [
 export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
   {
     category: '香氣',
-    tags: ['弱｜花果香', '中｜花果香', '強｜花果香', '弱｜米旨香', '中｜米旨香', '強｜米旨香', '弱｜熟成香', '中｜熟成香', '強｜熟成香'],
+    tags: ['弱｜花果', '中｜花果', '強｜花果', '弱｜米旨', '中｜米旨', '強｜米旨', '弱｜熟成', '中｜熟成', '強｜熟成'],
   },
   {
     category: '氣泡',

@@ -38,6 +38,12 @@ import { cn } from '@/lib/utils';
 
 type SortMode = 'score' | 'price' | 'cp';
 const EXPO_QUICK_TAG_SEPARATOR = '::';
+const AROMA_CATEGORY = '香氣';
+const AROMA_INTENSITY_OPTIONS = ['弱', '中', '強'] as const;
+const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成'] as const;
+
+type AromaIntensity = (typeof AROMA_INTENSITY_OPTIONS)[number];
+type AromaProfile = (typeof AROMA_PROFILE_OPTIONS)[number];
 
 const EXPO_QUICK_TAG_CATEGORY_BY_LABEL = EXPO_QUICK_TAG_GROUPS.reduce<Record<string, string[]>>((accumulator, group) => {
   group.tags.forEach((tag) => {
@@ -70,6 +76,35 @@ function normalizeExpoQuickTags(tags: string[] | undefined) {
 
     return tag;
   });
+}
+
+function normalizeAromaProfileLabel(label: string) {
+  return label.endsWith('香') ? label.slice(0, -1) : label;
+}
+
+function parseAromaQuickTag(tag: string) {
+  const [intensity, rawProfile] = getExpoQuickTagLabel(tag).split('｜');
+  const profile = normalizeAromaProfileLabel(rawProfile || '');
+
+  if (
+    AROMA_INTENSITY_OPTIONS.includes(intensity as AromaIntensity)
+    && AROMA_PROFILE_OPTIONS.includes(profile as AromaProfile)
+  ) {
+    return {
+      intensity: intensity as AromaIntensity,
+      profile: profile as AromaProfile,
+    };
+  }
+
+  return null;
+}
+
+function isAromaQuickTag(tag: string) {
+  return parseAromaQuickTag(tag) !== null;
+}
+
+function removeAromaQuickTags(tags: string[]) {
+  return tags.filter((tag) => !isAromaQuickTag(tag));
 }
 
 function isExpoQuickTagSelected(selectedTags: string[], category: string, tag: string) {
@@ -142,6 +177,7 @@ export default function ExpoEventPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('score');
   const [isQuickTagsExpanded, setIsQuickTagsExpanded] = useState(false);
+  const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profile: AromaProfile | null }>({ intensity: null, profile: null });
   const [quickImagePreview, setQuickImagePreview] = useState<string | null>(null);
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -217,6 +253,35 @@ export default function ExpoEventPage() {
     }));
   };
 
+  const updateAromaSelection = (field: 'intensity' | 'profile', value: AromaIntensity | AromaProfile) => {
+    setAromaSelection((prev) => {
+      const nextSelection = {
+        ...prev,
+        [field]: prev[field] === value ? null : value,
+      };
+
+      setFormData((current) => {
+        const quickTagsWithoutAroma = removeAromaQuickTags(current.quickTags);
+        if (!nextSelection.intensity || !nextSelection.profile) {
+          return {
+            ...current,
+            quickTags: quickTagsWithoutAroma,
+          };
+        }
+
+        return {
+          ...current,
+          quickTags: [
+            ...quickTagsWithoutAroma,
+            getExpoQuickTagKey(AROMA_CATEGORY, `${nextSelection.intensity}｜${nextSelection.profile}`),
+          ],
+        };
+      });
+
+      return nextSelection;
+    });
+  };
+
   useEffect(() => {
     return () => {
       imageSearchAbortRef.current?.abort();
@@ -236,8 +301,6 @@ export default function ExpoEventPage() {
     imageSearchAbortRef.current = null;
     imageSearchRequestIdRef.current += 1;
     setIsImageSearching(false);
-    setQuickImagePreview(null);
-    setQuickImageUrl(null);
     setFormData((prev) => {
       const aiApplied = lastAiAppliedRef.current;
       if (!aiApplied) {
@@ -346,6 +409,7 @@ export default function ExpoEventPage() {
 
   const resetForm = () => {
     setEditingNoteId(null);
+    setAromaSelection({ intensity: null, profile: null });
     setQuickImagePreview(null);
     setQuickImageUrl(null);
     lastAiAppliedRef.current = null;
@@ -443,17 +507,25 @@ export default function ExpoEventPage() {
   };
 
   const handleEditQuickNote = (note: SakeNote) => {
+    const normalizedQuickTags = normalizeExpoQuickTags(note.expoMeta?.quickTags);
+    const aromaTag = normalizedQuickTags.find((tag) => isAromaQuickTag(tag));
+    const parsedAroma = aromaTag ? parseAromaQuickTag(aromaTag) : null;
+
     setEditingNoteId(note.id);
     setQuickImagePreview(note.imageUrls?.[0] || null);
     setQuickImageUrl(note.imageUrls?.[0] || null);
     lastAiAppliedRef.current = null;
+    setAromaSelection({
+      intensity: parsedAroma?.intensity || null,
+      profile: parsedAroma?.profile || null,
+    });
     setFormData({
       brandName: note.brandName || '',
       brewery: note.brewery || '',
       booth: note.expoMeta?.booth || '',
       price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
       overallRating: note.overallRating || 7.0,
-      quickTags: normalizeExpoQuickTags(note.expoMeta?.quickTags),
+      quickTags: normalizedQuickTags,
       quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -571,10 +643,9 @@ export default function ExpoEventPage() {
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
               <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
-                <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-                  <div className="flex min-h-[96px] flex-col justify-between">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
-                    <div className="space-y-2">
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
+                <div className="grid grid-cols-[58px_minmax(0,1fr)] items-end gap-2">
+                  <div className="space-y-1.5">
                       {isImageSearching ? (
                         <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
                           <X className="mr-1 h-3.5 w-3.5" /> 辨識中
@@ -603,9 +674,8 @@ export default function ExpoEventPage() {
                         </Button>
                       )}
                     </div>
-                  </div>
 
-                  <div className="relative ml-auto aspect-[3/4] w-[72px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
+                  <div className="relative ml-auto aspect-[3/4] w-full max-w-[82px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
                     {quickImagePreview ? (
                       <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-contain object-center p-1" />
                     ) : (
@@ -701,23 +771,64 @@ export default function ExpoEventPage() {
                   {EXPO_QUICK_TAG_GROUPS.map((group) => (
                     <div key={group.category} className="rounded-[1.15rem] border border-white/10 bg-white/5 p-2">
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {group.tags.map((tag) => (
-                          <button
-                            key={`${group.category}-${tag}`}
-                            type="button"
-                            onClick={() => toggleQuickTag(group.category, tag)}
-                            className={cn(
-                              'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
-                              isExpoQuickTagSelected(formData.quickTags, group.category, tag)
-                                ? 'border-primary bg-primary text-white shadow-lg'
-                                : 'border-white/10 bg-white/5 text-muted-foreground'
-                            )}
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
+                      {group.category === AROMA_CATEGORY ? (
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1">
+                            {AROMA_INTENSITY_OPTIONS.map((intensity) => (
+                              <button
+                                key={intensity}
+                                type="button"
+                                onClick={() => updateAromaSelection('intensity', intensity)}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                  aromaSelection.intensity === intensity
+                                    ? 'border-primary bg-primary text-white shadow-lg'
+                                    : 'border-white/10 bg-white/5 text-muted-foreground'
+                                )}
+                              >
+                                {intensity}
+                              </button>
+                            ))}
+                            <span className="px-1 text-[10px] text-muted-foreground">|</span>
+                            {AROMA_PROFILE_OPTIONS.map((profile) => (
+                              <button
+                                key={profile}
+                                type="button"
+                                onClick={() => updateAromaSelection('profile', profile)}
+                                className={cn(
+                                  'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                  aromaSelection.profile === profile
+                                    ? 'border-primary bg-primary text-white shadow-lg'
+                                    : 'border-white/10 bg-white/5 text-muted-foreground'
+                                )}
+                              >
+                                {profile}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[9px] text-muted-foreground">
+                            {aromaSelection.intensity && aromaSelection.profile ? `已合併為 ${aromaSelection.intensity}｜${aromaSelection.profile}` : '先選強度，再選香氣類型'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.tags.map((tag) => (
+                            <button
+                              key={`${group.category}-${tag}`}
+                              type="button"
+                              onClick={() => toggleQuickTag(group.category, tag)}
+                              className={cn(
+                                'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                isExpoQuickTagSelected(formData.quickTags, group.category, tag)
+                                  ? 'border-primary bg-primary text-white shadow-lg'
+                                  : 'border-white/10 bg-white/5 text-muted-foreground'
+                              )}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
