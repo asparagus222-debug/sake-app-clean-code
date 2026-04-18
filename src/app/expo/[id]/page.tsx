@@ -571,19 +571,19 @@ export default function ExpoEventPage() {
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
               <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
-                <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-2">
-                  <div className="flex min-h-[108px] flex-col justify-between">
+                <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+                  <div className="flex min-h-[96px] flex-col justify-between">
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
                     <div className="space-y-2">
                       {isImageSearching ? (
                         <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
-                          <X className="mr-1 h-3.5 w-3.5" /> 取消
+                          <X className="mr-1 h-3.5 w-3.5" /> 辨識中
                         </Button>
                       ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest">
-                              <Camera className="mr-1 h-3.5 w-3.5" /> 選圖
+                            <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-0 text-[10px] font-bold uppercase tracking-widest">
+                              <Camera className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-40">
@@ -605,12 +605,12 @@ export default function ExpoEventPage() {
                     </div>
                   </div>
 
-                  <div className="relative ml-auto w-[76px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419] h-[108px]">
+                  <div className="relative ml-auto aspect-[3/4] w-[72px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
                     {quickImagePreview ? (
-                      <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-cover object-center" />
+                      <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-contain object-center p-1" />
                     ) : (
-                      <div className="flex h-full items-center justify-center px-2 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                        酒瓶圖
+                      <div className="flex h-full items-center justify-center text-muted-foreground/35">
+                        <Camera className="h-4 w-4" />
                       </div>
                     )}
                     {isImageSearching && (
@@ -685,7 +685,7 @@ export default function ExpoEventPage() {
               {!isQuickTagsExpanded ? (
                 <div className="rounded-[1.15rem] border border-white/10 bg-white/5 px-3 py-2.5">
                   {formData.quickTags.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {formData.quickTags.map((tag) => (
                         <Badge key={tag} variant="outline" className="h-5 rounded-full border-primary/20 bg-primary/10 px-2 text-[9px] font-bold tracking-widest text-primary">
                           {getExpoQuickTagLabel(tag)}
@@ -699,16 +699,16 @@ export default function ExpoEventPage() {
               ) : (
                 <div className="space-y-2.5">
                   {EXPO_QUICK_TAG_GROUPS.map((group) => (
-                    <div key={group.category} className="rounded-[1.25rem] border border-white/10 bg-white/5 p-2.5">
-                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div key={group.category} className="rounded-[1.15rem] border border-white/10 bg-white/5 p-2">
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {group.tags.map((tag) => (
                           <button
                             key={`${group.category}-${tag}`}
                             type="button"
                             onClick={() => toggleQuickTag(group.category, tag)}
                             className={cn(
-                              'rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-widest transition-all',
+                              'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
                               isExpoQuickTagSelected(formData.quickTags, group.category, tag)
                                 ? 'border-primary bg-primary text-white shadow-lg'
                                 : 'border-white/10 bg-white/5 text-muted-foreground'
