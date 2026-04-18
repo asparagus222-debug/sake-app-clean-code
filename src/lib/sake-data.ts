@@ -390,6 +390,8 @@ export const SAKE_DATABASE: SakeDatabaseEntry[] = [
   { brand: "浅茅生", brewery: "平井商店", location: "滋賀縣" },
   { brand: "招徳", brewery: "招徳酒造", location: "京都府" },
   { brand: "羽陽男山", brewery: "男山酒造", location: "山形縣" },
+  { brand: "羽陽錦爛", brewery: "錦爛酒造", location: "山形縣" },
+  { brand: "錦爛", brewery: "錦爛酒造", location: "山形縣" },
   { brand: "獅子の里", brewery: "松浦酒造店", location: "石川縣" },
   { brand: "辻善兵衛", brewery: "辻善兵衛商店", location: "栃木縣" },
   { brand: "澤乃泉", brewery: "石越醸造", location: "宮城縣" },
@@ -427,6 +429,61 @@ export function cleanSakeName(name: string): string {
     .trim();
 }
 
+function normalizeLookupText(value: string): string {
+  return cleanSakeName(value)
+    .toLowerCase()
+    .replace(/[\s\u3000・·･]/g, '')
+    .replace(/[（(][^）)]*[）)]/g, '');
+}
+
+function normalizeLocationText(value: string): string {
+  return cleanSakeName(value)
+    .replace(/県/g, '縣')
+    .trim();
+}
+
+function buildBrandKeys(value: string): Set<string> {
+  const cleaned = cleanSakeName(value);
+  const parts = cleaned.split(/[\s\u3000\/]+/).map(normalizeLookupText).filter(Boolean);
+  return new Set([normalizeLookupText(cleaned), ...parts]);
+}
+
+const BREWERY_NAME_ALIASES: Record<string, string> = {
+  [normalizeLookupText('後藤康太郎酒造店')]: '錦爛酒造',
+  [normalizeLookupText('金蘭酒造')]: '錦爛酒造',
+};
+
+export function canonicalizeBreweryName(brewery: string): string {
+  const cleaned = cleanSakeName(brewery);
+  return BREWERY_NAME_ALIASES[normalizeLookupText(cleaned)] || cleaned;
+}
+
+export function sanitizeDetectedSakeInfo(
+  brandName: string,
+  brewery: string,
+  origin: string
+): { brandName: string; brewery: string; origin: string } {
+  const cleanedBrandName = cleanSakeName(brandName);
+  const canonicalBrewery = canonicalizeBreweryName(brewery);
+  const cleanedOrigin = normalizeLocationText(origin);
+  const inferredOriginFromBrewery = inferOriginFromSakeInfo('', canonicalBrewery);
+
+  if (inferredOriginFromBrewery) {
+    return {
+      brandName: cleanedBrandName,
+      brewery: canonicalBrewery,
+      origin: inferredOriginFromBrewery,
+    };
+  }
+
+  const inferredOriginFromBrand = inferOriginFromSakeInfo(cleanedBrandName, canonicalBrewery);
+  return {
+    brandName: cleanedBrandName,
+    brewery: canonicalBrewery,
+    origin: cleanedOrigin || inferredOriginFromBrand,
+  };
+}
+
 /**
  * AI 辨識後的銘柄標準化：對比 SAKE_DATABASE，若命中則回傳正規化名稱，
  * 避免同一銘柄因漢字/片假名/羅馬字差異變成多筆不同紀錄。
@@ -441,20 +498,9 @@ export function normalizeSakeInfo(
 ): { brandName: string; brewery: string; origin: string } {
   // 先清除括號翻譯（e.g. "杉の森酒造 (suginomori brewery)" → "杉の森酒造"）
   brandName = cleanSakeName(brandName);
-  brewery = cleanSakeName(brewery);
-  origin = cleanSakeName(origin);
+  brewery = canonicalizeBreweryName(brewery);
+  origin = normalizeLocationText(origin);
 
-  // 正規化比對用字串：全小寫、去空白、去常見分隔符
-  const norm = (s: string) =>
-    s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');
-  const buildBrandKeys = (s: string) => {
-    const cleaned = cleanSakeName(s);
-    const parts = cleaned.split(/[\s\u3000\/]+/).map(norm).filter(Boolean);
-    return new Set([norm(cleaned), ...parts]);
-  };
-
-  const nBrand = norm(brandName);
-  const nBrewery = norm(brewery);
   const brandKeys = buildBrandKeys(brandName);
 
   // ① 先比對使用者已存的銘柄（優先使用已有的書寫方式）
@@ -462,7 +508,11 @@ export function normalizeSakeInfo(
     const knownKeys = buildBrandKeys(known.brandName);
     const brandMatch = [...knownKeys].some(key => key.length >= 2 && brandKeys.has(key));
     if (brandMatch) {
-      return { brandName: known.brandName, brewery: known.brewery, origin: known.origin || origin };
+      return {
+        brandName: known.brandName,
+        brewery: canonicalizeBreweryName(known.brewery),
+        origin: normalizeLocationText(known.origin || origin),
+      };
     }
   }
 
@@ -470,9 +520,7 @@ export function normalizeSakeInfo(
   for (const entry of SAKE_DATABASE) {
     const entryKeys = buildBrandKeys(entry.brand);
     const brandMatch = [...entryKeys].some(key => key.length >= 2 && brandKeys.has(key));
-    const entryBrewery = norm(entry.brewery);
-    const breweryMatch = nBrewery.length >= 2 && nBrewery === entryBrewery;
-    if (brandMatch || (breweryMatch && brandMatch)) {
+    if (brandMatch) {
       return { brandName: entry.brand, brewery: entry.brewery, origin: entry.location };
     }
   }
@@ -487,34 +535,26 @@ export function inferOriginFromSakeInfo(
   knownBrands: Array<{ brandName: string; brewery: string; origin?: string }> = []
 ): string {
   const cleanedBrandName = cleanSakeName(brandName);
-  const cleanedBrewery = cleanSakeName(brewery);
-
-  const norm = (s: string) =>
-    s.toLowerCase().replace(/[\s\u3000・·･]/g, '').replace(/[（(][^）)]*[）)]/g, '');
-  const buildBrandKeys = (s: string) => {
-    const cleaned = cleanSakeName(s);
-    const parts = cleaned.split(/[\s\u3000\/]+/).map(norm).filter(Boolean);
-    return new Set([norm(cleaned), ...parts]);
-  };
+  const cleanedBrewery = canonicalizeBreweryName(brewery);
 
   const brandKeys = buildBrandKeys(cleanedBrandName);
-  const normalizedBrewery = norm(cleanedBrewery);
+  const normalizedBrewery = normalizeLookupText(cleanedBrewery);
 
   for (const known of knownBrands) {
-    const knownBrewery = norm(known.brewery || '');
+    const knownBrewery = normalizeLookupText(canonicalizeBreweryName(known.brewery || ''));
     if (known.origin && normalizedBrewery.length >= 2 && normalizedBrewery === knownBrewery) {
-      return known.origin;
+      return normalizeLocationText(known.origin);
     }
 
     const knownBrandKeys = buildBrandKeys(known.brandName || '');
     const brandMatch = [...knownBrandKeys].some((key) => key.length >= 2 && brandKeys.has(key));
     if (known.origin && brandMatch) {
-      return known.origin;
+      return normalizeLocationText(known.origin);
     }
   }
 
   for (const entry of SAKE_DATABASE) {
-    const entryBrewery = norm(entry.brewery);
+    const entryBrewery = normalizeLookupText(entry.brewery);
     if (normalizedBrewery.length >= 2 && normalizedBrewery === entryBrewery) {
       return entry.location;
     }

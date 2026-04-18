@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { RequestAuthError, enforceRateLimit, requireAuthenticatedUser, requireVerifiedAppCheck } from '@/lib/server-auth';
-import { cleanSakeName, inferOriginFromSakeInfo } from '@/lib/sake-data';
+import { cleanSakeName, sanitizeDetectedSakeInfo } from '@/lib/sake-data';
 
 /**
  * Cloud Vision API — TEXT_DETECTION + WEB_DETECTION（單一請求）+ Gemini 萃取
@@ -111,24 +111,23 @@ ${pageTitles || '無'}
 規則：
 1. 銘柄優先從 OCR 文字中找，再參考 Web Entities 確認
 2. 酒精濃度從 OCR 文字讀取（格式如「16度」「16%」）
-3. 若已能明確確認酒造，且相關網頁標題或常識足以確定酒造所在地，origin 可回填對應縣名
-4. 只有在銘柄、酒造與產地都無法明確確認時，才把欄位留空，不要亂猜
-5. 保持日文原文
+3. origin 只有在 OCR、官方酒造資料或明確對應的產品頁能支持時才可填，不能只靠常識或模糊摘要補上
+4. 若酒造仍不夠確定，origin 必須留空
+5. 只有在銘柄、酒造與產地都無法明確確認時，才把欄位留空，不要亂猜
+6. 保持日文原文
 
 {"brandName":"","brewery":"","origin":"","alcoholPercent":""}`;
 
         const result = await model.generateContent(prompt);
         const raw = result.response.text().trim().replace(/^```json\n?|```$/g, '').trim();
         const parsed = JSON.parse(raw) as { brandName?: string; brewery?: string; origin?: string; alcoholPercent?: string };
-        const brandName = cleanSakeName(parsed.brandName || '');
-        const brewery = cleanSakeName(parsed.brewery || '');
-        const origin = cleanSakeName(parsed.origin || '') || inferOriginFromSakeInfo(brandName, brewery);
+        const identity = sanitizeDetectedSakeInfo(parsed.brandName || '', parsed.brewery || '', parsed.origin || '');
         const alcoholPercent = cleanSakeName(parsed.alcoholPercent || '');
 
         extracted = {
-          brandName,
-          brewery,
-          origin,
+          brandName: identity.brandName,
+          brewery: identity.brewery,
+          origin: identity.origin,
           alcoholPercent,
         };
       } catch (e) {
@@ -137,11 +136,12 @@ ${pageTitles || '無'}
     }
 
     return NextResponse.json({ ...visionData, extracted });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error('[Vision API] unexpected error:', error);
-    return NextResponse.json({ error: error.message || 'Vision Web Detection 失敗' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Vision Web Detection 失敗';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

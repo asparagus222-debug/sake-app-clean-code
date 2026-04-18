@@ -7,6 +7,7 @@
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
+import { sanitizeDetectedSakeInfo } from '@/lib/sake-data';
 
 const IdentifySakeInputSchema = z.object({
   photoDataUri: z.string().describe(
@@ -152,6 +153,16 @@ export const identifySakeFlow = ai.defineFlow(
         ...details,
       }));
     };
+    const finalizeOutput = (result: IdentifySakeOutput): IdentifySakeOutput => {
+      const identity = sanitizeDetectedSakeInfo(result.brandName || '', result.brewery || '', result.origin || '');
+      return {
+        ...result,
+        brandName: identity.brandName,
+        subBrand: '',
+        brewery: identity.brewery,
+        origin: identity.origin,
+      };
+    };
 
     // 合併標籤陣列，去重（圖片標籤在前）
     const mergeUnique = (img: string[], search: string[]) => [...new Set([...img, ...search])];
@@ -212,6 +223,7 @@ export const identifySakeFlow = ai.defineFlow(
 8. 若品名裡出現像酒米名的字樣，也不可因為它看起來像酒米就從 brandName 移除；只有在資料明確同時標示使用米時，才另外填 riceName
 9. 若同一字串可能同時是某酒造的獨立銘柄、也可能是另一酒造的系列名或單品名，不可只因其中一方較知名就直接套用酒造；必須有該瓶產品頁、官方資料或多個一致搜尋結果明確對上才可填 brewery
 10. 若搜尋結果同時出現不同酒造對應到同一關鍵字，confidence 不可為 high，且 brewery 應留空或降回可明確確認的程度
+11. origin 只有在該酒造或該瓶產品頁能明確確認所在地時才可填；若酒造仍不確定，origin 必須留空
 
 請回傳 JSON。`,
           }],
@@ -221,7 +233,7 @@ export const identifySakeFlow = ai.defineFlow(
           const exactKeywordMs = Math.round((performance.now() - exactKeywordStart) * 10) / 10;
           console.log(`[AI辨識] 前置精準搜尋命中 ✓ ${candidate} → ${exactMatch.brandName} / ${exactMatch.brewery}`);
           logTiming('exact-keyword-search-path', { cloudVisionMs, exactKeywordMs, candidate: exactMatch.matchedKeyword || candidate, hasBackLabel });
-          return {
+          return finalizeOutput({
             brandName: exactMatch.brandName,
             subBrand: '',
             brewery: exactMatch.brewery,
@@ -232,7 +244,7 @@ export const identifySakeFlow = ai.defineFlow(
             specialProcess: exactMatch.specialProcess || [],
             yeast: exactMatch.yeast || '',
             smv: exactMatch.smv || '',
-          };
+          });
         }
       }
 
@@ -269,7 +281,8 @@ ${webSummary}
 6. specialProcess：只填 OCR 或比對結果中明確出現的製法詞
 7. 若正標上是獨立的英文字樣或系列名（例如 CHIMERA、VEGA），brandName 就只填該字樣本身，不可把 Google 比對到的其他代表銘柄或酒造品牌接在前後
 8. 禁止自行拼接成圖片上不存在的新名稱；除非完整名稱逐字出現在標籤上，否則不可輸出像「A品牌 B系列」這種串接結果
-9. 保持日文原文，不要翻譯`,
+9. origin 只有在 OCR 或高信心比對結果能直接支持時才可填，不能因為知道某酒造較有名就補產地
+10. 保持日文原文，不要翻譯`,
         }],
       }).catch(() => ({ output: null }));
 
@@ -279,7 +292,7 @@ ${webSummary}
       if (fastResult?.brandName && fastResult?.brewery && !isBrandSameAsBrewery) {
         console.log(`[AI辨識] 快速通道成功 ✓ ${fastResult.brandName} / ${fastResult.brewery}`);
         logTiming('vision-fast-path', { cloudVisionMs, fastPathMs, hasBackLabel });
-        return fastResult;
+        return finalizeOutput(fastResult);
       }
       if (isBrandSameAsBrewery) console.log('[AI辨識] 快速通道銘柄=酒造，疑似未找到真正銘柄，回退');
       console.log('[AI辨識] 快速通道萃取不完整，回退至標準流程');
@@ -314,6 +327,7 @@ ${frontOcr}
 ⚠️ 重要規則：
 - 銘柄：優先從正標 OCR 讀取（正標通常印有品牌名，如 VEGA、英文或書法字）
 - 酒精濃度、精米步合、種別等規格數值：從背標 OCR 讀取，必須與文字完全一致，不可推測
+- 產地若背標或正標沒有明確印出，就留空，不可只依酒造常識補上
 - 若正標銘柄與背標資訊有矛盾，以背標明確印刷文字為準
 - 日本酒度 (SMV) 若文字中有印出（如「日本酒度 +5」「+3」「±0」），請填入 smv 欄位
 - 若正標上是清楚可讀的獨立英文字樣或系列名，brandName 只能填該字樣本身，不可另外補上酒造代表銘柄或系列母品牌
@@ -367,7 +381,8 @@ ${frontOcr}
 3. 酵母只填入搜尋結果中有明確資料的，不猜測地區酵母
 4. 若搜尋結果沒有可靠的補充資訊，specialProcess 回傳空陣列，不要亂填
 5. 保持日文原文，不要翻譯
-6. 寧可少填，不要填入無法確認的資訊`,
+6. origin 只有在官方酒造頁或該瓶產品頁明確對上這款酒時才可補；若搜尋結果只是摘要或混到其他酒造，origin 留空
+7. 寧可少填，不要填入無法確認的資訊`,
           }],
         }).catch(() => ({ output: null }));
 
@@ -386,7 +401,7 @@ ${frontOcr}
           smv: backOcr.smv || supplement?.smv || '',
         };
         logTiming('back-label-fast-path', { cloudVisionMs, backOcrMs, supplementMs, hasBackLabel });
-        return mergedResult;
+        return finalizeOutput(mergedResult);
       }
       console.log('[AI辨識] 快速路徑 OCR 未取得完整品牌資訊，回退至完整流程');
     }
@@ -433,7 +448,6 @@ ${frontOcr}
     const isSuspiciousBrand = !brandName
       || isSingleNonCJK
       || DECORATIVE_KANJI.has(brandNameCore);
-    const allTextJoined = (vision.allText || []).join(' ');
     // isSuspiciousBrand 時：vision.searchQuery（含 Step 1 推斷的視覺關鍵詞）+ visualDescription（含書道大字名稱如「笑」）
     // 這樣能確保「笑 伝承乃技 純米大吟醸」進入 Google Search，找到 まるわらい 等用書道字命名的酒
     // 確保搜尋詞一定帶有「日本酒」，縮小搜尋範圍至清酒領域
@@ -450,6 +464,7 @@ ${frontOcr}
     if (!brandName && !brewery && !isSuspiciousBrand) {
       const fallbackResult = {
         brandName: '',
+        subBrand: '',
         brewery: '',
         origin,
         alcoholPercent: vision.alcoholPercent || '',
@@ -460,7 +475,7 @@ ${frontOcr}
         smv: vision.smv || '',
       };
       logTiming('vision-only-empty-fallback', { cloudVisionMs, step1VisionMs, hasBackLabel });
-      return fallbackResult;
+      return finalizeOutput(fallbackResult);
     }
 
     // ── Step 2: Google Search 補齊規格 ──
@@ -494,7 +509,8 @@ ${frontOcr}
 3. 所有文字保持日文原文，不要翻譯
 4. brandName 必須填完整品名，subBrand 留空
 5. 就算品名裡含有像酒米名的字樣，也不要因此把它從 brandName 移除；只有在搜尋結果明確同時標示使用米時，才另外填 riceName
-6. 若搜尋結果有酵母資訊（yeast欄位）請一並填入`
+6. 若搜尋結果有酵母資訊（yeast欄位）請一並填入
+7. 若搜尋結果無法把酒造與所在地唯一對上，origin 留空`
         : `你是清酒資料庫專家。請用 Google Search 搜尋「${query}」，找出這款日本酒的完整規格。
 
 從酒標圖片已確認的資訊（這些不需要搜尋，直接使用）：
@@ -515,7 +531,8 @@ ${frontOcr}
 6. brandName 必須保留完整品名，不要把疑似副名稱拆出去；subBrand 留空
 7. 就算品名裡含有像酒米名的字樣，也不要因此把它從 brandName 移除；只有在圖片或搜尋結果明確同時標示使用米時，才另外填 riceName
 8. 若同一名稱在搜尋結果中對應到不同酒造，或同時存在「獨立銘柄」與「系列名 / 單品名」兩種用法，不可憑知名度選邊站；必須有該瓶產品頁、官方資訊或多個一致來源明確支持，才能填 brewery，否則 brewery 留空
-9. 受賞資訊除非搜尋結果明確說明是這瓶，否則不填；酵母若無明確資料也不填`,
+9. origin 只有在該瓶產品頁或酒造官方資料能明確支持時才可填；若 brewery 仍不夠確定，origin 留空
+10. 受賞資訊除非搜尋結果明確說明是這瓶，否則不填；酵母若無明確資料也不填`,
         },
       ],
     }).catch(() => ({ output: null }));
@@ -536,7 +553,7 @@ ${frontOcr}
         smv: vision.smv || '',
       };
       logTiming('vision-step1-fallback', { cloudVisionMs, step1VisionMs, step2SearchMs, hasBackLabel, isSuspiciousBrand });
-      return fallbackResult;
+      return finalizeOutput(fallbackResult);
     }
 
     // 合併結果：銘柄/酒造以視覺辨識為主，規格細節以搜尋補充
@@ -555,6 +572,6 @@ ${frontOcr}
       smv: vision.smv || enriched.smv || '',
     };
     logTiming('full-search-path', { cloudVisionMs, step1VisionMs, step2SearchMs, hasBackLabel, isSuspiciousBrand });
-    return finalResult;
+    return finalizeOutput(finalResult);
   }
 );
