@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, Building2, CircleDollarSign, ClipboardList, Loader2, PencilLine, Star, Store, Trash2, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, Building2, Camera, CircleDollarSign, ClipboardList, Images, Loader2, PencilLine, Sparkles, Star, Store, Trash2, Trophy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +21,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useAuth, useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoEvent, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/types';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -71,18 +72,57 @@ function isExpoQuickTagSelected(selectedTags: string[], category: string, tag: s
   return categories.length === 1 && selectedTags.includes(tag);
 }
 
+function readFileAsDataUri(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('讀取圖片失敗'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeImageDataUri(dataUri: string, maxDimension = 1280) {
+  return new Promise<string>((resolve) => {
+    const image = new window.Image();
+    image.src = dataUri;
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = image.width;
+      let height = image.height;
+
+      if (width > height && width > maxDimension) {
+        height = Math.round((height * maxDimension) / width);
+        width = maxDimension;
+      } else if (height >= width && height > maxDimension) {
+        width = Math.round((width * maxDimension) / height);
+        height = maxDimension;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+  });
+}
+
 export default function ExpoEventPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [isSaving, setIsSaving] = useState(false);
+  const [isScanningLabel, setIsScanningLabel] = useState(false);
+  const [scanPreview, setScanPreview] = useState<string | null>(null);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('score');
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -147,6 +187,53 @@ export default function ExpoEventPage() {
         ? prev.quickTags.filter((item) => item !== scopedTag)
         : [...prev.quickTags.filter((item) => item !== tag), scopedTag],
     }));
+  };
+
+  const handleQuickScanFile = async (file: File) => {
+    if (!auth) {
+      toast({ variant: 'destructive', title: '尚未初始化登入狀態' });
+      return;
+    }
+
+    setIsScanningLabel(true);
+    try {
+      const dataUri = await readFileAsDataUri(file);
+      const resizedDataUri = await resizeImageDataUri(dataUri);
+      setScanPreview(resizedDataUri);
+
+      const response = await authorizedJsonFetch(auth, '/api/ai/expo-quick-scan', {
+        method: 'POST',
+        body: JSON.stringify({ photoDataUri: resizedDataUri }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '掃圖失敗');
+      }
+
+      const nextBrandName = typeof data.brandName === 'string' ? data.brandName.trim() : '';
+      const nextBrewery = typeof data.brewery === 'string' ? data.brewery.trim() : '';
+
+      if (!nextBrandName && !nextBrewery) {
+        toast({ variant: 'destructive', title: '這張圖沒有辨識到銘柄或酒造', description: '可換一張正面酒標較清楚的照片再試一次。' });
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        brandName: nextBrandName || prev.brandName,
+        brewery: nextBrewery || prev.brewery,
+      }));
+
+      toast({
+        title: '已快速帶入酒標資訊',
+        description: nextBrewery ? '已填入銘柄與酒造。' : '已填入銘柄。',
+      });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: '掃圖失敗', description: error.message || '請稍後再試一次' });
+    } finally {
+      setIsScanningLabel(false);
+    }
   };
 
   const resetForm = () => {
@@ -358,6 +445,67 @@ export default function ExpoEventPage() {
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="dark-glass rounded-[2rem] border border-white/10 p-6 space-y-5">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 快掃酒標</p>
+                  <p className="text-[11px] leading-5 text-muted-foreground">從相簿或相機選圖後，系統只快抓銘柄與酒造，辨識完直接帶入下方欄位。</p>
+                </div>
+                <Sparkles className="mt-0.5 h-4 w-4 text-primary/70" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()} disabled={isScanningLabel} className="rounded-full h-10 px-4 text-[11px] font-bold tracking-widest">
+                  {isScanningLabel ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Images className="mr-1.5 h-4 w-4" />} 相簿選圖
+                </Button>
+                <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} disabled={isScanningLabel} className="rounded-full h-10 px-4 text-[11px] font-bold tracking-widest">
+                  <Camera className="mr-1.5 h-4 w-4" /> 相機拍照
+                </Button>
+              </div>
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    void handleQuickScanFile(file);
+                  }
+                  event.target.value = '';
+                }}
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    void handleQuickScanFile(file);
+                  }
+                  event.target.value = '';
+                }}
+              />
+              {(scanPreview || isScanningLabel) && (
+                <div className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-black/10 px-3 py-2.5">
+                  {scanPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={scanPreview} alt="掃圖預覽" className="h-12 w-12 rounded-xl object-cover border border-white/10" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-foreground">{isScanningLabel ? '辨識中，準備自動填入銘柄 / 酒造' : '已載入掃圖照片'}</p>
+                    <p className="text-[10px] text-muted-foreground">建議使用正面酒標清楚、文字完整的照片，成功率最高。</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
               <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
