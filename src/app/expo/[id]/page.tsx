@@ -178,6 +178,7 @@ export default function ExpoEventPage() {
   const [sortMode, setSortMode] = useState<SortMode>('score');
   const [isQuickTagsExpanded, setIsQuickTagsExpanded] = useState(false);
   const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profile: AromaProfile | null }>({ intensity: null, profile: null });
+  const [hasRecognitionData, setHasRecognitionData] = useState(false);
   const [quickImagePreview, setQuickImagePreview] = useState<string | null>(null);
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -301,6 +302,7 @@ export default function ExpoEventPage() {
     imageSearchAbortRef.current = null;
     imageSearchRequestIdRef.current += 1;
     setIsImageSearching(false);
+    setHasRecognitionData(false);
     setFormData((prev) => {
       const aiApplied = lastAiAppliedRef.current;
       if (!aiApplied) {
@@ -317,7 +319,10 @@ export default function ExpoEventPage() {
     toast({ title: '已清除辨識資料' });
   };
 
-  const handleImageSearchFile = async (file: File) => {
+  const runImageRecognition = async (
+    resizedDataUri: string,
+    options?: { preserveStoredImageUrl?: boolean }
+  ) => {
     if (!auth) {
       toast({ variant: 'destructive', title: '請先登入後再使用圖片辨識' });
       return;
@@ -331,15 +336,13 @@ export default function ExpoEventPage() {
     const searchStartedAt = Date.now();
 
     setIsImageSearching(true);
-    try {
-      const dataUri = await readFileAsDataUri(file);
-      const resizedDataUri = await resizeImageDataUri(dataUri);
-      if (controller.signal.aborted || imageSearchRequestIdRef.current !== requestId) {
-        return;
-      }
+    setHasRecognitionData(false);
 
+    try {
+      if (!options?.preserveStoredImageUrl) {
+        setQuickImageUrl(null);
+      }
       setQuickImagePreview(resizedDataUri);
-      setQuickImageUrl(null);
 
       const response = await authorizedJsonFetch(auth, '/api/ai/vision-web-detect', {
         method: 'POST',
@@ -363,6 +366,7 @@ export default function ExpoEventPage() {
         brandName: nextBrandName,
         brewery: nextBrewery,
       };
+      setHasRecognitionData(Boolean(nextBrandName || nextBrewery));
 
       setFormData((prev) => ({
         ...prev,
@@ -390,6 +394,16 @@ export default function ExpoEventPage() {
     }
   };
 
+  const handleImageSearchFile = async (file: File) => {
+    try {
+      const dataUri = await readFileAsDataUri(file);
+      const resizedDataUri = await resizeImageDataUri(dataUri);
+      await runImageRecognition(resizedDataUri);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: '圖片辨識失敗', description: error.message || '請換一張圖片再試一次' });
+    }
+  };
+
   const resolveQuickImageUrls = async () => {
     if (!quickImagePreview) return [] as string[];
     if (quickImageUrl) return [quickImageUrl];
@@ -410,6 +424,7 @@ export default function ExpoEventPage() {
   const resetForm = () => {
     setEditingNoteId(null);
     setAromaSelection({ intensity: null, profile: null });
+    setHasRecognitionData(false);
     setQuickImagePreview(null);
     setQuickImageUrl(null);
     lastAiAppliedRef.current = null;
@@ -515,6 +530,7 @@ export default function ExpoEventPage() {
     setQuickImagePreview(note.imageUrls?.[0] || null);
     setQuickImageUrl(note.imageUrls?.[0] || null);
     lastAiAppliedRef.current = null;
+    setHasRecognitionData(false);
     setAromaSelection({
       intensity: parsedAroma?.intensity || null,
       profile: parsedAroma?.profile || null,
@@ -642,18 +658,18 @@ export default function ExpoEventPage() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
-              <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
+              <div className="w-full max-w-[224px] justify-self-start rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
                 <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
-                <div className="grid grid-cols-[58px_minmax(0,1fr)] items-end gap-2">
+                <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-2">
                   <div className="space-y-1.5">
                       {isImageSearching ? (
-                        <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[10px] font-bold uppercase tracking-widest" onClick={cancelImageSearch}>
-                          <X className="mr-1 h-3.5 w-3.5" /> 辨識中
+                        <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[9px] font-bold tracking-[0.08em]" onClick={cancelImageSearch}>
+                          <X className="mr-1 h-3.5 w-3.5 shrink-0" /> 辨識中
                         </Button>
                       ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-0 text-[10px] font-bold uppercase tracking-widest">
+                            <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-0 text-[10px] font-bold tracking-[0.08em]">
                               <Camera className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -668,14 +684,19 @@ export default function ExpoEventPage() {
                         </DropdownMenu>
                       )}
 
-                      {(quickImagePreview || quickImageUrl || isImageSearching) && (
-                        <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-7 w-full rounded-full px-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                          <X className="mr-1 h-3 w-3" /> 清除
+                      {quickImagePreview && !isImageSearching && !hasRecognitionData && (
+                        <Button type="button" variant="ghost" onClick={() => void runImageRecognition(quickImagePreview, { preserveStoredImageUrl: true })} className="h-7 w-full rounded-full px-2 text-[9px] font-bold tracking-[0.08em] text-muted-foreground hover:text-foreground">
+                          辨識
+                        </Button>
+                      )}
+                      {(quickImagePreview || quickImageUrl || isImageSearching) && hasRecognitionData && !isImageSearching && (
+                        <Button type="button" variant="ghost" onClick={clearRecognitionData} className="h-7 w-full rounded-full px-2 text-[9px] font-bold tracking-[0.08em] text-muted-foreground hover:text-foreground">
+                          <X className="mr-1 h-3 w-3 shrink-0" /> 清除
                         </Button>
                       )}
                     </div>
 
-                  <div className="relative ml-auto aspect-[3/4] w-full max-w-[82px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
+                  <div className="relative ml-auto aspect-[3/4] w-full max-w-[92px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
                     {quickImagePreview ? (
                       <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-contain object-center p-1" />
                     ) : (
