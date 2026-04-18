@@ -322,8 +322,8 @@ export default function ExpoEventPage() {
 
       return {
         ...prev,
-        brandName: aiApplied.appliedFields.brandName ? '' : prev.brandName,
-        brewery: aiApplied.appliedFields.brewery ? '' : prev.brewery,
+        brandName: aiApplied.appliedFields.brandName || prev.brandName === aiApplied.brandName ? '' : prev.brandName,
+        brewery: aiApplied.appliedFields.brewery || prev.brewery === aiApplied.brewery ? '' : prev.brewery,
       };
     });
     lastAiAppliedRef.current = null;
@@ -668,15 +668,15 @@ export default function ExpoEventPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="dark-glass rounded-[2rem] border border-white/10 p-5 space-y-4">
-            <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-3">
-              <div className="space-y-1.5 pt-1">
+          <div className="dark-glass rounded-[2rem] border border-white/10 p-4 space-y-3">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2.5">
+              <div className="space-y-1 pt-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
               </div>
-              <div className="w-full max-w-[224px] justify-self-start rounded-[1.3rem] border border-white/10 bg-white/5 p-2.5">
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
-                <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-2">
+              <div className="w-full max-w-[204px] justify-self-start rounded-[1.2rem] border border-white/10 bg-white/5 p-2">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
+                <div className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2">
                   <div className="space-y-1.5">
                       {isImageSearching ? (
                         <Button type="button" variant="outline" className="h-8 w-full rounded-2xl border-white/10 bg-white/5 px-2 text-[9px] font-bold tracking-[0.08em]" onClick={cancelImageSearch}>
@@ -712,7 +712,7 @@ export default function ExpoEventPage() {
                       )}
                     </div>
 
-                  <div className="relative ml-auto aspect-[3/4] w-full max-w-[92px] overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#141419]">
+                  <div className="relative ml-auto aspect-[3/4] w-full max-w-[82px] overflow-hidden rounded-[1rem] border border-white/10 bg-[#141419]">
                     {quickImagePreview ? (
                       <Image src={quickImagePreview} alt="辨識圖片預覽" fill unoptimized className="object-contain object-center p-1" />
                     ) : (
