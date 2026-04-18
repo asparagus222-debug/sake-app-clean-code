@@ -44,6 +44,10 @@ const AROMA_PROFILE_OPTIONS = ['花果', '米旨', '熟成', '乳酸', '果酸']
 
 type AromaIntensity = (typeof AROMA_INTENSITY_OPTIONS)[number];
 type AromaProfile = (typeof AROMA_PROFILE_OPTIONS)[number];
+type RecognitionAppliedFields = {
+  brandName: boolean;
+  brewery: boolean;
+};
 
 const EXPO_QUICK_TAG_CATEGORY_BY_LABEL = EXPO_QUICK_TAG_GROUPS.reduce<Record<string, string[]>>((accumulator, group) => {
   group.tags.forEach((tag) => {
@@ -177,7 +181,7 @@ export default function ExpoEventPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('score');
   const [isQuickTagsExpanded, setIsQuickTagsExpanded] = useState(false);
-  const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profile: AromaProfile | null }>({ intensity: null, profile: null });
+  const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profiles: AromaProfile[] }>({ intensity: null, profiles: [] });
   const [hasRecognitionData, setHasRecognitionData] = useState(false);
   const [quickImagePreview, setQuickImagePreview] = useState<string | null>(null);
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
@@ -187,7 +191,7 @@ export default function ExpoEventPage() {
   const imageSearchRequestIdRef = useRef(0);
   const brandInputEditedAtRef = useRef(0);
   const breweryInputEditedAtRef = useRef(0);
-  const lastAiAppliedRef = useRef<{ brandName: string; brewery: string } | null>(null);
+  const lastAiAppliedRef = useRef<{ brandName: string; brewery: string; appliedFields: RecognitionAppliedFields } | null>(null);
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -256,14 +260,21 @@ export default function ExpoEventPage() {
 
   const updateAromaSelection = (field: 'intensity' | 'profile', value: AromaIntensity | AromaProfile) => {
     setAromaSelection((prev) => {
-      const nextSelection = {
-        ...prev,
-        [field]: prev[field] === value ? null : value,
-      };
+      const nextSelection = field === 'intensity'
+        ? {
+            ...prev,
+            intensity: prev.intensity === value ? null : value as AromaIntensity,
+          }
+        : {
+            ...prev,
+            profiles: prev.profiles.includes(value as AromaProfile)
+              ? prev.profiles.filter((profile) => profile !== value)
+              : [...prev.profiles, value as AromaProfile],
+          };
 
       setFormData((current) => {
         const quickTagsWithoutAroma = removeAromaQuickTags(current.quickTags);
-        if (!nextSelection.intensity || !nextSelection.profile) {
+        if (!nextSelection.intensity || nextSelection.profiles.length === 0) {
           return {
             ...current,
             quickTags: quickTagsWithoutAroma,
@@ -274,7 +285,7 @@ export default function ExpoEventPage() {
           ...current,
           quickTags: [
             ...quickTagsWithoutAroma,
-            getExpoQuickTagKey(AROMA_CATEGORY, `${nextSelection.intensity}｜${nextSelection.profile}`),
+            ...nextSelection.profiles.map((profile) => getExpoQuickTagKey(AROMA_CATEGORY, `${nextSelection.intensity}｜${profile}`)),
           ],
         };
       });
@@ -311,8 +322,8 @@ export default function ExpoEventPage() {
 
       return {
         ...prev,
-        brandName: prev.brandName === aiApplied.brandName ? '' : prev.brandName,
-        brewery: prev.brewery === aiApplied.brewery ? '' : prev.brewery,
+        brandName: aiApplied.appliedFields.brandName ? '' : prev.brandName,
+        brewery: aiApplied.appliedFields.brewery ? '' : prev.brewery,
       };
     });
     lastAiAppliedRef.current = null;
@@ -362,16 +373,22 @@ export default function ExpoEventPage() {
       const nextBrandName = data.extracted?.brandName?.trim() || '';
       const nextBrewery = data.extracted?.brewery?.trim() || '';
 
+      const appliedFields = {
+        brandName: Boolean(nextBrandName && brandInputEditedAtRef.current <= searchStartedAt),
+        brewery: Boolean(nextBrewery && breweryInputEditedAtRef.current <= searchStartedAt),
+      };
+
       lastAiAppliedRef.current = {
         brandName: nextBrandName,
         brewery: nextBrewery,
+        appliedFields,
       };
       setHasRecognitionData(Boolean(nextBrandName || nextBrewery));
 
       setFormData((prev) => ({
         ...prev,
-        brandName: nextBrandName && brandInputEditedAtRef.current <= searchStartedAt ? nextBrandName : prev.brandName,
-        brewery: nextBrewery && breweryInputEditedAtRef.current <= searchStartedAt ? nextBrewery : prev.brewery,
+        brandName: appliedFields.brandName ? nextBrandName : prev.brandName,
+        brewery: appliedFields.brewery ? nextBrewery : prev.brewery,
       }));
 
       toast({
@@ -423,7 +440,7 @@ export default function ExpoEventPage() {
 
   const resetForm = () => {
     setEditingNoteId(null);
-    setAromaSelection({ intensity: null, profile: null });
+    setAromaSelection({ intensity: null, profiles: [] });
     setHasRecognitionData(false);
     setQuickImagePreview(null);
     setQuickImageUrl(null);
@@ -523,8 +540,7 @@ export default function ExpoEventPage() {
 
   const handleEditQuickNote = (note: SakeNote) => {
     const normalizedQuickTags = normalizeExpoQuickTags(note.expoMeta?.quickTags);
-    const aromaTag = normalizedQuickTags.find((tag) => isAromaQuickTag(tag));
-    const parsedAroma = aromaTag ? parseAromaQuickTag(aromaTag) : null;
+    const parsedAromas = normalizedQuickTags.map((tag) => parseAromaQuickTag(tag)).filter((value): value is NonNullable<ReturnType<typeof parseAromaQuickTag>> => value !== null);
 
     setEditingNoteId(note.id);
     setQuickImagePreview(note.imageUrls?.[0] || null);
@@ -532,8 +548,8 @@ export default function ExpoEventPage() {
     lastAiAppliedRef.current = null;
     setHasRecognitionData(false);
     setAromaSelection({
-      intensity: parsedAroma?.intensity || null,
-      profile: parsedAroma?.profile || null,
+      intensity: parsedAromas[0]?.intensity || null,
+      profiles: parsedAromas.map((item) => item.profile),
     });
     setFormData({
       brandName: note.brandName || '',
@@ -818,7 +834,7 @@ export default function ExpoEventPage() {
                                 onClick={() => updateAromaSelection('profile', profile)}
                                 className={cn(
                                   'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
-                                  aromaSelection.profile === profile
+                                  aromaSelection.profiles.includes(profile)
                                     ? 'border-primary bg-primary text-white shadow-lg'
                                     : 'border-white/10 bg-white/5 text-muted-foreground'
                                 )}
@@ -828,7 +844,7 @@ export default function ExpoEventPage() {
                             ))}
                           </div>
                           <p className="text-[9px] text-muted-foreground">
-                            {aromaSelection.intensity && aromaSelection.profile ? `已合併為 ${aromaSelection.intensity}｜${aromaSelection.profile}` : '先選強度，再選香氣類型'}
+                            {aromaSelection.intensity && aromaSelection.profiles.length > 0 ? `已合併為 ${aromaSelection.profiles.map((profile) => `${aromaSelection.intensity}｜${profile}`).join('、')}` : '先選強度，再選一個以上香氣類型'}
                           </p>
                         </div>
                       ) : (
