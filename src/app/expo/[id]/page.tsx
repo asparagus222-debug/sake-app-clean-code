@@ -192,6 +192,7 @@ export default function ExpoEventPage() {
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
+    origin: '',
     booth: '',
     price: '',
     overallRating: 7.0,
@@ -455,6 +456,7 @@ export default function ExpoEventPage() {
       ...prev,
       brandName: '',
       brewery: '',
+      origin: '',
       booth: '',
       price: '',
       overallRating: 7.0,
@@ -483,7 +485,7 @@ export default function ExpoEventPage() {
         publicationStatus: 'draft' as const,
         brandName: formData.brandName.trim(),
         brewery: formData.brewery.trim(),
-        origin: '',
+        origin: formData.origin.trim(),
         imageUrls,
         sweetnessRating: 3,
         acidityRating: 3,
@@ -512,6 +514,7 @@ export default function ExpoEventPage() {
         await updateDoc(doc(firestore, 'sakeTastingNotes', editingNoteId), {
           brandName: formData.brandName.trim(),
           brewery: formData.brewery.trim(),
+          origin: formData.origin.trim(),
           imageUrls,
           description: formData.quickNote.trim(),
           userDescription: formData.quickNote.trim(),
@@ -561,6 +564,7 @@ export default function ExpoEventPage() {
     setFormData({
       brandName: note.brandName || '',
       brewery: note.brewery || '',
+      origin: note.origin || '',
       booth: note.expoMeta?.booth || '',
       price: typeof note.expoMeta?.price === 'number' ? String(note.expoMeta.price) : '',
       overallRating: note.overallRating || 7.0,
@@ -690,6 +694,7 @@ export default function ExpoEventPage() {
                   breweryInputEditedAtRef.current = Date.now();
                   setFormData((prev) => ({ ...prev, brewery: event.target.value }));
                 }} placeholder="酒造 / 品牌" className="h-10 rounded-2xl bg-white/5 border-white/10" />
+                <Input value={formData.origin} onChange={(event) => setFormData((prev) => ({ ...prev, origin: event.target.value }))} placeholder="產地 / 縣" className="h-10 rounded-2xl bg-white/5 border-white/10" />
               </div>
               <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-2.5">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
