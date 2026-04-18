@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
@@ -531,8 +532,21 @@ export default function ExpoRankingPage() {
 
                         return (
                           <div key={note.id} className={cn('rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
-                            <div className="grid grid-cols-[30px_minmax(0,1fr)] items-start gap-2">
-                              <div className={cn('mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>{rank}</div>
+                            <div className="grid grid-cols-[68px_minmax(0,1fr)] items-start gap-2">
+                              <div className="space-y-1">
+                                <div className={cn('relative h-[58px] overflow-hidden rounded-[0.9rem] border', currentShareCardTheme.modeChipClassName)}>
+                                  {note.imageUrls?.[0] ? (
+                                    <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-cover" />
+                                  ) : (
+                                    <div className={cn('flex h-full items-center justify-center text-[7px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.modeLabelClassName)}>
+                                      No Pic
+                                    </div>
+                                  )}
+                                </div>
+                                <div className={cn('flex h-7 items-center justify-center rounded-[0.8rem] border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>
+                                  #{rank}
+                                </div>
+                              </div>
                               <div className="min-w-0">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0 flex-1">
@@ -550,24 +564,24 @@ export default function ExpoRankingPage() {
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            </div>
-                            <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
-                              <div className="space-y-0.5">
-                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
-                                <div>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>風味</div>
-                                <div>{formatFlavorRating(note.overallRating)}</div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
-                                <div>{formatExpoCpScore(cpScore)}</div>
-                              </div>
-                              <div className="space-y-0.5 min-w-0">
-                                <div className={cn('text-[7px] uppercase tracking-[0.12em] opacity-0', currentShareCardTheme.tableHeaderClassName)}>註</div>
-                                <div className="break-words text-[7.5px] leading-3">{authorNote}</div>
+                                <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
+                                  <div className="space-y-0.5">
+                                    <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
+                                    <div>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>風味</div>
+                                    <div>{formatFlavorRating(note.overallRating)}</div>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                    <div>{formatExpoCpScore(cpScore)}</div>
+                                  </div>
+                                  <div className="space-y-0.5 min-w-0">
+                                    <div className={cn('text-[7px] uppercase tracking-[0.12em] opacity-0', currentShareCardTheme.tableHeaderClassName)}>註</div>
+                                    <div className="break-words text-[7.5px] leading-3">{authorNote}</div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
