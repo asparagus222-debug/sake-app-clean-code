@@ -98,6 +98,8 @@ const FONT_PREVIEW_MAP = {
   '2xl': '1.4rem'
 };
 
+const SPONSOR_ACTIONS_VISIBLE = false;
+
 function isRegisteredProfileRecord(data: Record<string, unknown> | undefined) {
   if (!data || data.isAccountDeleted) return false;
   if (data.accountType === 'registered') return true;
@@ -1306,69 +1308,69 @@ export default function ProfilePage() {
               </AlertDialog>
             </div>
 
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                {/* 贊助我一杯咖啡 */}
-                <button
-                  type="button"
-                  disabled={isSponsorLoading}
-                  onClick={() => handleSponsor(50)}
-                  className="flex items-center justify-center gap-1.5 h-11 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSponsorLoading
-                    ? <span className="text-xs">處理中...</span>
-                    : <>
-                        <span className="text-base leading-none">☕</span>
-                        <div className="text-left leading-tight">
-                          <div className="text-[10px] font-bold">贊助我一杯咖啡</div>
-                          <div className="text-[9px] font-black opacity-60">NT$50</div>
-                        </div>
-                      </>
-                  }
-                </button>
-                {/* 隨意小額—按下才展開 */}
-                <button
-                  type="button"
-                  disabled={isSponsorLoading}
-                  onClick={() => setShowCustomInput(v => !v)}
-                  className={`flex items-center justify-center h-11 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${
-                    showCustomInput
-                      ? 'border-amber-400/50 bg-amber-400/20 text-amber-400'
-                      : 'border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500'
-                  }`}
-                >
-                  隨意小額贊助
-                </button>
-              </div>
-              {showCustomInput && (
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">NT$</span>
-                    <input
-                      type="number"
-                      min="50"
-                      step="1"
-                      value={customAmount}
-                      onChange={e => setCustomAmount(e.target.value)}
-                      placeholder="輸入金額"
-                      autoFocus
-                      className="w-full pl-9 pr-3 h-10 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/30"
-                    />
-                  </div>
+            {SPONSOR_ACTIONS_VISIBLE && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    disabled={isSponsorLoading || !customAmount || Number(customAmount) < 50}
-                    onClick={() => {
-                      handleSponsor(Math.round(Number(customAmount)));
-                      setShowCustomInput(false);
-                    }}
-                    className="h-10 px-4 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-[10px] font-bold text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                    disabled={isSponsorLoading}
+                    onClick={() => handleSponsor(50)}
+                    className="flex items-center justify-center gap-1.5 h-11 rounded-2xl border border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    前往付款
+                    {isSponsorLoading
+                      ? <span className="text-xs">處理中...</span>
+                      : <>
+                          <span className="text-base leading-none">☕</span>
+                          <div className="text-left leading-tight">
+                            <div className="text-[10px] font-bold">贊助我一杯咖啡</div>
+                            <div className="text-[9px] font-black opacity-60">NT$50</div>
+                          </div>
+                        </>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSponsorLoading}
+                    onClick={() => setShowCustomInput(v => !v)}
+                    className={`flex items-center justify-center h-11 rounded-2xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-bold ${
+                      showCustomInput
+                        ? 'border-amber-400/50 bg-amber-400/20 text-amber-400'
+                        : 'border-amber-400/30 bg-amber-400/8 hover:bg-amber-400/15 text-amber-500'
+                    }`}
+                  >
+                    隨意小額贊助
                   </button>
                 </div>
-              )}
-            </div>
+                {showCustomInput && (
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">NT$</span>
+                      <input
+                        type="number"
+                        min="50"
+                        step="1"
+                        value={customAmount}
+                        onChange={e => setCustomAmount(e.target.value)}
+                        placeholder="輸入金額"
+                        autoFocus
+                        className="w-full pl-9 pr-3 h-10 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-primary placeholder:text-muted-foreground/40 outline-none focus:border-primary/30"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSponsorLoading || !customAmount || Number(customAmount) < 50}
+                      onClick={() => {
+                        handleSponsor(Math.round(Number(customAmount)));
+                        setShowCustomInput(false);
+                      }}
+                      className="h-10 px-4 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-[10px] font-bold text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      前往付款
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             
             {user && (
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60 text-center pt-2">
