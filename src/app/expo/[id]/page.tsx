@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { ArrowLeft, BadgeDollarSign, Building2, Camera, ChevronDown, CircleDollarSign, ClipboardList, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, Building2, Camera, ChevronDown, CircleDollarSign, ClipboardList, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -189,7 +189,9 @@ export default function ExpoEventPage() {
   const [recognitionSnapshot, setRecognitionSnapshot] = useState<RecognitionSnapshot | null>(null);
   const [quickImagePreview, setQuickImagePreview] = useState<string | null>(null);
   const [quickImageUrl, setQuickImageUrl] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isImageSourcePickerOpen, setIsImageSourcePickerOpen] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const imageSearchAbortRef = useRef<AbortController | null>(null);
   const imageSearchRequestIdRef = useRef(0);
   const brandInputEditedAtRef = useRef(0);
@@ -732,7 +734,7 @@ export default function ExpoEventPage() {
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">AI 辨識</p>
                 <button
                   type="button"
-                  onClick={() => imageInputRef.current?.click()}
+                  onClick={() => setIsImageSourcePickerOpen(true)}
                   className="relative block aspect-[3/4] w-full overflow-hidden rounded-[1rem] border border-white/10 bg-[#141419]"
                 >
                   {quickImagePreview ? (
@@ -749,7 +751,7 @@ export default function ExpoEventPage() {
                     </div>
                   )}
                   {!quickImagePreview && !isImageSearching && (
-                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center">
                       <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white">
                         <Camera className="h-4 w-4" />
                       </div>
@@ -777,20 +779,6 @@ export default function ExpoEventPage() {
                     </Button>
                   )}
                 </div>
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      void handleImageSearchFile(file);
-                    }
-                    event.target.value = '';
-                  }}
-                />
               </div>
             </div>
 
@@ -959,6 +947,70 @@ export default function ExpoEventPage() {
               </div>
             </div>
           </div>
+
+          {isImageSourcePickerOpen && (
+            <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setIsImageSourcePickerOpen(false)}>
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <div className="relative w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#18181b] p-6 pb-12 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20" />
+                <p className="mb-4 text-center text-[10px] font-bold uppercase tracking-widest text-white/50">選擇圖片來源</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsImageSourcePickerOpen(false);
+                      cameraInputRef.current?.click();
+                    }}
+                    className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-6 transition-all hover:border-primary/30 hover:bg-primary/10 active:scale-95"
+                  >
+                    <Camera className="h-8 w-8 text-primary" />
+                    <span className="text-sm font-bold text-foreground">拍照</span>
+                    <span className="text-[9px] text-muted-foreground">使用相機</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsImageSourcePickerOpen(false);
+                      galleryInputRef.current?.click();
+                    }}
+                    className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-6 transition-all hover:border-primary/30 hover:bg-primary/10 active:scale-95"
+                  >
+                    <Images className="h-8 w-8 text-primary" />
+                    <span className="text-sm font-bold text-foreground">相簿</span>
+                    <span className="text-[9px] text-muted-foreground">從圖片庫選取</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void handleImageSearchFile(file);
+              }
+              event.target.value = '';
+            }}
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void handleImageSearchFile(file);
+              }
+              event.target.value = '';
+            }}
+          />
 
           <div className="space-y-4">
             <div className="dark-glass rounded-[2rem] border border-white/10 p-5">
