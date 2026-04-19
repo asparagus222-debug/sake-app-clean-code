@@ -26,12 +26,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import Image from 'next/image';
+import { NoteImagePreview } from '@/components/notes/NoteImagePreview';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 
 export default function MyNotesPage() {
@@ -141,11 +140,14 @@ export default function MyNotesPage() {
                   {/* 點擊整個區塊均可導航至詳情頁 */}
                   <Link href={`/notes/${note.id}`} className="flex flex-1 items-center gap-4 min-w-0">
                     <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-muted/10 border border-white/5 group-hover:scale-105 transition-transform duration-300">
-                      {note.imageUrls && note.imageUrls[0] ? (
-                        <Image src={note.imageUrls[0]} alt={note.brandName} fill className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground/40 font-bold uppercase">No Img</div>
-                      )}
+                      <NoteImagePreview
+                        imageUrls={note.imageUrls}
+                        imageOriginals={note.imageOriginals}
+                        imageTransforms={note.imageTransforms}
+                        imageSplitRatio={note.imageSplitRatio}
+                        alt={note.brandName}
+                        className="flex h-full w-full"
+                      />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <ExternalLink className="w-5 h-5 text-white" />
                       </div>

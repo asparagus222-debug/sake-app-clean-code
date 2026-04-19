@@ -2,8 +2,9 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { SakeNote, UserProfile } from '@/lib/types';
-import { Share2, X, Loader2, Pencil, RotateCcw, Check, Camera } from 'lucide-react';
+import { Share2, X, Loader2, RotateCcw, Check, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { resolveNoteImageTransform } from '@/lib/note-image-layout';
 import { formatSakeDisplayName } from '@/lib/utils';
 
 interface SakeShareCardProps {
@@ -80,6 +81,8 @@ function sortInfoTags(tags: string[]): string[] {
 export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const displayName = formatSakeDisplayName(note.brandName, note.subBrand);
+  const defaultShareImageSrc = note.imageOriginals?.[0] || note.imageUrls?.[0] || null;
+  const baseNoteTransform = note.imageTransforms?.[0];
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -89,7 +92,8 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   // Committed image position (used in the card)
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 });
   const [imgZoom, setImgZoom] = useState(1);
-  const [shareImageSrc, setShareImageSrc] = useState<string | null>(note.imageUrls?.[0] || null);
+  const [shareImageSrc, setShareImageSrc] = useState<string | null>(defaultShareImageSrc);
+  const [isUsingNoteTransform, setIsUsingNoteTransform] = useState(true);
 
   // Editor modal state
   const [showImgEditor, setShowImgEditor] = useState(false);
@@ -124,6 +128,31 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
     editorZoomRef.current = next;
     setEditorZoom(next);
   };
+
+  useEffect(() => {
+    setShareImageSrc(defaultShareImageSrc);
+    setIsUsingNoteTransform(true);
+  }, [defaultShareImageSrc, note.id]);
+
+  useEffect(() => {
+    const element = imgBoxRef.current;
+    if (!element || !defaultShareImageSrc || shareImageSrc !== defaultShareImageSrc || !isUsingNoteTransform) {
+      return;
+    }
+
+    const updateFromNoteTransform = () => {
+      const size = Math.max(element.getBoundingClientRect().width, 1);
+      cardImageSizeRef.current = size;
+      const resolved = resolveNoteImageTransform(baseNoteTransform, size, size);
+      setImgOffset({ x: resolved.x, y: resolved.y });
+      setImgZoom(resolved.scale);
+    };
+
+    updateFromNoteTransform();
+    const observer = new ResizeObserver(updateFromNoteTransform);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [baseNoteTransform, defaultShareImageSrc, isUsingNoteTransform, shareImageSrc]);
 
   // All touch handling via native listeners to avoid React synthetic event issues
   useEffect(() => {
@@ -225,6 +254,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   };
 
   const resetImageTransform = () => {
+    setIsUsingNoteTransform(false);
     editorOffsetRef.current = { x: 0, y: 0 };
     editorZoomRef.current = 1;
     setEditorOffset({ x: 0, y: 0 });
@@ -266,6 +296,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       const resized = await resizeSelectedImage(base64);
+      setIsUsingNoteTransform(false);
       setShareImageSrc(resized);
       resetImageTransform();
       setShowImgEditor(true);
@@ -276,6 +307,7 @@ export function SakeShareCard({ note, authorProfile, onClose }: SakeShareCardPro
   const confirmImgEdit = () => {
     // Scale editor-space offset back down to card-space
     const downScale = cardImageSizeRef.current / previewFrameSize;
+    setIsUsingNoteTransform(false);
     setImgOffset({ x: editorOffset.x * downScale, y: editorOffset.y * downScale });
     setImgZoom(editorZoom);
     setShowImgEditor(false);

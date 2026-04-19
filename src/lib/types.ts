@@ -77,7 +77,7 @@ export type SakeNote = {
   expoMeta?: ExpoMeta;
   imageUrls: string[];
   imageOriginals?: string[];
-  imageTransforms?: Array<{ x: number; y: number; scale: number }>;
+  imageTransforms?: Array<{ x: number; y: number; scale: number; coordinateSpace?: 'pixels' | 'relative' }>;
   imageSplitRatio?: number;
   alcoholPercent?: string;  // 酒精濃度，例如 "15%" 或 "15-16%"
   sakeInfoTags?: string[];  // 精米步合、酒米、特殊製程等標籤

@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
+import { buildRenderedNoteImageStyle, getCoverFrame, normalizeNoteImageTransform, resolveNoteImageTransform } from '@/lib/note-image-layout';
 import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
 
@@ -94,6 +95,11 @@ export default function EditNotePage() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialDist, setInitialDist] = useState<number | null>(null);
   const [initialZoom, setInitialZoom] = useState<number | null>(null);
+  const previewFrameRef = useRef<HTMLDivElement>(null);
+  const editorFrameRef = useRef<HTMLDivElement>(null);
+  const [previewFrameSize, setPreviewFrameSize] = useState({ width: 1, height: 1 });
+  const [editorFrameSize, setEditorFrameSize] = useState({ width: 1, height: 1 });
+  const restoredTransformsNoteIdRef = useRef<string | null>(null);
 
   // 相機/相簿選擇器
   const [showPicker, setShowPicker] = useState(false);
@@ -135,6 +141,58 @@ export default function EditNotePage() {
       .filter(n => { const k = n.brandName; if (!k || seen.has(k)) return false; seen.add(k); return true; })
       .map(n => ({ brandName: n.brandName, brewery: n.brewery, origin: n.origin || '' }));
   }, [myNotes]);
+
+  useEffect(() => {
+    const element = previewFrameRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setPreviewFrameSize({ width: Math.max(rect.width, 1), height: Math.max(rect.height, 1) });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [images.length, splitRatio]);
+
+  useEffect(() => {
+    const element = editorFrameRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setEditorFrameSize({ width: Math.max(rect.width, 1), height: Math.max(rect.height, 1) });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isImageEditorOpen, images.length, splitRatio]);
+
+  const getFrameSize = () => (isImageEditorOpen ? editorFrameSize : previewFrameSize);
+  const getSlotDimensions = (idx: number, frameSize = getFrameSize()) => {
+    const slotWidth = images.length === 2
+      ? frameSize.width * ((idx === 0 ? splitRatio : 100 - splitRatio) / 100)
+      : frameSize.width;
+
+    return {
+      width: Math.max(slotWidth, 1),
+      height: Math.max(frameSize.height, 1),
+    };
+  };
+
+  const getImageStyle = (idx: number, frameSize = getFrameSize()) => {
+    const dims = getSlotDimensions(idx, frameSize);
+    return buildRenderedNoteImageStyle(
+      imgRatios[idx] || 1,
+      dims.width,
+      dims.height,
+      { x: offsets[idx].x, y: offsets[idx].y, scale: zooms[idx], coordinateSpace: 'pixels' }
+    );
+  };
 
   const [formData, setFormData] = useState({
     brandName: '',
@@ -262,13 +320,27 @@ export default function EditNotePage() {
         });
       }
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
-      if (note.imageTransforms) {
-        setZooms(note.imageTransforms.map(t => t.scale));
-        setOffsets(note.imageTransforms.map(t => ({ x: t.x, y: t.y })));
-      }
+      restoredTransformsNoteIdRef.current = null;
       if (note.sessions) setExtraSessions(note.sessions);
     }
   }, [note]);
+
+  useEffect(() => {
+    if (!note?.imageTransforms?.length) return;
+    if (!previewFrameSize.width || !previewFrameSize.height) return;
+    if (restoredTransformsNoteIdRef.current === note.id) return;
+
+    setZooms(note.imageTransforms.map(transform => transform.scale || 1));
+    setOffsets(note.imageTransforms.map((transform, idx) => {
+      const dims = {
+        width: Math.max(previewFrameSize.width * (note.imageTransforms!.length === 2 ? ((idx === 0 ? (note.imageSplitRatio || 50) : 100 - (note.imageSplitRatio || 50)) / 100) : 1), 1),
+        height: Math.max(previewFrameSize.height, 1),
+      };
+      const resolved = resolveNoteImageTransform(transform, dims.width, dims.height);
+      return { x: resolved.x, y: resolved.y };
+    }));
+    restoredTransformsNoteIdRef.current = note.id;
+  }, [note, previewFrameSize]);
 
   const handleReplaceImage = (idx: number, file: File) => {
     const reader = new FileReader();
@@ -276,8 +348,7 @@ export default function EditNotePage() {
       const base64 = reader.result as string;
       const resized = await resizeImage(base64, 1024);
       const ratio = await getImageRatio(resized);
-      const isSingle = images.length === 1;
-      const newZoom = isSingle ? Math.min(ratio, 1 / ratio) : 1;
+      const newZoom = 1;
       setImages(prev => { const next = [...prev]; next[idx] = resized; return next; });
       setImgRatios(prev => { const next = [...prev]; next[idx] = ratio; return next; });
       setZooms(prev => { const next = [...prev]; next[idx] = newZoom; return next; });
@@ -303,7 +374,7 @@ export default function EditNotePage() {
             const base64 = reader.result as string;
             const resized = await resizeImage(base64, 1024);
             const ratio = await getImageRatio(resized);
-            const newZoom = (slotIdx === 0 && total === 1) ? Math.min(ratio, 1 / ratio) : 1;
+            const newZoom = 1;
             resolve({ slotIdx, resized, ratio, newZoom });
           };
           reader.readAsDataURL(file);
@@ -468,11 +539,9 @@ export default function EditNotePage() {
       });
     } else if (e.touches.length === 2 && initialDist && initialZoom) {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
-      const r = imgRatios[draggingIdx] || 1;
-      const minZoom = images.length === 1 ? Math.min(r, 1 / r) : 1;
       setZooms(prev => {
         const next = [...prev];
-        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, minZoom), 5);
+        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, 1), 5);
         return next;
       });
     }
@@ -505,25 +574,13 @@ export default function EditNotePage() {
   };
 
   const renderPreviewImage = (idx: number, width?: string) => {
-    const ratio = imgRatios[idx] || 1;
-
     if (images.length === 2 && width) {
-      const containerRatio = parseFloat(width) / 100;
-      const byHeight = ratio < containerRatio;
       return (
         <div className="h-full relative overflow-hidden" style={{ width }}>
           <img
             src={images[idx]}
             className="absolute pointer-events-none"
-            style={byHeight ? {
-              height: '100%', width: 'auto', top: '0', left: '50%',
-              transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            } : {
-              width: '100%', height: 'auto', left: '0', top: '50%',
-              transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            }}
+            style={getImageStyle(idx, previewFrameSize)}
             alt={`img${idx + 1}`}
           />
         </div>
@@ -535,15 +592,7 @@ export default function EditNotePage() {
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={ratio >= 1 ? {
-            width: '100%', height: 'auto', left: '0', top: '50%',
-            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          } : {
-            height: '100%', width: 'auto', top: '0', left: '50%',
-            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          }}
+          style={getImageStyle(idx, previewFrameSize)}
           alt={`img${idx + 1}`}
         />
       </div>
@@ -551,11 +600,7 @@ export default function EditNotePage() {
   };
 
   const renderEditableImage = (idx: number, width?: string) => {
-    const ratio = imgRatios[idx] || 1;
-
     if (images.length === 2 && width) {
-      const containerRatio = parseFloat(width) / 100;
-      const byHeight = ratio < containerRatio;
       return (
         <div
           id={`container-${idx}`}
@@ -569,15 +614,7 @@ export default function EditNotePage() {
           <img
             src={images[idx]}
             className="absolute pointer-events-none"
-            style={byHeight ? {
-              height: '100%', width: 'auto', top: '0', left: '50%',
-              transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            } : {
-              width: '100%', height: 'auto', left: '0', top: '50%',
-              transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            }}
+            style={getImageStyle(idx, editorFrameSize)}
             alt={`img${idx + 1}`}
           />
           <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all border", lockedImgs[idx] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[idx] = !next[idx]; return next; })}>
@@ -599,15 +636,7 @@ export default function EditNotePage() {
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={ratio >= 1 ? {
-            width: '100%', height: 'auto', left: '0', top: '50%',
-            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          } : {
-            height: '100%', width: 'auto', top: '0', left: '50%',
-            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          }}
+          style={getImageStyle(idx, editorFrameSize)}
           alt={`img${idx + 1}`}
         />
         <button type="button" className={cn("absolute top-2 left-2 z-20 flex items-center gap-1 backdrop-blur-sm px-2.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border", lockedImgs[idx] ? "bg-primary/20 border-primary/60 text-primary" : "bg-black/60 hover:bg-white/20 border-white/20 text-white/60")} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onClick={() => setLockedImgs(prev => { const next = [...prev]; next[idx] = !next[idx]; return next; })}>
@@ -626,35 +655,26 @@ export default function EditNotePage() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
-    const SIZE = 1200;
-    canvas.width = SIZE; canvas.height = SIZE;
+    const dims = getSlotDimensions(idx);
+    const outputHeight = 1200;
+    const outputWidth = Math.max(1, Math.round((dims.width / dims.height) * outputHeight));
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
 
-    // 直接從 state 讀取 zoom/offset
     const zoom = zooms[idx] ?? 1;
     const offset = offsets[idx] ?? { x: 0, y: 0 };
-
-    // object-cover 語義：短邊撐滿 SIZE，長邊溢出（裁切）
     const imgRatio = img.width / img.height;
-    let coverW, coverH;
-    if (imgRatio > 1) { coverH = SIZE; coverW = SIZE * imgRatio; }
-    else { coverW = SIZE; coverH = SIZE / imgRatio; }
-    // 基礎居中（cover 裁切為正中央）
-    const baseX = (SIZE - coverW) / 2;
-    const baseY = (SIZE - coverH) / 2;
-    // 將畫面裡的 px offset 比例導成 canvas 數值
-    const container = document.getElementById(`container-${idx}`);
-    const scaleFactor = SIZE / (container?.clientWidth || 390);
-    const drawW = coverW * zoom;
-    const drawH = coverH * zoom;
-    // zoom 從中心縮放
-    const zoomOffX = (coverW - drawW) / 2;
-    const zoomOffY = (coverH - drawH) / 2;
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SIZE, SIZE);
+    const frame = getCoverFrame(imgRatio, outputWidth, outputHeight);
+    const scaleX = outputWidth / dims.width;
+    const scaleY = outputHeight / dims.height;
+    const drawW = frame.width * zoom;
+    const drawH = frame.height * zoom;
+    const drawX = frame.left + (frame.width - drawW) / 2 + (offset.x * scaleX);
+    const drawY = frame.top + (frame.height - drawH) / 2 + (offset.y * scaleY);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, outputWidth, outputHeight);
     try {
-      ctx.drawImage(img,
-        baseX + zoomOffX + (offset.x * scaleFactor),
-        baseY + zoomOffY + (offset.y * scaleFactor),
-        drawW, drawH);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
       return canvas.toDataURL('image/jpeg', 0.85);
     } catch {
       return images[idx];
@@ -858,7 +878,10 @@ export default function EditNotePage() {
 
       const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
       // 儲存目前的縮放位移參數，供下次重新編輯時還原
-      const transforms = images.map((_, i) => ({ x: offsets[i]?.x ?? 0, y: offsets[i]?.y ?? 0, scale: zooms[i] ?? 1 }));
+      const transforms = images.map((_, i) => {
+        const dims = getSlotDimensions(i, previewFrameSize);
+        return normalizeNoteImageTransform(offsets[i] ?? { x: 0, y: 0 }, zooms[i] ?? 1, dims.width, dims.height);
+      });
 
       // Build session-0 data (original)
       const session0Data = activeSessionIdx === 0 ? {
@@ -1057,7 +1080,7 @@ export default function EditNotePage() {
           </div>
 
           <div className="dark-glass rounded-[2rem] overflow-hidden border border-primary/20 p-3 space-y-3 shadow-xl">
-            <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
+              <div ref={previewFrameRef} className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
               {images.length === 2 ? (
                 <>
                   {renderPreviewImage(0, `${splitRatio}%`)}
@@ -1502,7 +1525,7 @@ export default function EditNotePage() {
             </div>
 
             <div className="dark-glass flex-1 rounded-[2rem] border border-primary/20 p-4 shadow-2xl">
-              <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-black shadow-inner flex touch-none">
+              <div ref={editorFrameRef} className="relative aspect-square w-full overflow-hidden rounded-2xl bg-black shadow-inner flex touch-none">
                 {images.length === 2 ? (
                   <>
                     {renderEditableImage(0, `${splitRatio}%`)}

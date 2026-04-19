@@ -18,6 +18,7 @@ import { collection, doc, deleteDoc, query, where, limit, orderBy, addDoc } from
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
 import { deleteNoteDraft, getNoteDraft, saveNoteDraft } from '@/lib/note-draft-storage';
+import { buildRenderedNoteImageStyle, getCoverFrame, normalizeNoteImageTransform } from '@/lib/note-image-layout';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 type NewNotePageClientProps = {
@@ -103,6 +104,10 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialDist, setInitialDist] = useState<number | null>(null);
   const [initialZoom, setInitialZoom] = useState<number | null>(null);
+  const previewFrameRef = useRef<HTMLDivElement>(null);
+  const editorFrameRef = useRef<HTMLDivElement>(null);
+  const [previewFrameSize, setPreviewFrameSize] = useState({ width: 1, height: 1 });
+  const [editorFrameSize, setEditorFrameSize] = useState({ width: 1, height: 1 });
 
   // 相機/相簿選擇器
   const [showPicker, setShowPicker] = useState(false);
@@ -264,6 +269,58 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const element = previewFrameRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setPreviewFrameSize({ width: Math.max(rect.width, 1), height: Math.max(rect.height, 1) });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [images.length, splitRatio]);
+
+  useEffect(() => {
+    const element = editorFrameRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setEditorFrameSize({ width: Math.max(rect.width, 1), height: Math.max(rect.height, 1) });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isImageEditorOpen, images.length, splitRatio]);
+
+  const getFrameSize = () => (isImageEditorOpen ? editorFrameSize : previewFrameSize);
+  const getSlotDimensions = (idx: number, frameSize = getFrameSize()) => {
+    const slotWidth = images.length === 2
+      ? frameSize.width * ((idx === 0 ? splitRatio : 100 - splitRatio) / 100)
+      : frameSize.width;
+
+    return {
+      width: Math.max(slotWidth, 1),
+      height: Math.max(frameSize.height, 1),
+    };
+  };
+
+  const getImageStyle = (idx: number, frameSize = getFrameSize()) => {
+    const dims = getSlotDimensions(idx, frameSize);
+    return buildRenderedNoteImageStyle(
+      imgRatios[idx] || 1,
+      dims.width,
+      dims.height,
+      { x: offsets[idx].x, y: offsets[idx].y, scale: zooms[idx], coordinateSpace: 'pixels' }
+    );
+  };
 
   // 從草稿載入（URL 包含 ?draft=<id> 時）
   useEffect(() => {
@@ -671,46 +728,23 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return images[idx];
-    const SIZE = 1200;
-    canvas.width = SIZE; canvas.height = SIZE;
+    const dims = getSlotDimensions(idx);
+    const outputHeight = 1200;
+    const outputWidth = Math.max(1, Math.round((dims.width / dims.height) * outputHeight));
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
     const zoom = zooms[idx]; const offset = offsets[idx];
     const imgRatio = img.width / img.height;
-    let baseW = SIZE;
-    let baseH = SIZE;
-    let baseX = 0;
-    let baseY = 0;
-
-    if (images.length === 1) {
-      if (imgRatio >= 1) {
-        baseW = SIZE;
-        baseH = SIZE / imgRatio;
-        baseY = (SIZE - baseH) / 2;
-      } else {
-        baseW = SIZE * imgRatio;
-        baseH = SIZE;
-        baseX = (SIZE - baseW) / 2;
-      }
-    } else if (imgRatio > 1) {
-      baseH = SIZE;
-      baseW = SIZE * imgRatio;
-      baseX = (SIZE - baseW) / 2;
-    } else {
-      baseW = SIZE;
-      baseH = SIZE / imgRatio;
-      baseY = (SIZE - baseH) / 2;
-    }
-
-    const editorWidth = window.innerWidth < 640 ? window.innerWidth - 64 : 640;
-    const scaleFactor = SIZE / editorWidth;
-    const drawW = baseW * zoom;
-    const drawH = baseH * zoom;
-    const zoomOffX = (baseW - drawW) / 2;
-    const zoomOffY = (baseH - drawH) / 2;
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, SIZE, SIZE);
-    ctx.drawImage(img,
-      baseX + zoomOffX + (offset.x * scaleFactor),
-      baseY + zoomOffY + (offset.y * scaleFactor),
-      drawW, drawH);
+    const frame = getCoverFrame(imgRatio, outputWidth, outputHeight);
+    const scaleX = outputWidth / dims.width;
+    const scaleY = outputHeight / dims.height;
+    const drawW = frame.width * zoom;
+    const drawH = frame.height * zoom;
+    const drawX = frame.left + (frame.width - drawW) / 2 + (offset.x * scaleX);
+    const drawY = frame.top + (frame.height - drawH) / 2 + (offset.y * scaleY);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, outputWidth, outputHeight);
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
     return canvas.toDataURL('image/jpeg', 0.85);
   };
 
@@ -773,45 +807,12 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   };
 
   const renderPreviewImage = (idx: number, width?: string) => {
-    const ratio = imgRatios[idx] || 1;
-
-    if (images.length === 2 && width) {
-      const containerRatio = parseFloat(width) / 100;
-      const byHeight = ratio < containerRatio;
-      return (
-        <div className="h-full relative overflow-hidden" style={{ width }}>
-          <img
-            src={images[idx]}
-            className="absolute pointer-events-none"
-            style={byHeight ? {
-              height: '100%', width: 'auto', top: '0', left: '50%',
-              transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            } : {
-              width: '100%', height: 'auto', left: '0', top: '50%',
-              transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            }}
-            alt={`img${idx + 1}`}
-          />
-        </div>
-      );
-    }
-
     return (
-      <div className="w-full h-full relative overflow-hidden">
+      <div className={width ? "h-full relative overflow-hidden" : "w-full h-full relative overflow-hidden"} style={width ? { width } : undefined}>
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={ratio >= 1 ? {
-            width: '100%', height: 'auto', left: '0', top: '50%',
-            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          } : {
-            height: '100%', width: 'auto', top: '0', left: '50%',
-            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          }}
+          style={getImageStyle(idx, previewFrameSize)}
           alt={`img${idx + 1}`}
         />
       </div>
@@ -819,41 +820,10 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   };
 
   const renderEditableImage = (idx: number, width?: string) => {
-    const ratio = imgRatios[idx] || 1;
-
-    if (images.length === 2 && width) {
-      const containerRatio = parseFloat(width) / 100;
-      const byHeight = ratio < containerRatio;
-      return (
-        <div
-          className="h-full relative overflow-hidden cursor-move"
-          style={{ width }}
-          onTouchStart={(e) => onTouchStart(e, idx)}
-          onTouchMove={onTouchMove}
-          onTouchEnd={() => setDraggingIdx(null)}
-          onMouseDown={(e) => onMouseDown(e, idx)}
-        >
-          <img
-            src={images[idx]}
-            className="absolute pointer-events-none"
-            style={byHeight ? {
-              height: '100%', width: 'auto', top: '0', left: '50%',
-              transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            } : {
-              width: '100%', height: 'auto', left: '0', top: '50%',
-              transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-              transformOrigin: 'center center',
-            }}
-            alt={`img${idx + 1}`}
-          />
-        </div>
-      );
-    }
-
     return (
       <div
-        className="w-full h-full relative overflow-hidden cursor-move"
+        className={width ? "h-full relative overflow-hidden cursor-move" : "w-full h-full relative overflow-hidden cursor-move"}
+        style={width ? { width } : undefined}
         onTouchStart={(e) => onTouchStart(e, idx)}
         onTouchMove={onTouchMove}
         onTouchEnd={() => setDraggingIdx(null)}
@@ -862,15 +832,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         <img
           src={images[idx]}
           className="absolute pointer-events-none"
-          style={ratio >= 1 ? {
-            width: '100%', height: 'auto', left: '0', top: '50%',
-            transform: `translateY(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          } : {
-            height: '100%', width: 'auto', top: '0', left: '50%',
-            transform: `translateX(-50%) translate(${offsets[idx].x}px, ${offsets[idx].y}px) scale(${zooms[idx]})`,
-            transformOrigin: 'center center',
-          }}
+          style={getImageStyle(idx, editorFrameSize)}
           alt={`img${idx + 1}`}
         />
       </div>
@@ -922,7 +884,10 @@ const handleSave = async () => {
       
       imageUrls: finalImages,
       imageOriginals: originals,
-      imageTransforms: images.map((_, i) => ({ x: offsets[i].x, y: offsets[i].y, scale: zooms[i] })),
+      imageTransforms: images.map((_, i) => {
+        const dims = getSlotDimensions(i, previewFrameSize);
+        return normalizeNoteImageTransform(offsets[i], zooms[i], dims.width, dims.height);
+      }),
       imageSplitRatio: images.length === 2 ? splitRatio : 50,
       tastingDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -1059,7 +1024,7 @@ const handleSave = async () => {
           </div>
           <div className="dark-glass rounded-[2rem] overflow-hidden border border-primary/20 p-3 space-y-3 shadow-xl">
             {images.length > 0 ? (
-              <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
+              <div ref={previewFrameRef} className="relative aspect-square w-full rounded-xl overflow-hidden bg-black shadow-inner flex touch-none">
                 {images.length === 2 ? (
                   <>
                     {renderPreviewImage(0, `${splitRatio}%`)}
@@ -1468,75 +1433,69 @@ const handleSave = async () => {
           <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
         </section>
 
-        <div className="flex gap-3 mb-12">
+        <section className={cn("space-y-3 dark-glass p-4 rounded-xl border transition-all mb-6", reminderEnabled ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20")}>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div
+              onClick={() => {
+                const next = !reminderEnabled;
+                setReminderEnabled(next);
+                if (next && typeof window !== 'undefined' && 'Notification' in window) {
+                  Notification.requestPermission();
+                }
+              }}
+              className={cn(
+                "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                reminderEnabled ? "bg-amber-500 border-amber-500" : "border-primary/40 bg-transparent"
+              )}
+            >
+              {reminderEnabled && <Check className="w-3 h-3 text-black" />}
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                <Bell className="w-3 h-3 text-amber-500" /> 設定開瓶後風味追蹤提醒
+              </p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">時間到時提醒您再次品飲並記錄</p>
+            </div>
+          </label>
 
-          {/* 開瓶後風味追蹤提醒 */}
-          <section className={cn("w-full space-y-3 dark-glass p-4 rounded-xl border transition-all", reminderEnabled ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20")}>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <div
-                onClick={() => {
-                  const next = !reminderEnabled;
-                  setReminderEnabled(next);
-                  if (next && typeof window !== 'undefined' && 'Notification' in window) {
-                    Notification.requestPermission();
-                  }
-                }}
-                className={cn(
-                  "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
-                  reminderEnabled ? "bg-amber-500 border-amber-500" : "border-primary/40 bg-transparent"
-                )}
-              >
-                {reminderEnabled && <Check className="w-3 h-3 text-black" />}
+          {reminderEnabled && (
+            <div className="pt-2 border-t border-amber-500/20 space-y-3">
+              <p className="text-[9px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> 多久後提醒？</p>
+              <div className="flex gap-2">
+                <select
+                  value={reminderValue}
+                  onChange={e => setReminderValue(Number(e.target.value))}
+                  className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
+                >
+                  {(() => {
+                    const max = reminderUnit === 'hours' ? 23 : reminderUnit === 'days' ? 31 : reminderUnit === 'months' ? 12 : 20;
+                    return Array.from({ length: max }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ));
+                  })()}
+                </select>
+                <select
+                  value={reminderUnit}
+                  onChange={e => {
+                    const u = e.target.value as 'hours' | 'days' | 'months' | 'years';
+                    setReminderUnit(u);
+                    const maxVal = u === 'hours' ? 23 : u === 'days' ? 31 : u === 'months' ? 12 : 20;
+                    setReminderValue(v => Math.min(v, maxVal));
+                  }}
+                  className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
+                >
+                  <option value="hours">小時後</option>
+                  <option value="days">日後</option>
+                  <option value="months">個月後</option>
+                  <option value="years">年後</option>
+                </select>
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
-                  <Bell className="w-3 h-3 text-amber-500" /> 設定開瓶後風味追蹤提醒
-                </p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">時間到時提醒您再次品飲並記錄</p>
-              </div>
-            </label>
-
-            {reminderEnabled && (
-              <div className="pt-2 border-t border-amber-500/20 space-y-3">
-                <p className="text-[9px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> 多久後提醒？</p>
-                <div className="flex gap-2">
-                  {/* 數值下拉 */}
-                  <select
-                    value={reminderValue}
-                    onChange={e => setReminderValue(Number(e.target.value))}
-                    className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
-                  >
-                    {(() => {
-                      const max = reminderUnit === 'hours' ? 23 : reminderUnit === 'days' ? 31 : reminderUnit === 'months' ? 12 : 20;
-                      return Array.from({ length: max }, (_, i) => i + 1).map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ));
-                    })()}
-                  </select>
-                  {/* 單位下拉 */}
-                  <select
-                    value={reminderUnit}
-                    onChange={e => {
-                      const u = e.target.value as 'hours' | 'days' | 'months' | 'years';
-                      setReminderUnit(u);
-                      const maxVal = u === 'hours' ? 23 : u === 'days' ? 31 : u === 'months' ? 12 : 20;
-                      setReminderValue(v => Math.min(v, maxVal));
-                    }}
-                    className="flex-1 bg-[#1a1a1a] border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl px-3 h-9 appearance-none cursor-pointer focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="hours">小時後</option>
-                    <option value="days">日後</option>
-                    <option value="months">個月後</option>
-                    <option value="years">年後</option>
-                  </select>
-                </div>
-                <p className="text-[9px] text-amber-400/70 italic">
-                  提醒時間：{reminderValue} {reminderUnit === 'hours' ? '小時' : reminderUnit === 'days' ? '日' : reminderUnit === 'months' ? '個月' : '年'}後（儲存後開始計時）
-                </p>
-              </div>
-            )}
-          </section>
-        </div>
+              <p className="text-[9px] text-amber-400/70 italic">
+                提醒時間：{reminderValue} {reminderUnit === 'hours' ? '小時' : reminderUnit === 'days' ? '日' : reminderUnit === 'months' ? '個月' : '年'}後（儲存後開始計時）
+              </p>
+            </div>
+          )}
+        </section>
 
         <div className="flex gap-3 mb-12">
           <Button
@@ -1557,7 +1516,6 @@ const handleSave = async () => {
         </div>
       </div>
 
-      {/* 相機 / 相簿選擇底部彈窗 */}
       {showPicker && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setShowPicker(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -1601,7 +1559,7 @@ const handleSave = async () => {
             </div>
 
             <div className="dark-glass flex-1 rounded-[2rem] border border-primary/20 p-4 shadow-2xl">
-              <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-black shadow-inner flex touch-none">
+              <div ref={editorFrameRef} className="relative aspect-square w-full overflow-hidden rounded-2xl bg-black shadow-inner flex touch-none">
                 {images.length === 2 ? (
                   <>
                     {renderEditableImage(0, `${splitRatio}%`)}

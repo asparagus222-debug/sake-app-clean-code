@@ -5,7 +5,6 @@ import React from "react";
 import { SakeNote, UserProfile } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
 import { Calendar, Star, Heart, User, Award } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -14,6 +13,7 @@ import { useAuth, useFirestore, useUser, useDoc, useMemoFirebase } from '@/fireb
 import { doc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn, formatSakeDisplayName } from "@/lib/utils";
+import { NoteImagePreview } from '@/components/notes/NoteImagePreview';
 
 interface SakeNoteCardProps {
   note: SakeNote;
@@ -80,11 +80,14 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
     <Card className="overflow-hidden transition-all border-none dark-glass flex flex-col">
       {/* 圖片區：3:4 直向比例，酒名浮在漸層上 */}
       <Link href={`/notes/${note.id}`} className="relative w-full aspect-[3/4] bg-muted/20 block overflow-hidden group/img-container">
-        {note.imageUrls && note.imageUrls.length > 0 ? (
-          <Image src={note.imageUrls[0]} alt={displayName} fill className="object-cover group-hover/img-container:scale-105 transition-transform duration-700 ease-out" />
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground/40 text-[10px] font-bold">NO PHOTO</div>
-        )}
+        <NoteImagePreview
+          imageUrls={note.imageUrls}
+          imageOriginals={note.imageOriginals}
+          imageTransforms={note.imageTransforms}
+          imageSplitRatio={note.imageSplitRatio}
+          alt={displayName}
+          className="flex h-full w-full transition-transform duration-700 ease-out group-hover/img-container:scale-105"
+        />
         {/* 評分 badge */}
         <div className="absolute top-3 right-3">
           <Badge className="bg-primary/90 hover:bg-primary font-bold border-none shadow-lg text-[10px]">
