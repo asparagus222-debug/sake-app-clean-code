@@ -322,6 +322,8 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     );
   };
 
+  const getMinZoom = () => (images.length === 1 ? 0.4 : 1);
+
   // 從草稿載入（URL 包含 ?draft=<id> 時）
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -783,7 +785,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       });
     } else if (e.touches.length === 2 && initialDist && initialZoom) {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
-      const minZoom = 1;
+      const minZoom = getMinZoom();
       setZooms(prev => {
         const next = [...prev];
         next[draggingIdx] = Math.min(Math.max(initialZoom * scale, minZoom), 5);

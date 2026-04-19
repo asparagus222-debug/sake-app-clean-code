@@ -194,6 +194,8 @@ export default function EditNotePage() {
     );
   };
 
+  const getMinZoom = () => (images.length === 1 ? 0.4 : 1);
+
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -541,7 +543,7 @@ export default function EditNotePage() {
       const scale = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / initialDist;
       setZooms(prev => {
         const next = [...prev];
-        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, 1), 5);
+        next[draggingIdx] = Math.min(Math.max(initialZoom * scale, getMinZoom()), 5);
         return next;
       });
     }
@@ -1483,7 +1485,7 @@ export default function EditNotePage() {
 
       {/* 相機 / 相簿選擇底部彈窗 */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowPicker(false)}>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setShowPicker(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-t-[2rem] p-6 pb-12 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />

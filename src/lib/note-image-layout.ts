@@ -93,6 +93,8 @@ export function buildRenderedNoteImageStyle(
   height: string;
   left: string;
   top: string;
+  maxWidth: 'none';
+  maxHeight: 'none';
   transform: string;
   transformOrigin: 'center center';
 } {
@@ -104,6 +106,8 @@ export function buildRenderedNoteImageStyle(
     height: `${frame.height}px`,
     left: `${frame.left}px`,
     top: `${frame.top}px`,
+    maxWidth: 'none',
+    maxHeight: 'none',
     transform: `translate(${resolved.x}px, ${resolved.y}px) scale(${resolved.scale})`,
     transformOrigin: 'center center',
   };
