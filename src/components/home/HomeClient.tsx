@@ -323,7 +323,7 @@ export function HomeClient({
                 const displayName = group.brandName;
 
                 return <Link key={`${group.brandName}-${group.brewery}`} href={`/sake?brand=${encodeURIComponent(group.brandName)}&brewery=${encodeURIComponent(group.brewery)}`}>
-                  <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-[4/5] dark-glass border border-white/10 hover:border-primary/50 transition-all">
+                  <div className="relative group overflow-hidden rounded-xl sm:rounded-2xl aspect-square dark-glass border border-white/10 hover:border-primary/50 transition-all">
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-accent text-accent-foreground font-bold rounded-full w-5 h-5 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg text-[10px] sm:text-sm">
                       {idx + 1}
                     </div>
@@ -351,7 +351,7 @@ export function HomeClient({
               <h2 className="text-base sm:text-lg font-headline font-bold uppercase tracking-widest">銘柄殿堂 Top 3</h2>
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
-              {[0, 1, 2].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />)}
+              {[0, 1, 2].map(i => <Skeleton key={i} className="aspect-square rounded-2xl" />)}
             </div>
           </section>
         )}
@@ -396,7 +396,7 @@ export function HomeClient({
                 );
               })() : (
                 <div className="grid grid-cols-2 gap-3">
-                  {[0,1,2,3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}
+                  {[0,1,2,3].map(i => <Skeleton key={i} className="aspect-square rounded-2xl" />)}
                 </div>
               )}
             </TabsContent>

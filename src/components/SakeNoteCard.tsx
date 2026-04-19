@@ -78,8 +78,8 @@ export function SakeNoteCard({ note }: SakeNoteCardProps) {
 
   return (
     <Card className="overflow-hidden transition-all border-none dark-glass flex flex-col">
-      {/* 圖片區：3:4 直向比例，酒名浮在漸層上 */}
-      <Link href={`/notes/${note.id}`} className="relative w-full aspect-[3/4] bg-muted/20 block overflow-hidden group/img-container">
+      {/* 圖片區：與貼文頁一致的正方形比例 */}
+      <Link href={`/notes/${note.id}`} className="relative w-full aspect-square bg-muted/20 block overflow-hidden group/img-container">
         <NoteImagePreview
           imageUrls={note.imageUrls}
           imageOriginals={note.imageOriginals}
