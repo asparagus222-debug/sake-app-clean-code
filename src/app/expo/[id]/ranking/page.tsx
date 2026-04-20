@@ -532,19 +532,19 @@ export default function ExpoRankingPage() {
 
                         return (
                           <div key={note.id} className={cn('rounded-[0.95rem] border px-2 py-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
-                            <div className="grid grid-cols-[68px_minmax(0,1fr)] items-start gap-2">
-                              <div className="space-y-1">
-                                <div className={cn('relative h-[58px] overflow-hidden rounded-[0.9rem] border', currentShareCardTheme.modeChipClassName)}>
+                            <div className="grid grid-cols-[74px_minmax(0,1fr)] items-stretch gap-2">
+                              <div className="flex h-full flex-col gap-1">
+                                <div className={cn('flex h-7 items-center justify-center rounded-[0.8rem] border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>
+                                  #{rank}
+                                </div>
+                                <div className={cn('relative min-h-[88px] flex-1 overflow-hidden rounded-[0.9rem] border', currentShareCardTheme.modeChipClassName)}>
                                   {note.imageUrls?.[0] ? (
-                                    <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-cover" />
+                                    <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain p-0.5" />
                                   ) : (
                                     <div className={cn('flex h-full items-center justify-center text-[7px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.modeLabelClassName)}>
                                       No Pic
                                     </div>
                                   )}
-                                </div>
-                                <div className={cn('flex h-7 items-center justify-center rounded-[0.8rem] border text-[10px] font-headline font-bold', medalStyle.rankClassName)}>
-                                  #{rank}
                                 </div>
                               </div>
                               <div className="min-w-0">
