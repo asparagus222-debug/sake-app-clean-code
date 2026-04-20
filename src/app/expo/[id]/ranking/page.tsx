@@ -377,11 +377,11 @@ export default function ExpoRankingPage() {
             <button type="button" onClick={() => router.push(`/expo/${eventId}`)} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70 transition-colors hover:text-[#ffcf99]">
               <ArrowLeft className="w-3 h-3" /> 返回酒展工作台
             </button>
-            <h1 className="mt-3 text-3xl font-headline font-bold tracking-[0.16em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
-            <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-[#d8b89a]">
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Trophy className="w-3 h-3 text-[#ffb86b]" /> {event.name}</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><ClipboardList className="w-3 h-3 text-[#ffb86b]" /> 每頁 5 名</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Sparkles className="w-3 h-3 text-[#ffb86b]" /> {currentSortMeta.label} 模式</span>
+            <h1 className="mt-3 text-[2rem] font-headline font-bold tracking-[0.12em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
+            <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#d8b89a]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Trophy className="w-2.5 h-2.5 text-[#ffb86b]" /> {event.name}</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><ClipboardList className="w-2.5 h-2.5 text-[#ffb86b]" /> 每頁 5 名</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Sparkles className="w-2.5 h-2.5 text-[#ffb86b]" /> {currentSortMeta.label} 模式</span>
             </div>
           </div>
           <div className="hidden shrink-0 md:flex md:items-center md:gap-2">
@@ -394,13 +394,13 @@ export default function ExpoRankingPage() {
           </div>
         </div>
 
-        <section className="grid gap-4 lg:grid-cols-[0.78fr_1.22fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+        <section className="grid gap-4 lg:grid-cols-[0.76fr_1.24fr]">
+          <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Ranking Mode</p>
-              <h2 className="mt-2 text-lg font-bold text-[#fff4e5]">切換這張打卡圖的榜單邏輯</h2>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffcf99]/70">Ranking Mode</p>
+              <h2 className="mt-1.5 text-base font-bold text-[#fff4e5]">切換榜單邏輯</h2>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
             {[
               { value: 'score', label: '風味評分', icon: Star },
               { value: 'price', label: '價格', icon: BadgeDollarSign },
@@ -414,77 +414,77 @@ export default function ExpoRankingPage() {
                   variant={sortMode === option.value ? 'default' : 'outline'}
                   onClick={() => setSortMode(option.value as RankingSortMode)}
                   className={cn(
-                    'rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest transition-all',
+                    'rounded-full h-8 px-3 text-[9px] font-bold uppercase tracking-[0.12em] transition-all',
                     sortMode === option.value
                       ? 'bg-[#ffd166] text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.25)] hover:bg-[#ffe08f]'
                       : 'border-[#ffd08f]/25 bg-[#2f1d15] text-[#f6dfc5] hover:bg-[#45281c]'
                   )}
                 >
-                  <Icon className="w-3 h-3 mr-1.5" /> {option.label}
+                  <Icon className="w-2.5 h-2.5 mr-1" /> {option.label}
                 </Button>
               );
             })}
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              <div className="rounded-[1.4rem] border border-white/10 bg-[#1a130f] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">本頁杯數</div>
-                <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{currentPageNotes.length}</div>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
+                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">本頁杯數</div>
+                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{currentPageNotes.length}</div>
               </div>
-              <div className="rounded-[1.4rem] border border-white/10 bg-[#1a130f] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">平均風味</div>
-                <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{averageScore.toFixed(1)}</div>
+              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
+                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">平均風味</div>
+                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{averageScore.toFixed(1)}</div>
               </div>
-              <div className="rounded-[1.4rem] border border-white/10 bg-[#1a130f] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d9b495]">平均 CP</div>
-                <div className="mt-2 text-2xl font-headline text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
+              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
+                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">平均 CP</div>
+                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
               </div>
             </div>
 
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <p className="text-[11px] text-[#dcb89b]">第 {pageIndex + 1} / {totalPages} 頁</p>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <p className="text-[10px] text-[#dcb89b]">第 {pageIndex + 1} / {totalPages} 頁</p>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={pageIndex === 0}
                   onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
-                  className="rounded-full h-9 border-white/15 bg-white/5 px-4 text-[10px] font-bold uppercase tracking-widest text-[#fff4e5] hover:bg-white/10"
+                  className="rounded-full h-8 border-white/15 bg-white/5 px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#fff4e5] hover:bg-white/10"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5 mr-1.5" /> 上一頁
+                  <ChevronLeft className="w-3 h-3 mr-1" /> 上一頁
                 </Button>
                 <Button
                   type="button"
                   disabled={pageIndex >= totalPages - 1}
                   onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
-                  className="rounded-full h-9 bg-[#f19245] px-4 text-[10px] font-bold uppercase tracking-widest text-[#1a120d] hover:bg-[#ffab60]"
+                  className="rounded-full h-8 bg-[#f19245] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#1a120d] hover:bg-[#ffab60]"
                 >
-                  下一頁 <ChevronRight className="w-3.5 h-3.5 ml-1.5" />
+                  下一頁 <ChevronRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
             </div>
 
-            <div className="mt-5 border-t border-white/10 pt-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70">Share Card Colors</p>
-              <div className="mt-3 grid grid-cols-4 gap-2">
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffcf99]/70">Share Card Colors</p>
+              <div className="mt-2 grid grid-cols-4 gap-2">
                 {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
                   <button
                     key={themeId}
                     type="button"
                     onClick={() => setShareCardTheme(themeId)}
                     className={cn(
-                      'rounded-full border px-2.5 py-2 text-center transition-all',
+                      'rounded-[1.2rem] border px-2 py-1.5 text-center transition-all',
                       shareCardTheme === themeId
-                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_12px_24px_rgba(255,209,102,0.16)]'
+                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_10px_20px_rgba(255,209,102,0.14)]'
                         : 'border-white/10 bg-white/5 hover:bg-white/10'
                     )}
                   >
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1">
                       <div className="flex gap-1">
-                        <span className={cn('h-2.5 w-2.5 rounded-full border', theme.previewSwatchClassName)} />
-                        <span className={cn('h-2.5 w-2.5 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
+                        <span className={cn('h-2 w-2 rounded-full border', theme.previewSwatchClassName)} />
+                        <span className={cn('h-2 w-2 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
                       </div>
-                      <p className="text-[11px] font-bold text-[#fff4e5]">{theme.label}</p>
+                      <p className="text-[10px] font-bold text-[#fff4e5]">{theme.label}</p>
                     </div>
                   </button>
                 ))}
