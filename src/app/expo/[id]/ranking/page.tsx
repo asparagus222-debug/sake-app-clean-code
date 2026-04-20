@@ -564,7 +564,7 @@ export default function ExpoRankingPage() {
                                     </div>
                                   )}
                                 </div>
-                                <div className={cn('mt-1 grid grid-cols-[48px_38px_42px_minmax(0,1fr)] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
+                                <div className={cn('mt-1 grid grid-cols-[48px_38px_42px] items-start gap-2 border-t pt-1.5 text-[8px] font-bold', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
                                   <div className="space-y-0.5">
                                     <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
                                     <div>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
@@ -577,11 +577,13 @@ export default function ExpoRankingPage() {
                                     <div className={cn('text-[7px] uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
                                     <div>{formatExpoCpScore(cpScore)}</div>
                                   </div>
-                                  <div className="space-y-0.5 min-w-0">
-                                    <div className={cn('text-[7px] uppercase tracking-[0.12em] opacity-0', currentShareCardTheme.tableHeaderClassName)}>註</div>
-                                    <div className="break-words text-[7.5px] leading-3">{authorNote}</div>
-                                  </div>
                                 </div>
+                                {authorNote && (
+                                  <div className={cn('mt-2 border-t pt-2', currentShareCardTheme.dividerClassName)}>
+                                    <div className={cn('text-[7px] font-bold uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>作者描述</div>
+                                    <div className={cn('mt-1 break-words text-[7.5px] leading-3.5', currentShareCardTheme.valueClassName)}>{authorNote}</div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
