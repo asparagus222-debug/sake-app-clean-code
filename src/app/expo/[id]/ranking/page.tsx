@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 
 type RankingSortMode = 'score' | 'price' | 'cp';
 type ShareCardThemeId = 'plum-light' | 'moss-light' | 'midnight-dark' | 'charcoal-dark';
-type ShareCardLayoutId = 'magazine' | 'rows' | 'cinematic';
+type ShareCardLayoutId = 'magazine' | 'rows' | 'cinematic' | 'list';
 
 const PAGE_SIZE = 5;
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
@@ -44,24 +44,24 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   previewSwatchClassName: string;
 }> = {
   'plum-light': {
-    label: '白梅',
-    exportBackground: '#f4edf0',
-    shellClassName: 'border-[#ddd0d5] bg-[linear-gradient(160deg,#f9f4f6_0%,#ede4e8_100%)] shadow-[0_30px_80px_rgba(140,80,105,0.12)]',
-    frameClassName: 'border-[#e4d8dc] bg-[#fdfbfc] text-[#2c1f25]',
-    emptyClassName: 'border-[#ddd0d5] bg-[#f9f5f7] text-[#2c1f25]',
-    dividerClassName: 'border-[#e8dce0]',
-    eyebrowClassName: 'text-[#9b6e7f]',
-    titleClassName: 'text-[#2c1f25]',
-    modeChipClassName: 'border-[#e4d8dc] bg-[#f7f1f4]',
-    modeLabelClassName: 'text-[#9b6e7f]',
-    modeValueClassName: 'text-[#2c1f25]',
-    tableClassName: 'border-[#e8dce0] bg-[#fefcfd]',
-    tableHeaderClassName: 'text-[#9b6e7f]',
-    metaClassName: 'text-[#7d5568]',
-    valueClassName: 'text-[#4a3040]',
-    footerClassName: 'border-[#e8dce0] text-[#9b6e7f]',
-    rowBaseClassName: 'border-[#e2d5da]',
-    previewSwatchClassName: 'border-[#ddd0d5] bg-[#f0e6ea]',
+    label: '琅珀',
+    exportBackground: '#f5eedf',
+    shellClassName: 'border-[#d8c49a] bg-[linear-gradient(160deg,#faf4e6_0%,#ede0c4_100%)] shadow-[0_30px_80px_rgba(160,120,40,0.14)]',
+    frameClassName: 'border-[#e0ccaa] bg-[#fdf9ee] text-[#2a1e08]',
+    emptyClassName: 'border-[#d8c49a] bg-[#f5eedf] text-[#2a1e08]',
+    dividerClassName: 'border-[#e4d0a8]',
+    eyebrowClassName: 'text-[#a07828]',
+    titleClassName: 'text-[#2a1e08]',
+    modeChipClassName: 'border-[#e0ccaa] bg-[#f5eedc]',
+    modeLabelClassName: 'text-[#a07828]',
+    modeValueClassName: 'text-[#2a1e08]',
+    tableClassName: 'border-[#e4d0a8] bg-[#fdf9ee]',
+    tableHeaderClassName: 'text-[#a07828]',
+    metaClassName: 'text-[#7a5820]',
+    valueClassName: 'text-[#3e2c10]',
+    footerClassName: 'border-[#e4d0a8] text-[#a07828]',
+    rowBaseClassName: 'border-[#dcc8a0]',
+    previewSwatchClassName: 'border-[#d8c49a] bg-[#ede0c4]',
   },
   'moss-light': {
     label: '薰衣草',
@@ -169,14 +169,14 @@ function clampText(lines: number): React.CSSProperties {
 function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
   const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
     'plum-light': {
-      gold: 'border-[#e8c97a]/45 bg-[#fff8e0]',
-      goldRank: 'border-[#c9a040] bg-[#e8c060] text-[#2a1c08]',
-      silver: 'border-[#e0d8de]/65 bg-[#faf8f9]',
-      silverRank: 'border-[#c0b2ba] bg-[#e4d8de] text-[#382730]',
-      bronze: 'border-[#e8b8a8]/55 bg-[#fff1ec]',
-      bronzeRank: 'border-[#cc8870] bg-[#e4a890] text-[#3a2018]',
-      base: 'bg-[#fdfbfc]',
-      baseRank: 'border-[#e0d0d6] bg-[#f7f0f3] text-[#7a5060]',
+      gold: 'border-[#c8a840]/50 bg-[#fdf5d8]',
+      goldRank: 'border-[#b89030] bg-[#d4a840] text-[#241800]',
+      silver: 'border-[#c8bc9a]/55 bg-[#faf5e8]',
+      silverRank: 'border-[#a09070] bg-[#c8b890] text-[#2a2010]',
+      bronze: 'border-[#d4a870]/45 bg-[#f8f0e4]',
+      bronzeRank: 'border-[#b47840] bg-[#d09060] text-[#2a1808]',
+      base: 'bg-[#fdf9ee]',
+      baseRank: 'border-[#dcc8a0] bg-[#f2e8d4] text-[#6a5020]',
     },
     'moss-light': {
       gold: 'border-[#d4c060]/45 bg-[#faf6e8]',
@@ -299,16 +299,6 @@ export default function ExpoRankingPage() {
     if (currentPageNotes.length === 0) return 0;
     const sum = currentPageNotes.reduce((acc, note) => acc + (note.overallRating || 0), 0);
     return sum / currentPageNotes.length;
-  }, [currentPageNotes]);
-
-  const averageCpScore = useMemo(() => {
-    if (currentPageNotes.length === 0) return 0;
-    const validCpScores = currentPageNotes
-      .map(note => getExpoCpScore(note))
-      .filter((score): score is number => score !== null && score !== undefined);
-    if (validCpScores.length === 0) return 0;
-    const sum = validCpScores.reduce((acc, score) => acc + score, 0);
-    return sum / validCpScores.length;
   }, [currentPageNotes]);
 
 
@@ -438,23 +428,7 @@ export default function ExpoRankingPage() {
               })}
             </div>
 
-            {/* 統計 */}
-            <div className="mt-2.5 flex divide-x divide-white/10 overflow-hidden rounded-[0.9rem] border border-white/10 bg-black/25">
-              <div className="flex-1 px-2.5 py-2">
-                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">本頁</div>
-                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{currentPageNotes.length}</div>
-              </div>
-              <div className="flex-1 px-2.5 py-2">
-                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">平均風味</div>
-                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{averageScore.toFixed(1)}</div>
-              </div>
-              <div className="flex-1 px-2.5 py-2">
-                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">平均 CP</div>
-                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
-              </div>
-            </div>
-
-            {/* 翻頁 */}
+            {/* 翻頁 */}}
             <div className="mt-2.5 flex items-center gap-2">
               <Button
                 type="button"
@@ -479,11 +453,12 @@ export default function ExpoRankingPage() {
             {/* 版型 */}
             <div className="mt-3 border-t border-white/10 pt-3">
               <p className="mb-2 text-[7px] font-bold uppercase tracking-[0.14em] text-[#ffcf99]/45">版型編排</p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-4 gap-1">
                 {([
-                  { id: 'magazine', label: '雜誌', sub: '圖左字右' },
+                  { id: 'magazine', label: '雜誌', sub: '左圖右字' },
                   { id: 'rows', label: '直列', sub: '五行橫排' },
                   { id: 'cinematic', label: '電影', sub: '全圖覆蓋' },
+                  { id: 'list', label: '清單', sub: '純文字' },
                 ] as const).map(({ id, label, sub }) => (
                   <button
                     key={id}
@@ -638,18 +613,16 @@ export default function ExpoRankingPage() {
                             ) : (
                               <div className="h-full w-full bg-[#1a1a1a]" />
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/96 via-black/55 to-transparent" />
-                            <div className="absolute bottom-0 left-0 right-0">
-                              <div className="rounded-t-[0.9rem] bg-black/50 px-2.5 pb-2.5 pt-2 backdrop-blur-[3px]">
-                                <h3 className="break-words text-[18px] font-headline font-bold leading-[1.0] text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]" style={clampText(2)}>{getExpoNoteDisplayName(heroNote)}</h3>
-                                <p className="mt-0.5 text-[7px] font-bold text-white/80 [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]" style={clampText(1)}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
-                                <div className="mt-1.5 flex items-end gap-3">
-                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">價格</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div></div>
-                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">風味</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{formatFlavorRating(heroNote.overallRating)}</div></div>
-                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">CP</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{formatExpoCpScore(heroScore)}</div></div>
-                                </div>
-                                {heroAuthorNote ? <p className="mt-1 overflow-hidden text-[6.5px] leading-[1.2] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]" style={clampText(2)}>{heroAuthorNote}</p> : null}
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.85) 38%, rgba(0,0,0,0.15) 72%, transparent 100%)' }} />
+                            <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                              <h3 className="break-words text-[18px] font-headline font-bold leading-[1.0] text-white" style={{ ...clampText(2), textShadow: '0 2px 14px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,1)' }}>{getExpoNoteDisplayName(heroNote)}</h3>
+                              <p className="mt-0.5 text-[7px] font-bold text-white/90" style={{ ...clampText(1), textShadow: '0 1px 10px rgba(0,0,0,1)' }}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
+                              <div className="mt-1.5 flex items-end gap-3">
+                                <div><div className="text-[5.5px] font-bold uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>價格</div><div className="text-[11px] font-bold text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,1)' }}>{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div></div>
+                                <div><div className="text-[5.5px] font-bold uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>風味</div><div className="text-[11px] font-bold text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,1)' }}>{formatFlavorRating(heroNote.overallRating)}</div></div>
+                                <div><div className="text-[5.5px] font-bold uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>CP</div><div className="text-[11px] font-bold text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,1)' }}>{formatExpoCpScore(heroScore)}</div></div>
                               </div>
+                              {heroAuthorNote ? <p className="mt-1 overflow-hidden text-[6.5px] leading-[1.2] text-white/90" style={{ ...clampText(2), textShadow: '0 1px 10px rgba(0,0,0,1)' }}>{heroAuthorNote}</p> : null}
                             </div>
                           </div>
                         );
@@ -666,18 +639,16 @@ export default function ExpoRankingPage() {
                                 ) : (
                                   <div className="h-full w-full bg-[#1a1a1a]" />
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/96 via-black/50 to-transparent" />
-                                <div className="absolute bottom-0 left-0 right-0">
-                                  <div className="rounded-t-[0.8rem] bg-black/55 px-1.5 pb-1.5 pt-1.5 backdrop-blur-[3px]">
-                                    <div className="text-[9.5px] font-headline font-bold leading-[1.05] text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]" style={clampText(2)}>{getExpoNoteDisplayName(note)}</div>
-                                    <div className="mt-0.5 text-[5.5px] text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]" style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
-                                    <div className="mt-1 flex items-end gap-2.5">
-                                      <div><div className="text-[5px] uppercase text-white/65">價</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
-                                      <div><div className="text-[5px] uppercase text-white/65">味</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{formatFlavorRating(note.overallRating)}</div></div>
-                                      <div><div className="text-[5px] uppercase text-white/65">CP</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{formatExpoCpScore(cpScore)}</div></div>
-                                    </div>
-                                    {authorNote ? <div className="mt-0.5 overflow-hidden text-[5.5px] leading-[1.15] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]" style={clampText(2)}>{authorNote}</div> : null}
+                                <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.82) 40%, rgba(0,0,0,0.12) 70%, transparent 100%)' }} />
+                                <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                                  <div className="text-[9.5px] font-headline font-bold leading-[1.05] text-white" style={{ ...clampText(2), textShadow: '0 2px 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,1)' }}>{getExpoNoteDisplayName(note)}</div>
+                                  <div className="mt-0.5 text-[5.5px] text-white/90" style={{ ...clampText(1), textShadow: '0 1px 8px rgba(0,0,0,1)' }}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
+                                  <div className="mt-1 flex items-end gap-2.5">
+                                    <div><div className="text-[5px] uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>價</div><div className="text-[7.5px] font-bold text-white" style={{ textShadow: '0 1px 8px rgba(0,0,0,1)' }}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
+                                    <div><div className="text-[5px] uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>味</div><div className="text-[7.5px] font-bold text-white" style={{ textShadow: '0 1px 8px rgba(0,0,0,1)' }}>{formatFlavorRating(note.overallRating)}</div></div>
+                                    <div><div className="text-[5px] uppercase text-white/75" style={{ textShadow: '0 1px 6px rgba(0,0,0,1)' }}>CP</div><div className="text-[7.5px] font-bold text-white" style={{ textShadow: '0 1px 8px rgba(0,0,0,1)' }}>{formatExpoCpScore(cpScore)}</div></div>
                                   </div>
+                                  {authorNote ? <div className="mt-0.5 overflow-hidden text-[5.5px] leading-[1.15] text-white/90" style={{ ...clampText(2), textShadow: '0 1px 8px rgba(0,0,0,1)' }}>{authorNote}</div> : null}
                                 </div>
                               </div>
                             );
@@ -707,6 +678,52 @@ export default function ExpoRankingPage() {
                           })}
                         </div>
                       )}
+                    </div>
+                  ) : layoutVariant === 'list' ? (
+                    /* ── LIST: 純文字清單，大排名數字 ── */
+                    <div className="mt-1 flex min-h-0 flex-1 flex-col gap-[3px] overflow-hidden">
+                      {currentPageNotes.map((note, i) => {
+                        const rank = pageIndex * PAGE_SIZE + i + 1;
+                        const cpScore = getExpoCpScore(note);
+                        const authorNote = getRankingAuthorNote(note);
+                        const medalStyle = getRankMedalStyle(rank, shareCardTheme);
+                        return (
+                          <div
+                            key={note.id}
+                            className={cn('flex min-h-0 flex-1 items-center gap-2 overflow-hidden rounded-[0.85rem] border px-2.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}
+                          >
+                            <div className={cn('w-[26px] shrink-0 text-center text-[22px] font-headline font-bold leading-none', currentShareCardTheme.eyebrowClassName)}>
+                              {rank}
+                            </div>
+                            <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
+                            <div className="min-w-0 flex-1 overflow-hidden py-1.5">
+                              <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
+                                {getExpoNoteDisplayName(note)}
+                              </div>
+                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
+                                {getRankingBrewery(note)} ・ {getRankingBooth(note)}
+                              </div>
+                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>
+                                {authorNote || '暫無描述'}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 gap-2.5">
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>味</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     /* ── MAGAZINE (default): 左圖右字，2col featured ── */
