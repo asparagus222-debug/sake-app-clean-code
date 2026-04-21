@@ -638,16 +638,18 @@ export default function ExpoRankingPage() {
                             ) : (
                               <div className="h-full w-full bg-[#1a1a1a]" />
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-transparent" />
-                            <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                              <h3 className="break-words text-[18px] font-headline font-bold leading-[1.0] text-white" style={clampText(2)}>{getExpoNoteDisplayName(heroNote)}</h3>
-                              <p className="mt-0.5 text-[7px] font-bold text-white/65" style={clampText(1)}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
-                              <div className="mt-1.5 flex items-end gap-3">
-                                <div><div className="text-[5.5px] font-bold uppercase text-white/55">價格</div><div className="text-[11px] font-bold text-white">{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div></div>
-                                <div><div className="text-[5.5px] font-bold uppercase text-white/55">風味</div><div className="text-[11px] font-bold text-white">{formatFlavorRating(heroNote.overallRating)}</div></div>
-                                <div><div className="text-[5.5px] font-bold uppercase text-white/55">CP</div><div className="text-[11px] font-bold text-white">{formatExpoCpScore(heroScore)}</div></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/96 via-black/55 to-transparent" />
+                            <div className="absolute bottom-0 left-0 right-0">
+                              <div className="rounded-t-[0.9rem] bg-black/50 px-2.5 pb-2.5 pt-2 backdrop-blur-[3px]">
+                                <h3 className="break-words text-[18px] font-headline font-bold leading-[1.0] text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]" style={clampText(2)}>{getExpoNoteDisplayName(heroNote)}</h3>
+                                <p className="mt-0.5 text-[7px] font-bold text-white/80 [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]" style={clampText(1)}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
+                                <div className="mt-1.5 flex items-end gap-3">
+                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">價格</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div></div>
+                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">風味</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{formatFlavorRating(heroNote.overallRating)}</div></div>
+                                  <div><div className="text-[5.5px] font-bold uppercase text-white/65">CP</div><div className="text-[11px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">{formatExpoCpScore(heroScore)}</div></div>
+                                </div>
+                                {heroAuthorNote ? <p className="mt-1 overflow-hidden text-[6.5px] leading-[1.2] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]" style={clampText(2)}>{heroAuthorNote}</p> : null}
                               </div>
-                              {heroAuthorNote ? <p className="mt-1 overflow-hidden text-[6.5px] leading-[1.2] text-white/75" style={clampText(2)}>{heroAuthorNote}</p> : null}
                             </div>
                           </div>
                         );
@@ -664,16 +666,18 @@ export default function ExpoRankingPage() {
                                 ) : (
                                   <div className="h-full w-full bg-[#1a1a1a]" />
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/86 via-black/20 to-transparent" />
-                                <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                                  <div className="text-[9.5px] font-headline font-bold leading-[1.05] text-white" style={clampText(2)}>{getExpoNoteDisplayName(note)}</div>
-                                  <div className="mt-0.5 text-[5.5px] text-white/60" style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
-                                  <div className="mt-1 flex items-end gap-2.5">
-                                    <div><div className="text-[5px] uppercase text-white/55">價</div><div className="text-[7.5px] font-bold text-white">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
-                                    <div><div className="text-[5px] uppercase text-white/55">味</div><div className="text-[7.5px] font-bold text-white">{formatFlavorRating(note.overallRating)}</div></div>
-                                    <div><div className="text-[5px] uppercase text-white/55">CP</div><div className="text-[7.5px] font-bold text-white">{formatExpoCpScore(cpScore)}</div></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/96 via-black/50 to-transparent" />
+                                <div className="absolute bottom-0 left-0 right-0">
+                                  <div className="rounded-t-[0.8rem] bg-black/55 px-1.5 pb-1.5 pt-1.5 backdrop-blur-[3px]">
+                                    <div className="text-[9.5px] font-headline font-bold leading-[1.05] text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]" style={clampText(2)}>{getExpoNoteDisplayName(note)}</div>
+                                    <div className="mt-0.5 text-[5.5px] text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]" style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
+                                    <div className="mt-1 flex items-end gap-2.5">
+                                      <div><div className="text-[5px] uppercase text-white/65">價</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
+                                      <div><div className="text-[5px] uppercase text-white/65">味</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{formatFlavorRating(note.overallRating)}</div></div>
+                                      <div><div className="text-[5px] uppercase text-white/65">CP</div><div className="text-[7.5px] font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">{formatExpoCpScore(cpScore)}</div></div>
+                                    </div>
+                                    {authorNote ? <div className="mt-0.5 overflow-hidden text-[5.5px] leading-[1.15] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]" style={clampText(2)}>{authorNote}</div> : null}
                                   </div>
-                                  {authorNote ? <div className="mt-0.5 overflow-hidden text-[5.5px] leading-[1.15] text-white/72" style={clampText(2)}>{authorNote}</div> : null}
                                 </div>
                               </div>
                             );
