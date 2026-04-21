@@ -13,7 +13,7 @@ import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSort
 import { cn } from '@/lib/utils';
 
 type RankingSortMode = 'score' | 'price' | 'cp';
-type ShareCardThemeId = 'cream-light' | 'sand-light' | 'cocoa-dark' | 'graphite-dark';
+type ShareCardThemeId = 'plum-light' | 'moss-light' | 'midnight-dark' | 'charcoal-dark';
 
 const PAGE_SIZE = 5;
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
@@ -42,85 +42,85 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   rowBaseClassName: string;
   previewSwatchClassName: string;
 }> = {
-  'cream-light': {
-    label: '櫻花',
-    exportBackground: '#fff1f6',
-    shellClassName: 'border-[#f0ccd8] bg-[linear-gradient(180deg,#fff1f6_0%,#ffe5ef_100%)] shadow-[0_30px_80px_rgba(182,105,136,0.14)]',
-    frameClassName: 'border-[#f0ccd8] bg-[#fffafb] text-[#4a2b36]',
-    emptyClassName: 'border-[#e8c3d0] bg-[#fff5f8] text-[#4a2b36]',
-    dividerClassName: 'border-[#f5dbe4]',
-    eyebrowClassName: 'text-[#b46f86]',
-    titleClassName: 'text-[#4a2b36]',
-    modeChipClassName: 'border-[#f0ccd8] bg-[#fff0f5]',
-    modeLabelClassName: 'text-[#b46f86]',
-    modeValueClassName: 'text-[#4a2b36]',
-    tableClassName: 'border-[#f5dbe4] bg-[#fffdfd]',
-    tableHeaderClassName: 'text-[#b46f86]',
-    metaClassName: 'text-[#9a6274]',
-    valueClassName: 'text-[#6a4050]',
-    footerClassName: 'border-[#f5dbe4] text-[#b46f86]',
-    rowBaseClassName: 'border-[#f1d7e1]',
-    previewSwatchClassName: 'border-[#f0ccd8] bg-[#ffe5ef]',
+  'plum-light': {
+    label: '白梅',
+    exportBackground: '#f4edf0',
+    shellClassName: 'border-[#ddd0d5] bg-[linear-gradient(160deg,#f9f4f6_0%,#ede4e8_100%)] shadow-[0_30px_80px_rgba(140,80,105,0.12)]',
+    frameClassName: 'border-[#e4d8dc] bg-[#fdfbfc] text-[#2c1f25]',
+    emptyClassName: 'border-[#ddd0d5] bg-[#f9f5f7] text-[#2c1f25]',
+    dividerClassName: 'border-[#e8dce0]',
+    eyebrowClassName: 'text-[#9b6e7f]',
+    titleClassName: 'text-[#2c1f25]',
+    modeChipClassName: 'border-[#e4d8dc] bg-[#f7f1f4]',
+    modeLabelClassName: 'text-[#9b6e7f]',
+    modeValueClassName: 'text-[#2c1f25]',
+    tableClassName: 'border-[#e8dce0] bg-[#fefcfd]',
+    tableHeaderClassName: 'text-[#9b6e7f]',
+    metaClassName: 'text-[#7d5568]',
+    valueClassName: 'text-[#4a3040]',
+    footerClassName: 'border-[#e8dce0] text-[#9b6e7f]',
+    rowBaseClassName: 'border-[#e2d5da]',
+    previewSwatchClassName: 'border-[#ddd0d5] bg-[#f0e6ea]',
   },
-  'sand-light': {
-    label: '杏沙',
-    exportBackground: '#f7efe5',
-    shellClassName: 'border-[#e6d5c6] bg-[linear-gradient(180deg,#f7efe5_0%,#f3e5d8_100%)] shadow-[0_30px_80px_rgba(120,88,58,0.12)]',
-    frameClassName: 'border-[#e6d5c6] bg-[#fffaf4] text-[#34261d]',
-    emptyClassName: 'border-[#ddcbbb] bg-[#fff7f0] text-[#34261d]',
-    dividerClassName: 'border-[#efdfd2]',
-    eyebrowClassName: 'text-[#a37c63]',
-    titleClassName: 'text-[#34261d]',
-    modeChipClassName: 'border-[#e6d5c6] bg-[#f8efe6]',
-    modeLabelClassName: 'text-[#a37c63]',
-    modeValueClassName: 'text-[#34261d]',
-    tableClassName: 'border-[#efdfd2] bg-[#fffdfa]',
-    tableHeaderClassName: 'text-[#a37c63]',
-    metaClassName: 'text-[#8f6e59]',
-    valueClassName: 'text-[#5a4336]',
-    footerClassName: 'border-[#efdfd2] text-[#a37c63]',
-    rowBaseClassName: 'border-[#eadcd1]',
-    previewSwatchClassName: 'border-[#e6d5c6] bg-[#f3e5d8]',
+  'moss-light': {
+    label: '青苔',
+    exportBackground: '#eaf1eb',
+    shellClassName: 'border-[#c5d6c8] bg-[linear-gradient(160deg,#eef4ef_0%,#e0ebe2_100%)] shadow-[0_30px_80px_rgba(60,100,70,0.13)]',
+    frameClassName: 'border-[#cdddd0] bg-[#f6fbf7] text-[#1b2d20]',
+    emptyClassName: 'border-[#c8d9cb] bg-[#eef5ef] text-[#1b2d20]',
+    dividerClassName: 'border-[#d4e2d7]',
+    eyebrowClassName: 'text-[#5a8264]',
+    titleClassName: 'text-[#1b2d20]',
+    modeChipClassName: 'border-[#cdddd0] bg-[#ebf3ec]',
+    modeLabelClassName: 'text-[#5a8264]',
+    modeValueClassName: 'text-[#1b2d20]',
+    tableClassName: 'border-[#d4e2d7] bg-[#f4faf5]',
+    tableHeaderClassName: 'text-[#5a8264]',
+    metaClassName: 'text-[#4e6e57]',
+    valueClassName: 'text-[#283d2e]',
+    footerClassName: 'border-[#d4e2d7] text-[#5a8264]',
+    rowBaseClassName: 'border-[#cdddd0]',
+    previewSwatchClassName: 'border-[#c5d6c8] bg-[#deeade]',
   },
-  'cocoa-dark': {
-    label: '可可',
-    exportBackground: '#1a1513',
-    shellClassName: 'border-[#45362f] bg-[linear-gradient(180deg,#241d1a_0%,#171210_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.28)]',
-    frameClassName: 'border-[#3f322c] bg-[#211b18] text-[#f7eee6]',
-    emptyClassName: 'border-[#43362f] bg-[#27201d] text-[#f7eee6]',
-    dividerClassName: 'border-[#382d28]',
-    eyebrowClassName: 'text-[#d8b89c]',
-    titleClassName: 'text-[#fff6ef]',
-    modeChipClassName: 'border-[#43362f] bg-[#2b2320]',
-    modeLabelClassName: 'text-[#d8b89c]',
-    modeValueClassName: 'text-[#fff6ef]',
-    tableClassName: 'border-[#382d28] bg-[#26201d]',
-    tableHeaderClassName: 'text-[#cfae92]',
-    metaClassName: 'text-[#c09e82]',
-    valueClassName: 'text-[#f4e8dd]',
-    footerClassName: 'border-[#382d28] text-[#cfae92]',
-    rowBaseClassName: 'border-[#40342e]',
-    previewSwatchClassName: 'border-[#45362f] bg-[#241d1a]',
+  'midnight-dark': {
+    label: '深夜',
+    exportBackground: '#0c1220',
+    shellClassName: 'border-[#1e2e47] bg-[linear-gradient(160deg,#111d30_0%,#090f1c_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.35)]',
+    frameClassName: 'border-[#1c2d44] bg-[#0f1827] text-[#e8e2d6]',
+    emptyClassName: 'border-[#1e2e47] bg-[#111d30] text-[#e8e2d6]',
+    dividerClassName: 'border-[#1e2e44]',
+    eyebrowClassName: 'text-[#c4a55a]',
+    titleClassName: 'text-[#f2eddf]',
+    modeChipClassName: 'border-[#1e2d42] bg-[#0e1928]',
+    modeLabelClassName: 'text-[#c4a55a]',
+    modeValueClassName: 'text-[#f2eddf]',
+    tableClassName: 'border-[#1e2e44] bg-[#0f1a2b]',
+    tableHeaderClassName: 'text-[#b8995a]',
+    metaClassName: 'text-[#a89270]',
+    valueClassName: 'text-[#e8dfc8]',
+    footerClassName: 'border-[#1e2e44] text-[#b8995a]',
+    rowBaseClassName: 'border-[#1e2d42]',
+    previewSwatchClassName: 'border-[#1e2e47] bg-[#111d30]',
   },
-  'graphite-dark': {
-    label: '石墨',
-    exportBackground: '#151619',
-    shellClassName: 'border-[#393d44] bg-[linear-gradient(180deg,#1d1f24_0%,#14161a_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.3)]',
-    frameClassName: 'border-[#353941] bg-[#1c1f25] text-[#f4efe8]',
-    emptyClassName: 'border-[#40444c] bg-[#23262d] text-[#f4efe8]',
-    dividerClassName: 'border-[#31353d]',
-    eyebrowClassName: 'text-[#c9bea8]',
-    titleClassName: 'text-[#fbf7f0]',
-    modeChipClassName: 'border-[#40444c] bg-[#252931]',
-    modeLabelClassName: 'text-[#c9bea8]',
-    modeValueClassName: 'text-[#fbf7f0]',
-    tableClassName: 'border-[#31353d] bg-[#22262d]',
-    tableHeaderClassName: 'text-[#c9bea8]',
-    metaClassName: 'text-[#b9ad98]',
-    valueClassName: 'text-[#efe7db]',
-    footerClassName: 'border-[#31353d] text-[#c9bea8]',
-    rowBaseClassName: 'border-[#3d424a]',
-    previewSwatchClassName: 'border-[#393d44] bg-[#1d1f24]',
+  'charcoal-dark': {
+    label: '煤炭',
+    exportBackground: '#131316',
+    shellClassName: 'border-[#2a2a32] bg-[linear-gradient(160deg,#1c1c22_0%,#0e0e12_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.36)]',
+    frameClassName: 'border-[#252529] bg-[#161618] text-[#f0ece4]',
+    emptyClassName: 'border-[#2e2e34] bg-[#1a1a1e] text-[#f0ece4]',
+    dividerClassName: 'border-[#252529]',
+    eyebrowClassName: 'text-[#b5985a]',
+    titleClassName: 'text-[#f8f5ee]',
+    modeChipClassName: 'border-[#2e2e36] bg-[#202024]',
+    modeLabelClassName: 'text-[#b5985a]',
+    modeValueClassName: 'text-[#f8f5ee]',
+    tableClassName: 'border-[#252529] bg-[#1a1a1e]',
+    tableHeaderClassName: 'text-[#a8904e]',
+    metaClassName: 'text-[#9e8862]',
+    valueClassName: 'text-[#ede5d4]',
+    footerClassName: 'border-[#252529] text-[#a8904e]',
+    rowBaseClassName: 'border-[#2e2e36]',
+    previewSwatchClassName: 'border-[#2a2a32] bg-[#1c1c22]',
   },
 };
 
@@ -167,45 +167,45 @@ function clampText(lines: number): React.CSSProperties {
 
 function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
   const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
-    'cream-light': {
-      gold: 'border-[#f0c76c]/45 bg-[#fff4d9]',
-      goldRank: 'border-[#d9a746] bg-[#f0c76c] text-[#2b1c11]',
-      silver: 'border-[#eadce4]/70 bg-[#fff9fc]',
-      silverRank: 'border-[#cbb8c5] bg-[#efe2ea] text-[#49313b]',
-      bronze: 'border-[#edc0b2]/60 bg-[#fff2ee]',
-      bronzeRank: 'border-[#d88e76] bg-[#eab29f] text-[#3a231c]',
-      base: 'bg-[#fffafb]',
-      baseRank: 'border-[#e6ccd7] bg-[#fff0f5] text-[#734b59]',
+    'plum-light': {
+      gold: 'border-[#e8c97a]/45 bg-[#fff8e0]',
+      goldRank: 'border-[#c9a040] bg-[#e8c060] text-[#2a1c08]',
+      silver: 'border-[#e0d8de]/65 bg-[#faf8f9]',
+      silverRank: 'border-[#c0b2ba] bg-[#e4d8de] text-[#382730]',
+      bronze: 'border-[#e8b8a8]/55 bg-[#fff1ec]',
+      bronzeRank: 'border-[#cc8870] bg-[#e4a890] text-[#3a2018]',
+      base: 'bg-[#fdfbfc]',
+      baseRank: 'border-[#e0d0d6] bg-[#f7f0f3] text-[#7a5060]',
     },
-    'sand-light': {
-      gold: 'border-[#e8c57a]/45 bg-[#fff2d7]',
-      goldRank: 'border-[#d9ac4a] bg-[#efc76c] text-[#2b1d11]',
-      silver: 'border-[#d8dde3]/55 bg-[#f8fafc]',
-      silverRank: 'border-[#bfc7d3] bg-[#dfe5ec] text-[#253241]',
-      bronze: 'border-[#dfb896]/45 bg-[#fff3ea]',
-      bronzeRank: 'border-[#cc9062] bg-[#e2b18d] text-[#2e1d15]',
-      base: 'bg-[#fffaf4]',
-      baseRank: 'border-[#dfd0c3] bg-[#f7ede3] text-[#624d40]',
+    'moss-light': {
+      gold: 'border-[#d8c870]/45 bg-[#faf7d8]',
+      goldRank: 'border-[#b0a030] bg-[#d4c040] text-[#242010]',
+      silver: 'border-[#c0cfca]/55 bg-[#f4f9f5]',
+      silverRank: 'border-[#7aaa86] bg-[#b8d4bc] text-[#1a2e1e]',
+      bronze: 'border-[#d8c0a0]/45 bg-[#f9f2e8]',
+      bronzeRank: 'border-[#b09060] bg-[#d4aa80] text-[#2e200c]',
+      base: 'bg-[#f6fbf7]',
+      baseRank: 'border-[#c4dac4] bg-[#e6f2e6] text-[#3a5840]',
     },
-    'cocoa-dark': {
-      gold: 'border-[#5b4a25] bg-[#2b2417]',
-      goldRank: 'border-[#ba9651] bg-[#f0be5f] text-[#24180d]',
-      silver: 'border-[#4b4e57] bg-[#262a31]',
-      silverRank: 'border-[#8b96aa] bg-[#d7dce6] text-[#202936]',
-      bronze: 'border-[#5b4032] bg-[#271d1a]',
-      bronzeRank: 'border-[#c48b66] bg-[#d7a07a] text-[#2a1a14]',
-      base: 'bg-[#211b18]',
-      baseRank: 'border-[#4b3d35] bg-[#2a2320] text-[#f1e5d8]',
+    'midnight-dark': {
+      gold: 'border-[#4a3c18] bg-[#1e1a0e]',
+      goldRank: 'border-[#c8a448] bg-[#e8c05a] text-[#1a1408]',
+      silver: 'border-[#283a56] bg-[#141e34]',
+      silverRank: 'border-[#6888b8] bg-[#b0c8dc] text-[#0c1a2c]',
+      bronze: 'border-[#4a3020] bg-[#1a1410]',
+      bronzeRank: 'border-[#c07a50] bg-[#d4a070] text-[#20140a]',
+      base: 'bg-[#0f1827]',
+      baseRank: 'border-[#1e2e42] bg-[#121e30] text-[#e0d8c0]',
     },
-    'graphite-dark': {
-      gold: 'border-[#5c5432] bg-[#2b291f]',
-      goldRank: 'border-[#c1a560] bg-[#e8c66d] text-[#252013]',
-      silver: 'border-[#4a515a] bg-[#262b33]',
-      silverRank: 'border-[#99a3b1] bg-[#dce1e7] text-[#1d2733]',
-      bronze: 'border-[#605047] bg-[#2b221f]',
-      bronzeRank: 'border-[#cb9170] bg-[#d8a184] text-[#291c16]',
-      base: 'bg-[#1c1f25]',
-      baseRank: 'border-[#4a515a] bg-[#262a31] text-[#ece3d8]',
+    'charcoal-dark': {
+      gold: 'border-[#484230] bg-[#1e1c10]',
+      goldRank: 'border-[#c4a040] bg-[#deba48] text-[#181408]',
+      silver: 'border-[#38383e] bg-[#1a1a20]',
+      silverRank: 'border-[#8890a0] bg-[#c8ccd8] text-[#14141e]',
+      bronze: 'border-[#483020] bg-[#1c1410]',
+      bronzeRank: 'border-[#b87848] bg-[#cc9464] text-[#1c1008]',
+      base: 'bg-[#161618]',
+      baseRank: 'border-[#2e2e36] bg-[#1e1e22] text-[#e8e0cc]',
     },
   };
   const themeAccent = themeAccentMap[themeId];
@@ -242,7 +242,7 @@ export default function ExpoRankingPage() {
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [sortMode, setSortMode] = useState<RankingSortMode>('score');
-  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('cream-light');
+  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('plum-light');
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -407,97 +407,98 @@ export default function ExpoRankingPage() {
         </div>
 
         <section className="grid gap-4 lg:grid-cols-[0.76fr_1.24fr]">
-          <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffcf99]/70">Ranking Mode</p>
-              <h2 className="mt-1.5 text-base font-bold text-[#fff4e5]">切換榜單邏輯</h2>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { value: 'score', label: '風味評分', icon: Star },
-              { value: 'price', label: '價格', icon: BadgeDollarSign },
-              { value: 'cp', label: 'CP 值', icon: Trophy },
-            ].map((option) => {
-              const Icon = option.icon;
-              return (
-                <Button
-                  key={option.value}
-                  type="button"
-                  variant={sortMode === option.value ? 'default' : 'outline'}
-                  onClick={() => setSortMode(option.value as RankingSortMode)}
-                  className={cn(
-                    'rounded-full h-8 px-3 text-[9px] font-bold uppercase tracking-[0.12em] transition-all',
-                    sortMode === option.value
-                      ? 'bg-[#ffd166] text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.25)] hover:bg-[#ffe08f]'
-                      : 'border-[#ffd08f]/25 bg-[#2f1d15] text-[#f6dfc5] hover:bg-[#45281c]'
-                  )}
-                >
-                  <Icon className="w-2.5 h-2.5 mr-1" /> {option.label}
-                </Button>
-              );
-            })}
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-3 backdrop-blur-xl">
+            {/* 排序切換 */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[7px] font-bold uppercase tracking-[0.14em] text-[#ffcf99]/45 mr-0.5">排序</span>
+              {[
+                { value: 'score', label: '風味', icon: Star },
+                { value: 'price', label: '價格', icon: BadgeDollarSign },
+                { value: 'cp', label: 'CP 值', icon: Trophy },
+              ].map((option) => {
+                const Icon = option.icon;
+                return (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSortMode(option.value as RankingSortMode)}
+                    className={cn(
+                      'rounded-full h-7 px-2.5 text-[8px] font-bold uppercase tracking-[0.1em] transition-all',
+                      sortMode === option.value
+                        ? 'bg-[#ffd166] text-[#21150d] shadow-[0_6px_14px_rgba(255,209,102,0.22)] hover:bg-[#ffe08f]'
+                        : 'border border-[#ffd08f]/20 bg-[#2f1d15] text-[#f6dfc5] hover:bg-[#45281c]'
+                    )}
+                  >
+                    <Icon className="w-2.5 h-2.5 mr-1" />{option.label}
+                  </Button>
+                );
+              })}
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
-                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">本頁杯數</div>
-                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{currentPageNotes.length}</div>
+            {/* 統計 */}
+            <div className="mt-2.5 flex divide-x divide-white/10 overflow-hidden rounded-[0.9rem] border border-white/10 bg-black/25">
+              <div className="flex-1 px-2.5 py-2">
+                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">本頁</div>
+                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{currentPageNotes.length}</div>
               </div>
-              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
-                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">平均風味</div>
-                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{averageScore.toFixed(1)}</div>
+              <div className="flex-1 px-2.5 py-2">
+                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">平均風味</div>
+                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{averageScore.toFixed(1)}</div>
               </div>
-              <div className="rounded-[1.1rem] border border-white/10 bg-[#1a130f] px-3 py-2.5">
-                <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#d9b495]">平均 CP</div>
-                <div className="mt-1.5 text-[1.9rem] font-headline leading-none text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
+              <div className="flex-1 px-2.5 py-2">
+                <div className="text-[6.5px] font-bold uppercase tracking-[0.1em] text-[#d9b495]/70">平均 CP</div>
+                <div className="mt-0.5 text-[1.45rem] font-headline leading-none text-[#fff4e5]">{formatExpoCpScore(averageCpScore)}</div>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <p className="text-[10px] text-[#dcb89b]">第 {pageIndex + 1} / {totalPages} 頁</p>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={pageIndex === 0}
-                  onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
-                  className="rounded-full h-8 border-white/15 bg-white/5 px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#fff4e5] hover:bg-white/10"
-                >
-                  <ChevronLeft className="w-3 h-3 mr-1" /> 上一頁
-                </Button>
-                <Button
-                  type="button"
-                  disabled={pageIndex >= totalPages - 1}
-                  onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
-                  className="rounded-full h-8 bg-[#f19245] px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#1a120d] hover:bg-[#ffab60]"
-                >
-                  下一頁 <ChevronRight className="w-3 h-3 ml-1" />
-                </Button>
-              </div>
+            {/* 翻頁 */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pageIndex === 0}
+                onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+                className="rounded-full h-7 w-7 border-white/15 bg-white/5 p-0 text-[#fff4e5] hover:bg-white/10"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
+              <p className="flex-1 text-center text-[10px] text-[#dcb89b]">第 {pageIndex + 1} / {totalPages} 頁</p>
+              <Button
+                type="button"
+                disabled={pageIndex >= totalPages - 1}
+                onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
+                className="rounded-full h-7 w-7 bg-[#f19245] p-0 text-[#1a120d] hover:bg-[#ffab60]"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
             </div>
 
-            <div className="mt-4 border-t border-white/10 pt-4">
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#ffcf99]/70">Share Card Colors</p>
-              <div className="mt-2 grid grid-cols-4 gap-2">
+            {/* 配色 */}
+            <div className="mt-3 border-t border-white/10 pt-3">
+              <p className="mb-2 text-[7px] font-bold uppercase tracking-[0.14em] text-[#ffcf99]/45">卡片配色</p>
+              <div className="grid grid-cols-4 gap-1.5">
                 {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
                   <button
                     key={themeId}
                     type="button"
                     onClick={() => setShareCardTheme(themeId)}
+                    style={{ backgroundColor: theme.exportBackground }}
                     className={cn(
-                      'rounded-[1.2rem] border px-2 py-1.5 text-center transition-all',
+                      'rounded-[0.85rem] border py-2.5 text-center transition-all',
                       shareCardTheme === themeId
-                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_10px_20px_rgba(255,209,102,0.14)]'
-                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        ? 'border-[#ffd166] shadow-[0_0_0_2px_rgba(255,209,102,0.35)]'
+                        : 'border-white/15 hover:border-white/30'
                     )}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex gap-1">
-                        <span className={cn('h-2 w-2 rounded-full border', theme.previewSwatchClassName)} />
-                        <span className={cn('h-2 w-2 rounded-full border', theme.modeChipClassName.split(' ').slice(0, 2).join(' '))} />
-                      </div>
-                      <p className="text-[10px] font-bold text-[#fff4e5]">{theme.label}</p>
-                    </div>
+                    <p
+                      className="text-[9px] font-bold"
+                      style={{
+                        color: themeId.endsWith('-dark') ? '#f0ece4' : '#2a1f25',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                      }}
+                    >
+                      {theme.label}
+                    </p>
                   </button>
                 ))}
               </div>
