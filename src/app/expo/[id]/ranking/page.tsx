@@ -536,7 +536,7 @@ export default function ExpoRankingPage() {
                   </div>
 
                   {/* ── MAIN CONTENT: proportional flex, never overflows ── */}
-                  <div className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden">
+                  <div className="mt-1 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
 
                     {/* ── #1 HERO (flex-[3]) ── */}
                     {heroNote && (() => {
@@ -545,10 +545,10 @@ export default function ExpoRankingPage() {
                       const heroStyle = getRankMedalStyle(heroRank, shareCardTheme);
                       const heroAuthorNote = getRankingAuthorNote(heroNote);
                       return (
-                        <div className={cn('flex min-h-0 flex-[3] gap-1.5 overflow-hidden rounded-[1rem] border p-1.5', currentShareCardTheme.rowBaseClassName, heroStyle.rowClassName)}>
+                        <div className={cn('flex min-h-0 flex-[3.2] gap-1.5 overflow-hidden rounded-[1rem] border p-1.5', currentShareCardTheme.rowBaseClassName, heroStyle.rowClassName)}>
                           {/* Left: rank badge + image */}
-                          <div className="flex w-[78px] shrink-0 flex-col gap-1">
-                            <div className={cn('flex h-6 shrink-0 items-center justify-center rounded-[0.75rem] border text-[7.5px] font-headline font-bold', heroStyle.rankClassName)}>#{heroRank} BEST</div>
+                          <div className="flex w-[102px] shrink-0 flex-col gap-1">
+                            <div className={cn('flex h-7 shrink-0 items-center justify-center rounded-[0.75rem] border text-[9px] font-headline font-bold', heroStyle.rankClassName)}>#{heroRank} BEST</div>
                             <div className={cn('relative min-h-0 flex-1 overflow-hidden rounded-[0.85rem] border', currentShareCardTheme.modeChipClassName)}>
                               {heroNote.imageUrls?.[0] ? (
                                 <Image src={heroNote.imageUrls[0]} alt={getExpoNoteDisplayName(heroNote)} fill unoptimized className="object-contain p-0.5" />
@@ -559,35 +559,35 @@ export default function ExpoRankingPage() {
                           </div>
                           {/* Right: info — capped by parent flex height */}
                           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                            <div className={cn('shrink-0 text-[5.5px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.tableHeaderClassName)}>Top 1</div>
-                            <h3 className={cn('mt-0.5 shrink-0 break-words text-[13px] font-headline font-bold leading-[1.0]', currentShareCardTheme.titleClassName)} style={clampText(2)}>{getExpoNoteDisplayName(heroNote)}</h3>
-                            <p className={cn('mt-0.5 shrink-0 text-[6px] font-bold leading-[1.1]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
-                            <div className={cn('mt-1 shrink-0 grid grid-cols-3 border-y py-1', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
+                            <div className={cn('shrink-0 text-[6.5px] font-bold uppercase tracking-[0.18em]', currentShareCardTheme.tableHeaderClassName)}>Top 1</div>
+                            <h3 className={cn('mt-0.5 shrink-0 break-words text-[17px] font-headline font-bold leading-[1.0]', currentShareCardTheme.titleClassName)} style={clampText(2)}>{getExpoNoteDisplayName(heroNote)}</h3>
+                            <p className={cn('mt-0.5 shrink-0 text-[7.5px] font-bold leading-[1.1]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(heroNote)} ・ {getRankingBooth(heroNote)}</p>
+                            <div className={cn('mt-1.5 shrink-0 grid grid-cols-3 border-y py-1.5', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
                               <div>
-                                <div className={cn('text-[5.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
-                                <div className="mt-0.5 text-[8.5px] font-bold">{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div>
+                                <div className={cn('text-[6.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>價格</div>
+                                <div className="mt-0.5 text-[11px] font-bold">{typeof heroNote.expoMeta?.price === 'number' ? `$${heroNote.expoMeta.price}` : '--'}</div>
                               </div>
                               <div>
-                                <div className={cn('text-[5.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>風味</div>
-                                <div className="mt-0.5 text-[8.5px] font-bold">{formatFlavorRating(heroNote.overallRating)}</div>
+                                <div className={cn('text-[6.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>風味</div>
+                                <div className="mt-0.5 text-[11px] font-bold">{formatFlavorRating(heroNote.overallRating)}</div>
                               </div>
                               <div>
-                                <div className={cn('text-[5.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
-                                <div className="mt-0.5 text-[8.5px] font-bold">{formatExpoCpScore(heroScore)}</div>
+                                <div className={cn('text-[6.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                <div className="mt-0.5 text-[11px] font-bold">{formatExpoCpScore(heroScore)}</div>
                               </div>
                             </div>
-                            <div className="mt-1 min-h-0 flex-1 overflow-hidden">
-                              <div className={cn('shrink-0 text-[5.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>作者描述</div>
-                              <div className={cn('mt-0.5 overflow-hidden rounded-[0.75rem] border px-1.5 py-1 text-[6px] leading-[1.25]', currentShareCardTheme.modeChipClassName, currentShareCardTheme.valueClassName)} style={clampText(3)}>{heroAuthorNote || '暫無描述'}</div>
+                            <div className="mt-1.5 min-h-0 flex-1 overflow-hidden">
+                              <div className={cn('shrink-0 text-[6.5px] font-bold uppercase tracking-[0.1em]', currentShareCardTheme.tableHeaderClassName)}>作者描述</div>
+                              <div className={cn('mt-0.5 overflow-hidden rounded-[0.75rem] border px-2 py-1.5 text-[7.5px] leading-[1.3]', currentShareCardTheme.modeChipClassName, currentShareCardTheme.valueClassName)} style={clampText(4)}>{heroAuthorNote || '暫無描述'}</div>
                             </div>
                           </div>
                         </div>
                       );
                     })()}
 
-                    {/* ── #2 #3 FEATURED (flex-[2.4]) ── */}
+                    {/* ── #2 #3 FEATURED (flex-[2.5]) ── */}
                     {featuredNotes.length > 0 && (
-                      <div className="grid min-h-0 flex-[2.4] grid-cols-2 gap-1.5 overflow-hidden">
+                      <div className="grid min-h-0 flex-[2.5] grid-cols-2 gap-1 overflow-hidden">
                         {featuredNotes.map((note, featuredIndex) => {
                           const rank = pageIndex * PAGE_SIZE + featuredIndex + 2;
                           const cpScore = getExpoCpScore(note);
@@ -596,28 +596,28 @@ export default function ExpoRankingPage() {
                           return (
                             <div key={note.id} className={cn('flex h-full flex-col overflow-hidden rounded-[0.95rem] border p-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
                               <div className="flex shrink-0 items-center justify-between gap-1">
-                                <div className={cn('flex h-[22px] min-w-[44px] items-center justify-center rounded-[0.7rem] border px-1.5 text-[7.5px] font-headline font-bold', medalStyle.rankClassName)}>#{rank}</div>
-                                <div className={cn('text-[5.5px] font-bold uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>Featured</div>
+                                <div className={cn('flex h-[26px] min-w-[46px] items-center justify-center rounded-[0.7rem] border px-1.5 text-[9px] font-headline font-bold', medalStyle.rankClassName)}>#{rank}</div>
+                                <div className={cn('text-[6.5px] font-bold uppercase tracking-[0.12em]', currentShareCardTheme.tableHeaderClassName)}>Featured</div>
                               </div>
-                              <div className={cn('relative mt-1 h-[46px] shrink-0 overflow-hidden rounded-[0.8rem] border', currentShareCardTheme.modeChipClassName)}>
+                              <div className={cn('relative mt-1 min-h-0 flex-1 overflow-hidden rounded-[0.8rem] border', currentShareCardTheme.modeChipClassName)}>
                                 {note.imageUrls?.[0] ? (
                                   <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain p-0.5" />
                                 ) : (
-                                  <div className={cn('flex h-full items-center justify-center text-[6px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
+                                  <div className={cn('flex h-full items-center justify-center text-[7px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                                 )}
                               </div>
                               <div className="mt-1 shrink-0">
-                                <div className={cn('break-words text-[7.5px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(2)}>{getExpoNoteDisplayName(note)}</div>
-                                <div className={cn('mt-0.5 text-[5px] font-bold leading-[1.05]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
+                                <div className={cn('break-words text-[9.5px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(2)}>{getExpoNoteDisplayName(note)}</div>
+                                <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.05]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
                               </div>
                               <div className={cn('mt-1 shrink-0 grid grid-cols-3 border-t pt-1', currentShareCardTheme.dividerClassName, currentShareCardTheme.valueClassName)}>
-                                <div><div className={cn('text-[5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div><div className="text-[6px] font-bold">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
-                                <div><div className={cn('text-[5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>味</div><div className="text-[6px] font-bold">{formatFlavorRating(note.overallRating)}</div></div>
-                                <div><div className={cn('text-[5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>CP</div><div className="text-[6px] font-bold">{formatExpoCpScore(cpScore)}</div></div>
+                                <div><div className={cn('text-[6px] uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div><div className="text-[7.5px] font-bold">{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
+                                <div><div className={cn('text-[6px] uppercase', currentShareCardTheme.tableHeaderClassName)}>味</div><div className="text-[7.5px] font-bold">{formatFlavorRating(note.overallRating)}</div></div>
+                                <div><div className={cn('text-[6px] uppercase', currentShareCardTheme.tableHeaderClassName)}>CP</div><div className="text-[7.5px] font-bold">{formatExpoCpScore(cpScore)}</div></div>
                               </div>
-                              <div className={cn('mt-1 min-h-0 flex-1 overflow-hidden border-t pt-1', currentShareCardTheme.dividerClassName)}>
-                                <div className={cn('text-[5px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>作者描述</div>
-                                <div className={cn('mt-0.5 overflow-hidden text-[5.5px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>{authorNote || '暫無描述'}</div>
+                              <div className={cn('mt-1 shrink-0 border-t pt-1', currentShareCardTheme.dividerClassName)}>
+                                <div className={cn('text-[6px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>作者描述</div>
+                                <div className={cn('mt-0.5 overflow-hidden text-[6.5px] leading-[1.2]', currentShareCardTheme.valueClassName)} style={clampText(2)}>{authorNote || '暫無描述'}</div>
                               </div>
                             </div>
                           );
@@ -625,9 +625,9 @@ export default function ExpoRankingPage() {
                       </div>
                     )}
 
-                    {/* ── #4 #5 COMPACT (flex-[1.7]) ── */}
+                    {/* ── #4 #5 COMPACT (flex-[1.6]) ── */}
                     {compactNotes.length > 0 && (
-                      <div className="grid min-h-0 flex-[1.7] grid-rows-2 gap-1 overflow-hidden">
+                      <div className="grid min-h-0 flex-[1.6] grid-rows-2 gap-1 overflow-hidden">
                         {compactNotes.map((note, compactIndex) => {
                           const rank = pageIndex * PAGE_SIZE + compactIndex + 4;
                           const cpScore = getExpoCpScore(note);
@@ -637,27 +637,27 @@ export default function ExpoRankingPage() {
                             <div key={note.id} className={cn('flex h-full items-center gap-1.5 overflow-hidden rounded-[0.85rem] border p-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
                               {/* rank badge + image side by side */}
                               <div className="flex shrink-0 items-center gap-1">
-                                <div className={cn('flex h-[18px] w-[22px] shrink-0 items-center justify-center rounded-[0.5rem] border text-[6.5px] font-headline font-bold', medalStyle.rankClassName)}>#{rank}</div>
-                                <div className={cn('relative h-[34px] w-[34px] shrink-0 overflow-hidden rounded-[0.6rem] border', currentShareCardTheme.modeChipClassName)}>
+                                <div className={cn('flex h-[22px] w-[26px] shrink-0 items-center justify-center rounded-[0.5rem] border text-[7.5px] font-headline font-bold', medalStyle.rankClassName)}>#{rank}</div>
+                                <div className={cn('relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[0.65rem] border', currentShareCardTheme.modeChipClassName)}>
                                   {note.imageUrls?.[0] ? (
                                     <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain p-0.5" />
                                   ) : (
-                                    <div className={cn('flex h-full items-center justify-center text-[5px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
+                                    <div className={cn('flex h-full items-center justify-center text-[5.5px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                                   )}
                                 </div>
                               </div>
                               {/* title + meta + author */}
                               <div className="min-w-0 flex-1 overflow-hidden">
-                                <div className={cn('text-[7px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>{getExpoNoteDisplayName(note)}</div>
-                                <div className={cn('mt-0.5 text-[5px] font-bold leading-[1.05]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
-                                <div className={cn('mt-0.5 overflow-hidden text-[5.5px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(2)}>{authorNote || '暫無描述'}</div>
+                                <div className={cn('text-[8.5px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>{getExpoNoteDisplayName(note)}</div>
+                                <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.05]', currentShareCardTheme.metaClassName)} style={clampText(1)}>{getRankingBrewery(note)} ・ {getRankingBooth(note)}</div>
+                                <div className={cn('mt-0.5 overflow-hidden text-[6.5px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(2)}>{authorNote || '暫無描述'}</div>
                               </div>
                               {/* stats pill */}
-                              <div className={cn('shrink-0 rounded-[0.65rem] border px-1.5 py-1', currentShareCardTheme.modeChipClassName)}>
-                                <div className="grid grid-cols-3 gap-1">
-                                  <div><div className={cn('text-[4.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div><div className={cn('mt-0.5 text-[5.5px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
-                                  <div><div className={cn('text-[4.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>味</div><div className={cn('mt-0.5 text-[5.5px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div></div>
-                                  <div><div className={cn('text-[4.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>CP</div><div className={cn('mt-0.5 text-[5.5px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div></div>
+                              <div className={cn('shrink-0 rounded-[0.65rem] border px-1.5 py-1.5', currentShareCardTheme.modeChipClassName)}>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <div><div className={cn('text-[5.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div><div className={cn('mt-0.5 text-[7px] font-bold', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div></div>
+                                  <div><div className={cn('text-[5.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>味</div><div className={cn('mt-0.5 text-[7px] font-bold', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div></div>
+                                  <div><div className={cn('text-[5.5px] uppercase', currentShareCardTheme.tableHeaderClassName)}>CP</div><div className={cn('mt-0.5 text-[7px] font-bold', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div></div>
                                 </div>
                               </div>
                             </div>
