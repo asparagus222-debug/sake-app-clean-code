@@ -236,6 +236,111 @@ function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
   };
 }
 
+type ImageTransform = { scale: number; x: number; y: number };
+const DEFAULT_TRANSFORM: ImageTransform = { scale: 1, x: 0, y: 0 };
+
+function EditableImage({
+  noteId, src, alt, transform, isEditing, isExporting, onToggleEdit, onTransformChange,
+}: {
+  noteId: string;
+  src?: string;
+  alt: string;
+  transform: ImageTransform;
+  isEditing: boolean;
+  isExporting: boolean;
+  onToggleEdit: () => void;
+  onTransformChange: (t: ImageTransform) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
+  const pinchRef = useRef<{ dist: number; origScale: number } | null>(null);
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+  const onTransformChangeRef = useRef(onTransformChange);
+  onTransformChangeRef.current = onTransformChange;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
+  const isExportingRef = useRef(isExporting);
+  isExportingRef.current = isExporting;
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (!isEditingRef.current || isExportingRef.current) return;
+      e.preventDefault();
+      const t = transformRef.current;
+      const factor = e.deltaY < 0 ? 1.12 : 0.89;
+      onTransformChangeRef.current({ ...t, scale: Math.min(5, Math.max(0.3, t.scale * factor)) });
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  if (!src) return null;
+  const t = transform;
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0 overflow-hidden"
+      style={{
+        cursor: isExporting ? 'default' : isEditing ? 'grab' : 'pointer',
+        touchAction: isEditing ? 'none' : 'auto',
+        zIndex: isEditing && !isExporting ? 2 : undefined,
+      }}
+      onPointerDown={(e) => {
+        if (isExporting) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        dragRef.current = { startX: e.clientX, startY: e.clientY, origX: t.x, origY: t.y, moved: false };
+      }}
+      onPointerMove={(e) => {
+        if (!dragRef.current) return;
+        const dx = e.clientX - dragRef.current.startX;
+        const dy = e.clientY - dragRef.current.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          dragRef.current.moved = true;
+          if (isEditing) onTransformChange({ ...t, x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
+        }
+      }}
+      onPointerUp={() => {
+        if (dragRef.current && !dragRef.current.moved) onToggleEdit();
+        dragRef.current = null;
+      }}
+      onPointerCancel={() => { dragRef.current = null; }}
+      onTouchStart={(e) => {
+        if (e.touches.length !== 2) return;
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        pinchRef.current = { dist: d, origScale: t.scale };
+      }}
+      onTouchMove={(e) => {
+        if (e.touches.length !== 2 || !pinchRef.current || !isEditing) return;
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        onTransformChange({ ...t, scale: Math.min(5, Math.max(0.3, pinchRef.current.origScale * (d / pinchRef.current.dist))) });
+      }}
+      onTouchEnd={() => { pinchRef.current = null; }}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        unoptimized
+        draggable={false}
+        style={{
+          objectFit: 'cover',
+          transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
+          transformOrigin: 'center center',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      />
+      {isEditing && !isExporting && (
+        <div className="pointer-events-none absolute inset-0 ring-2 ring-inset ring-[#ffd166]" />
+      )}
+    </div>
+  );
+}
+
 export default function ExpoRankingPage() {
   const params = useParams();
   const router = useRouter();
@@ -248,6 +353,11 @@ export default function ExpoRankingPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const [imgTransforms, setImgTransforms] = useState<Record<string, ImageTransform>>({});
+  const [editingImg, setEditingImg] = useState<string | null>(null);
+  const getImgTransform = (id: string): ImageTransform => imgTransforms[id] ?? DEFAULT_TRANSFORM;
+  const setImgTransform = (id: string, t: ImageTransform) => setImgTransforms(prev => ({ ...prev, [id]: t }));
+  const toggleEditImg = (id: string) => setEditingImg(prev => prev === id ? null : id);
 
   const eventRef = useMemoFirebase(() => {
     if (!firestore || !eventId) return null;
@@ -555,7 +665,16 @@ export default function ExpoRankingPage() {
                             {/* 左側：圖片 object-contain 完整顯示 */}
                             <div className={cn('relative w-[34%] shrink-0 overflow-hidden', currentShareCardTheme.modeChipClassName)}>
                               {note.imageUrls?.[0] ? (
-                                <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain" />
+                                <EditableImage
+                                  noteId={note.id}
+                                  src={note.imageUrls[0]}
+                                  alt={getExpoNoteDisplayName(note)}
+                                  transform={getImgTransform(note.id)}
+                                  isEditing={editingImg === note.id}
+                                  isExporting={isExporting}
+                                  onToggleEdit={() => toggleEditImg(note.id)}
+                                  onTransformChange={(t) => setImgTransform(note.id, t)}
+                                />
                               ) : (
                                 <div className={cn('flex h-full items-center justify-center text-[6px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                               )}
@@ -609,7 +728,16 @@ export default function ExpoRankingPage() {
                         return (
                           <div className="relative min-h-0 flex-[3.2] overflow-hidden rounded-[1rem] border border-[#1c1c1c] bg-black">
                             {heroNote.imageUrls?.[0] ? (
-                              <Image src={heroNote.imageUrls[0]} alt={getExpoNoteDisplayName(heroNote)} fill unoptimized className="object-cover" />
+                                <EditableImage
+                                  noteId={heroNote.id}
+                                  src={heroNote.imageUrls[0]}
+                                  alt={getExpoNoteDisplayName(heroNote)}
+                                  transform={getImgTransform(heroNote.id)}
+                                  isEditing={editingImg === heroNote.id}
+                                  isExporting={isExporting}
+                                  onToggleEdit={() => toggleEditImg(heroNote.id)}
+                                  onTransformChange={(t) => setImgTransform(heroNote.id, t)}
+                                />
                             ) : (
                               <div className="h-full w-full bg-[#1a1a1a]" />
                             )}
@@ -635,7 +763,16 @@ export default function ExpoRankingPage() {
                             return (
                               <div key={note.id} className="relative overflow-hidden rounded-[0.9rem] border border-[#1c1c1c] bg-black">
                                 {note.imageUrls?.[0] ? (
-                                  <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-cover" />
+                                    <EditableImage
+                                      noteId={note.id}
+                                      src={note.imageUrls[0]}
+                                      alt={getExpoNoteDisplayName(note)}
+                                      transform={getImgTransform(note.id)}
+                                      isEditing={editingImg === note.id}
+                                      isExporting={isExporting}
+                                      onToggleEdit={() => toggleEditImg(note.id)}
+                                      onTransformChange={(t) => setImgTransform(note.id, t)}
+                                    />
                                 ) : (
                                   <div className="h-full w-full bg-[#1a1a1a]" />
                                 )}
@@ -690,13 +827,29 @@ export default function ExpoRankingPage() {
                         return (
                           <div
                             key={note.id}
-                            className={cn('flex min-h-0 flex-1 items-center gap-2 overflow-hidden rounded-[0.85rem] border px-2.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}
+                            className={cn('flex min-h-0 flex-1 items-center overflow-hidden rounded-[0.85rem] border', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}
                           >
-                            <div className={cn('w-[26px] shrink-0 text-center text-[22px] font-headline font-bold leading-none', currentShareCardTheme.eyebrowClassName)}>
-                              {rank}
+                            <div className="relative w-[28%] shrink-0 self-stretch overflow-hidden">
+                              {note.imageUrls?.[0] ? (
+                                <EditableImage
+                                  noteId={note.id}
+                                  src={note.imageUrls[0]}
+                                  alt={getExpoNoteDisplayName(note)}
+                                  transform={getImgTransform(note.id)}
+                                  isEditing={editingImg === note.id}
+                                  isExporting={isExporting}
+                                  onToggleEdit={() => toggleEditImg(note.id)}
+                                  onTransformChange={(t) => setImgTransform(note.id, t)}
+                                />
+                              ) : (
+                                <div className={cn('flex h-full w-full items-center justify-center text-[6px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
+                              )}
+                              <div className={cn('pointer-events-none absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border text-[8px] font-headline font-bold leading-none', medalStyle.rankClassName)}>
+                                {rank}
+                              </div>
                             </div>
                             <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
-                            <div className="min-w-0 flex-1 overflow-hidden py-1.5">
+                            <div className="min-w-0 flex-1 overflow-hidden px-2 py-1.5">
                               <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
                                 {getExpoNoteDisplayName(note)}
                               </div>
@@ -707,7 +860,7 @@ export default function ExpoRankingPage() {
                                 {authorNote || '暫無描述'}
                               </div>
                             </div>
-                            <div className="flex shrink-0 gap-2.5">
+                            <div className="flex shrink-0 gap-2.5 pr-2">
                               <div className="text-center">
                                 <div className={cn('text-[5px] font-bold uppercase', currentShareCardTheme.tableHeaderClassName)}>價</div>
                                 <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
@@ -737,7 +890,16 @@ export default function ExpoRankingPage() {
                           <div className={cn('flex min-h-0 flex-[3.2] gap-1.5 overflow-hidden rounded-[1rem] border p-1.5', currentShareCardTheme.rowBaseClassName, heroStyle.rowClassName)}>
                             <div className={cn('relative w-[102px] shrink-0 overflow-hidden rounded-[0.85rem] border', currentShareCardTheme.modeChipClassName)}>
                               {heroNote.imageUrls?.[0] ? (
-                                <Image src={heroNote.imageUrls[0]} alt={getExpoNoteDisplayName(heroNote)} fill unoptimized className="object-contain p-0.5" />
+                                <EditableImage
+                                  noteId={heroNote.id}
+                                  src={heroNote.imageUrls[0]}
+                                  alt={getExpoNoteDisplayName(heroNote)}
+                                  transform={getImgTransform(heroNote.id)}
+                                  isEditing={editingImg === heroNote.id}
+                                  isExporting={isExporting}
+                                  onToggleEdit={() => toggleEditImg(heroNote.id)}
+                                  onTransformChange={(t) => setImgTransform(heroNote.id, t)}
+                                />
                               ) : (
                                 <div className={cn('flex h-full items-center justify-center text-[7px] font-bold uppercase tracking-[0.16em]', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                               )}
@@ -779,7 +941,16 @@ export default function ExpoRankingPage() {
                                 <div className="flex min-h-0 flex-1 gap-1 overflow-hidden">
                                   <div className={cn('relative min-h-0 flex-1 overflow-hidden rounded-[0.75rem] border', currentShareCardTheme.modeChipClassName)}>
                                     {note.imageUrls?.[0] ? (
-                                      <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain p-0.5" />
+                                      <EditableImage
+                                        noteId={note.id}
+                                        src={note.imageUrls[0]}
+                                        alt={getExpoNoteDisplayName(note)}
+                                        transform={getImgTransform(note.id)}
+                                        isEditing={editingImg === note.id}
+                                        isExporting={isExporting}
+                                        onToggleEdit={() => toggleEditImg(note.id)}
+                                        onTransformChange={(t) => setImgTransform(note.id, t)}
+                                      />
                                     ) : (
                                       <div className={cn('flex h-full items-center justify-center text-[6.5px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                                     )}
@@ -820,7 +991,16 @@ export default function ExpoRankingPage() {
                               <div key={note.id} className={cn('flex h-full items-center gap-1.5 overflow-hidden rounded-[0.85rem] border p-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
                                 <div className={cn('relative h-full w-[52px] shrink-0 overflow-hidden rounded-[0.65rem] border', currentShareCardTheme.modeChipClassName)}>
                                   {note.imageUrls?.[0] ? (
-                                    <Image src={note.imageUrls[0]} alt={getExpoNoteDisplayName(note)} fill unoptimized className="object-contain p-0.5" />
+                                    <EditableImage
+                                      noteId={note.id}
+                                      src={note.imageUrls[0]}
+                                      alt={getExpoNoteDisplayName(note)}
+                                      transform={getImgTransform(note.id)}
+                                      isEditing={editingImg === note.id}
+                                      isExporting={isExporting}
+                                      onToggleEdit={() => toggleEditImg(note.id)}
+                                      onTransformChange={(t) => setImgTransform(note.id, t)}
+                                    />
                                   ) : (
                                     <div className={cn('flex h-full items-center justify-center text-[5.5px] font-bold uppercase', currentShareCardTheme.modeLabelClassName)}>No Pic</div>
                                   )}
