@@ -428,7 +428,7 @@ export default function ExpoRankingPage() {
               })}
             </div>
 
-            {/* 翻頁 */}}
+            {/* 翻頁 */}
             <div className="mt-2.5 flex items-center gap-2">
               <Button
                 type="button"
