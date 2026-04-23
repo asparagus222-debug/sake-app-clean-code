@@ -290,8 +290,8 @@ export function HomeClient({
              </Link>
           )}
           {isFormalUser && (
-            <Link href="/my-tasting" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:border-primary/40 hover:bg-primary/8 hover:text-primary transition-all">
-              <BookOpen className="w-3 h-3" /> 品飲紀錄
+            <Link href="/my-tasting" className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:border-primary/40 hover:bg-primary/8 hover:text-primary transition-all">
+              <BookOpen className="w-3 h-3" /><span className="hidden sm:inline">品飲紀錄</span>
             </Link>
           )}
           <Link href="/profile" className="flex items-center gap-4 group">
