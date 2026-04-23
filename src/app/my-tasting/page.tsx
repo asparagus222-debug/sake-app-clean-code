@@ -58,7 +58,7 @@ export default function MyTastingPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [sortMode, setSortMode] = useState<SortMode>('score');
+  const [sortMode, setSortMode] = useState<SortMode>('date');
 
   const notesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
