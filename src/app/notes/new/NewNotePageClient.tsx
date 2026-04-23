@@ -700,25 +700,62 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   };
 
   const handleSaveDraft = async () => {
+    if (!firestore || !user) return;
+    if (!effectiveProfile?.username) {
+      toast({ variant: 'destructive', title: '請先設置使用者名稱', description: '前往個人檔案頁面設置您的名稱' });
+      router.push('/profile');
+      return;
+    }
+    setIsSaving(true);
     try {
-      const id = draftId || Date.now().toString();
-      await saveNoteDraft({
-        id,
-        brandName: formData.brandName || '未命名草稿',
-        formData: formData as unknown as Record<string, unknown>,
-        images,
-        originals,
-        zooms,
-        offsets,
-        splitRatio,
-        imgRatios,
-        savedAt: new Date().toISOString(),
-      });
-      setDraftId(id);
-      setIsEditingDraft(true);
-      toast({ title: '草稿已儲存', description: '可從首頁草稿列表繼續編輯' });
+      const finalImages = images.length > 0
+        ? await Promise.all(images.map((_, i) => captureCurrentView(i)))
+        : [];
+      const composedDescription = buildComposedNoteText(
+        formData.userDescription,
+        formData.guidedTastingSummary,
+        formData.otherComments
+      );
+      const noteData = {
+        userId: user.uid,
+        username: effectiveProfile.username,
+        ...formData,
+        sweetnessRating: formData.sweetness,
+        acidityRating: formData.acidity,
+        bitternessRating: formData.bitterness,
+        umamiRating: formData.umami,
+        astringencyRating: formData.astringency,
+        description: composedDescription,
+        userDescription: formData.userDescription,
+        aiResultNote: formData.aiResultNote,
+        activeBrain: formData.activeBrain,
+        sakeInfoTags: formData.sakeInfoTags,
+        servingTemperatures: formData.servingTemperatures,
+        alcoholPercent: formData.alcoholPercent,
+        foodPairings: formData.foodPairings,
+        cupTypes: formData.cupTypes,
+        entryMode: 'standard' as const,
+        visibility: 'private' as const,
+        publicationStatus: 'published' as const,
+        publishedAt: new Date().toISOString(),
+        imageUrls: finalImages,
+        imageOriginals: originals,
+        imageTransforms: images.map((_, i) => {
+          const dims = getSlotDimensions(i, previewFrameSize);
+          return normalizeNoteImageTransform(offsets[i], zooms[i], dims.width, dims.height);
+        }),
+        imageSplitRatio: images.length === 2 ? splitRatio : 50,
+        tastingDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        otherComments: formData.otherComments,
+      };
+      await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+      try { if (draftId) await deleteNoteDraft(draftId); } catch {}
+      toast({ title: '已存至個人品飲紀錄' });
+      window.location.replace('/my-tasting');
     } catch {
       toast({ variant: 'destructive', title: '存至個人筆記失敗', description: '草稿寫入失敗，請稍後再試' });
+      setIsSaving(false);
     }
   };
 
