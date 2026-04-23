@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { ArrowLeft, BadgeDollarSign, Building2, Camera, ChevronDown, CircleDollarSign, ClipboardList, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, BookMarked, Building2, Camera, Check, ChevronDown, CircleDollarSign, ClipboardList, FilePen, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -933,16 +933,40 @@ export default function ExpoEventPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2">
               <p className="text-[10px] leading-5 text-muted-foreground">銘柄、品牌、攤位至少填一項即可；送出後保留攤位與酒造，方便下一杯繼續記。</p>
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCreateQuickNote('private', 'draft')}
+                  disabled={isSaving}
+                  className="flex-1 rounded-full h-10 px-3 text-[10px] font-bold uppercase tracking-widest border-primary/40 text-primary"
+                >
+                  <FilePen className="w-3.5 h-3.5 mr-1.5" /> 儲存草稿
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCreateQuickNote('private', 'published')}
+                  disabled={isSaving}
+                  className="flex-1 rounded-full h-10 px-3 text-[10px] font-bold uppercase tracking-widest border-primary/40 text-primary"
+                >
+                  <BookMarked className="w-3.5 h-3.5 mr-1.5" /> 存至個人筆記
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 w-full">
                 {editingNoteId && (
                   <Button type="button" variant="outline" onClick={resetForm} className="rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest">
                     取消編輯
                   </Button>
                 )}
-                <Button onClick={handleCreateQuickNote} disabled={isSaving} className="rounded-full h-10 px-5 text-[10px] font-bold uppercase tracking-widest">
-                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Star className="w-4 h-4 mr-2" />} {editingNoteId ? '更新快記' : '儲存快記'}
+                <Button
+                  onClick={() => handleCreateQuickNote('public', 'published')}
+                  disabled={isSaving}
+                  className="flex-1 rounded-full h-10 px-5 text-[10px] font-bold uppercase tracking-widest"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />} {editingNoteId ? '更新並公開' : '公開發佈'}
                 </Button>
               </div>
             </div>
