@@ -718,7 +718,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       setIsEditingDraft(true);
       toast({ title: '草稿已儲存', description: '可從首頁草稿列表繼續編輯' });
     } catch {
-      toast({ variant: 'destructive', title: '儲存草稿失敗', description: '草稿寫入失敗，請稍後再試' });
+      toast({ variant: 'destructive', title: '存至個人筆記失敗', description: '草稿寫入失敗，請稍後再試' });
     }
   };
 
@@ -1506,7 +1506,7 @@ const handleSave = async () => {
             onClick={handleSaveDraft}
             disabled={isSaving}
           >
-            <BookMarked className="w-3 h-3 mr-2" /> 儲存草稿
+            <BookMarked className="w-3 h-3 mr-2" /> 存至個人筆記
           </Button>
           <Button
             className="flex-1 h-12 text-xs rounded-full font-bold uppercase tracking-widest bg-primary shadow-2xl"
