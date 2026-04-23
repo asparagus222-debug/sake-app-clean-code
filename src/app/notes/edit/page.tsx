@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, BookMarked, FilePen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser, useAuth, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { deleteField, doc } from 'firebase/firestore';
+import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
 
 export default function EditNotePage() {
@@ -22,6 +23,7 @@ export default function EditNotePage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -206,12 +208,12 @@ export default function EditNotePage() {
     });
   };
 
-  const handleSave = async () => {
+  const handleSaveWithStatus = async (visibility: 'private' | 'public', publicationStatus: 'draft' | 'published') => {
     if (!firestore || !user || !note) return;
     setIsSaving(true);
     try {
       const finalImages = await Promise.all(images.map((_, i) => images[i].startsWith('http') ? images[i] : captureCurrentView(i)));
-      const noteData = {
+      const noteData: Record<string, unknown> = {
         brandName: formData.brandName,
         subBrand: deleteField(),
         brewery: formData.brewery,
@@ -228,10 +230,23 @@ export default function EditNotePage() {
         servingTemperatures: formData.servingTemperatures,
         servingTemperature: deleteField(),
         description: formData.description,
+        visibility,
+        publicationStatus,
       };
+      if (visibility === 'public' && publicationStatus === 'published' && !note.publishedAt) {
+        noteData.publishedAt = new Date().toISOString();
+      }
       updateDocumentNonBlocking(doc(firestore, 'sakeTastingNotes', note.id), noteData);
-      toast({ title: "修改已儲存" });
-      router.push('/profile');
+      if (visibility === 'public' && publicationStatus === 'published' && auth) {
+        authorizedJsonFetch(auth, '/api/users/sync-author-stats', { method: 'POST' }).catch(() => null);
+      }
+      const toastMessages: Record<string, string> = {
+        'private-draft': '草稿已儲存',
+        'private-published': '已存至個人筆記',
+        'public-published': '筆記已公開發佈',
+      };
+      toast({ title: toastMessages[`${visibility}-${publicationStatus}`] || '已儲存' });
+      router.push(visibility === 'public' ? '/' : '/my-tasting');
     } catch (err) {
       toast({ variant: "destructive", title: "儲存失敗" });
       setIsSaving(false);
@@ -410,9 +425,33 @@ export default function EditNotePage() {
           <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
         </section>
 
-        <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存修改
-        </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+              onClick={() => handleSaveWithStatus('private', 'draft')}
+              disabled={isSaving}
+            >
+              <FilePen className="w-3 h-3 mr-2" /> 儲存草稿
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+              onClick={() => handleSaveWithStatus('private', 'published')}
+              disabled={isSaving}
+            >
+              <BookMarked className="w-3 h-3 mr-2" /> 存至個人筆記
+            </Button>
+          </div>
+          <Button
+            className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary"
+            onClick={() => handleSaveWithStatus('public', 'published')}
+            disabled={isSaving}
+          >
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 公開發佈
+          </Button>
+        </div>
       </div>
     </div>
   );

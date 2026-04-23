@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CUP_TYPE_OPTIONS, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck, FilePen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -699,6 +699,68 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     });
   };
 
+  const buildNotePayload = async () => {
+    const finalImages = images.length > 0
+      ? await Promise.all(images.map((_, i) => captureCurrentView(i)))
+      : [];
+    const composedDescription = buildComposedNoteText(
+      formData.userDescription,
+      formData.guidedTastingSummary,
+      formData.otherComments
+    );
+    return {
+      userId: user!.uid,
+      username: effectiveProfile!.username,
+      ...formData,
+      sweetnessRating: formData.sweetness,
+      acidityRating: formData.acidity,
+      bitternessRating: formData.bitterness,
+      umamiRating: formData.umami,
+      astringencyRating: formData.astringency,
+      description: composedDescription,
+      userDescription: formData.userDescription,
+      aiResultNote: formData.aiResultNote,
+      activeBrain: formData.activeBrain,
+      sakeInfoTags: formData.sakeInfoTags,
+      servingTemperatures: formData.servingTemperatures,
+      alcoholPercent: formData.alcoholPercent,
+      foodPairings: formData.foodPairings,
+      cupTypes: formData.cupTypes,
+      entryMode: 'standard' as const,
+      imageUrls: finalImages,
+      imageOriginals: originals,
+      imageTransforms: images.map((_, i) => {
+        const dims = getSlotDimensions(i, previewFrameSize);
+        return normalizeNoteImageTransform(offsets[i], zooms[i], dims.width, dims.height);
+      }),
+      imageSplitRatio: images.length === 2 ? splitRatio : 50,
+      tastingDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      otherComments: formData.otherComments,
+    };
+  };
+
+  const handleSaveAsDraft = async () => {
+    if (!firestore || !user) return;
+    if (!effectiveProfile?.username) {
+      toast({ variant: 'destructive', title: '請先設置使用者名稱', description: '前往個人檔案頁面設置您的名稱' });
+      router.push('/profile');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const payload = await buildNotePayload();
+      const noteData = { ...payload, visibility: 'private' as const, publicationStatus: 'draft' as const };
+      await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+      try { if (draftId) await deleteNoteDraft(draftId); } catch {}
+      toast({ title: '草稿已儲存' });
+      window.location.replace('/my-tasting');
+    } catch {
+      toast({ variant: 'destructive', title: '儲存失敗', description: '草稿寫入失敗，請稍後再試' });
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!firestore || !user) return;
     if (!effectiveProfile?.username) {
@@ -708,53 +770,14 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     }
     setIsSaving(true);
     try {
-      const finalImages = images.length > 0
-        ? await Promise.all(images.map((_, i) => captureCurrentView(i)))
-        : [];
-      const composedDescription = buildComposedNoteText(
-        formData.userDescription,
-        formData.guidedTastingSummary,
-        formData.otherComments
-      );
-      const noteData = {
-        userId: user.uid,
-        username: effectiveProfile.username,
-        ...formData,
-        sweetnessRating: formData.sweetness,
-        acidityRating: formData.acidity,
-        bitternessRating: formData.bitterness,
-        umamiRating: formData.umami,
-        astringencyRating: formData.astringency,
-        description: composedDescription,
-        userDescription: formData.userDescription,
-        aiResultNote: formData.aiResultNote,
-        activeBrain: formData.activeBrain,
-        sakeInfoTags: formData.sakeInfoTags,
-        servingTemperatures: formData.servingTemperatures,
-        alcoholPercent: formData.alcoholPercent,
-        foodPairings: formData.foodPairings,
-        cupTypes: formData.cupTypes,
-        entryMode: 'standard' as const,
-        visibility: 'private' as const,
-        publicationStatus: 'published' as const,
-        publishedAt: new Date().toISOString(),
-        imageUrls: finalImages,
-        imageOriginals: originals,
-        imageTransforms: images.map((_, i) => {
-          const dims = getSlotDimensions(i, previewFrameSize);
-          return normalizeNoteImageTransform(offsets[i], zooms[i], dims.width, dims.height);
-        }),
-        imageSplitRatio: images.length === 2 ? splitRatio : 50,
-        tastingDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        otherComments: formData.otherComments,
-      };
+      const payload = await buildNotePayload();
+      const noteData = { ...payload, visibility: 'private' as const, publicationStatus: 'published' as const, publishedAt: new Date().toISOString() };
       await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
       try { if (draftId) await deleteNoteDraft(draftId); } catch {}
       toast({ title: '已存至個人品飲紀錄' });
       window.location.replace('/my-tasting');
     } catch {
-      toast({ variant: 'destructive', title: '存至個人筆記失敗', description: '草稿寫入失敗，請稍後再試' });
+      toast({ variant: 'destructive', title: '存至個人筆記失敗', description: '寫入失敗，請稍後再試' });
       setIsSaving(false);
     }
   };
@@ -890,47 +913,13 @@ const handleSave = async () => {
 
   setIsSaving(true);
   try {
-    const finalImages = await Promise.all(images.map((_, i) => captureCurrentView(i)));
-    const composedDescription = buildComposedNoteText(
-      formData.userDescription,
-      formData.guidedTastingSummary,
-      formData.otherComments
-    );
-    
+    const payload = await buildNotePayload();
+    const composedDescription = payload.description;
     const noteData = {
-      userId: user.uid,
-      username: effectiveProfile.username,
-      ...formData,
-      // 統一用 Rating 後綴儲存，與 types.ts 一致
-      sweetnessRating: formData.sweetness,
-      acidityRating: formData.acidity,
-      bitternessRating: formData.bitterness,
-      umamiRating: formData.umami,
-      astringencyRating: formData.astringency,
-      description: composedDescription,
-      userDescription: formData.userDescription, 
-      aiResultNote: formData.aiResultNote,
-      activeBrain: formData.activeBrain,
-      sakeInfoTags: formData.sakeInfoTags,
-      servingTemperatures: formData.servingTemperatures,
-      alcoholPercent: formData.alcoholPercent,
-      foodPairings: formData.foodPairings,
-      cupTypes: formData.cupTypes,
-      entryMode: 'standard' as const,
+      ...payload,
       visibility: 'public' as const,
       publicationStatus: 'published' as const,
       publishedAt: new Date().toISOString(),
-      
-      imageUrls: finalImages,
-      imageOriginals: originals,
-      imageTransforms: images.map((_, i) => {
-        const dims = getSlotDimensions(i, previewFrameSize);
-        return normalizeNoteImageTransform(offsets[i], zooms[i], dims.width, dims.height);
-      }),
-      imageSplitRatio: images.length === 2 ? splitRatio : 50,
-      tastingDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      otherComments: formData.otherComments,
     };
     
     const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
@@ -1536,21 +1525,31 @@ const handleSave = async () => {
           )}
         </section>
 
-        <div className="flex gap-3 mb-12">
+        <div className="space-y-2 mb-12">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+              onClick={handleSaveAsDraft}
+              disabled={isSaving}
+            >
+              <FilePen className="w-3 h-3 mr-2" /> 儲存草稿
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+            >
+              <BookMarked className="w-3 h-3 mr-2" /> 存至個人筆記
+            </Button>
+          </div>
           <Button
-            variant="outline"
-            className="flex-none h-12 px-5 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary"
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-          >
-            <BookMarked className="w-3 h-3 mr-2" /> 存至個人筆記
-          </Button>
-          <Button
-            className="flex-1 h-12 text-xs rounded-full font-bold uppercase tracking-widest bg-primary shadow-2xl"
+            className="w-full h-12 text-xs rounded-full font-bold uppercase tracking-widest bg-primary shadow-2xl"
             onClick={handleSave}
             disabled={isSaving || isIdentifying || images.length === 0 || !user || !canCreateNote}
           >
-            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發佈筆記
+            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 公開發佈
           </Button>
         </div>
       </div>
