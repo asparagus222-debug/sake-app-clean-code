@@ -6,7 +6,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -288,6 +288,11 @@ export function HomeClient({
                  <KeyRound className="w-3 h-3 mr-1" /> 找回帳戶
                </Button>
              </Link>
+          )}
+          {isFormalUser && (
+            <Link href="/my-tasting" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:border-primary/40 hover:bg-primary/8 hover:text-primary transition-all">
+              <BookOpen className="w-3 h-3" /> 品飲紀錄
+            </Link>
           )}
           <Link href="/profile" className="flex items-center gap-4 group">
             <div className="text-right hidden sm:block">
