@@ -122,7 +122,7 @@ export default function MyTastingPage() {
       <nav className="sticky top-0 z-40 flex items-center gap-3 border-b border-white/5 bg-black/30 px-4 py-4 backdrop-blur-xl">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
