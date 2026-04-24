@@ -492,7 +492,7 @@ export default function ExpoEventPage() {
     }));
   };
 
-  const handleCreateQuickNote = async () => {
+  const handleCreateQuickNote = async (visibility: 'private' | 'public' = 'private', publicationStatus: 'draft' | 'published' = 'draft') => {
     if (!firestore || !user || !event) return;
     if (!formData.brandName.trim() && !formData.brewery.trim() && !formData.booth.trim()) {
       toast({ variant: 'destructive', title: '銘柄、品牌或攤位至少填一項' });
@@ -508,8 +508,9 @@ export default function ExpoEventPage() {
         userId: user.uid,
         username: profile?.username || '',
         entryMode: 'expo-quick' as const,
-        visibility: 'private' as const,
-        publicationStatus: 'draft' as const,
+        visibility,
+        publicationStatus,
+        ...(visibility === 'public' && publicationStatus === 'published' ? { publishedAt: now } : {}),
         brandName: formData.brandName.trim(),
         brewery: formData.brewery.trim(),
         origin: formData.origin.trim(),
@@ -546,6 +547,9 @@ export default function ExpoEventPage() {
           description: formData.quickNote.trim(),
           userDescription: formData.quickNote.trim(),
           overallRating: formData.overallRating,
+          visibility,
+          publicationStatus,
+          ...(visibility === 'public' && publicationStatus === 'published' ? { publishedAt: now } : {}),
           updatedAt: now,
           expoMeta: {
             eventId,
@@ -561,7 +565,12 @@ export default function ExpoEventPage() {
         toast({ title: '快記已更新' });
       } else {
         await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
-        toast({ title: '酒展快記已儲存' });
+        const toastMessages: Record<string, string> = {
+          'private-draft': '草稿已儲存',
+          'private-published': '已存至個人筆記',
+          'public-published': '酒展快記已公開發佈',
+        };
+        toast({ title: toastMessages[`${visibility}-${publicationStatus}`] || '已儲存' });
       }
       resetForm();
     } catch (error: any) {
