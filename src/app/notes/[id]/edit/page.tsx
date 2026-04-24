@@ -11,7 +11,7 @@ import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTION
 import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
-import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck, FilePen, BookMarked } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
@@ -863,7 +863,8 @@ export default function EditNotePage() {
     }
   };
 
-  const persistNote = async (publishNote: boolean) => {
+  const persistNote = async (mode: 'save' | 'personal' | 'public') => {
+    const publishNote = mode === 'public';
     if (!firestore || !user || !note) return;
     setIsSaving(true);
     try {
@@ -921,10 +922,10 @@ export default function EditNotePage() {
         subBrand: deleteField(),
         brewery: formData.brewery,
         origin: formData.origin,
-        entryMode: publishNote ? 'standard' : (note.entryMode || 'standard'),
-        visibility: publishNote ? 'public' : (note.visibility || 'private'),
-        publicationStatus: publishNote ? 'published' : (note.publicationStatus || 'draft'),
-        publishedAt: publishNote ? (note.publishedAt || new Date().toISOString()) : (note.publishedAt || deleteField()),
+        entryMode: mode === 'save' ? (note.entryMode || 'standard') : 'standard',
+        visibility: mode === 'public' ? 'public' : mode === 'personal' ? 'private' : (note.visibility || 'private'),
+        publicationStatus: mode === 'save' ? (note.publicationStatus || 'draft') : 'published',
+        publishedAt: mode !== 'save' ? (note.publishedAt || new Date().toISOString()) : (note.publishedAt || deleteField()),
         styleTags: formData.styleTags,
         servingTemperatures: formData.servingTemperatures,
         cupTypes: formData.cupTypes,
@@ -949,7 +950,7 @@ export default function EditNotePage() {
           }).catch(() => null);
         }
       }
-      toast({ title: publishNote ? '已發布公開貼文' : '修改已儲存' });
+      toast({ title: mode === 'public' ? '已發布公開貼文' : mode === 'personal' ? '已存至個人品飲紀錄' : '修改已儲存' });
       if (typeof window !== 'undefined' && window.history.length > 1) {
         router.back();
       } else {
@@ -963,11 +964,15 @@ export default function EditNotePage() {
   };
 
   const handleSave = async () => {
-    await persistNote(false);
+    await persistNote('save');
   };
 
   const handlePublish = async () => {
-    await persistNote(true);
+    await persistNote('public');
+  };
+
+  const handleSavePersonal = async () => {
+    await persistNote('personal');
   };
 
   const handleBackToPrevious = () => {
@@ -978,7 +983,7 @@ export default function EditNotePage() {
     router.replace(`/notes/${id}`);
   };
 
-  if (isUserLoading || isNoteLoading) {
+  if (isUserLoading || isNoteLoading || !note) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center notebook-texture font-body">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
@@ -1467,18 +1472,39 @@ export default function EditNotePage() {
         </section>
 
         <div className="flex flex-col gap-3">
-          {!isPublicPublishedNote(note) && (
-            <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-[10px] text-sky-100/80">
-              這篇目前仍是私人草稿；補完內容後可直接在同一篇發布成公開貼文。
-            </div>
-          )}
-          <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存所有修改
-          </Button>
-          {!isPublicPublishedNote(note) && (
-            <Button variant="outline" className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest border-emerald-400/40 text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20" onClick={handlePublish} disabled={isSaving}>
-              {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發布成正式貼文
-            </Button>
+          {(note.entryMode === 'expo-quick' || note.publicationStatus === 'draft') ? (
+            <>
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/5 px-4 py-3 text-[10px] text-amber-100/80">
+                這是草稿；可儲存為個人私人筆記，或直接公開發布。
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary" onClick={handleSave} disabled={isSaving}>
+                  <FilePen className="w-3 h-3 mr-2" /> 儲存草稿
+                </Button>
+                <Button variant="outline" className="flex-1 h-11 px-3 text-xs rounded-full font-bold uppercase tracking-widest border-primary/40 text-primary" onClick={handleSavePersonal} disabled={isSaving}>
+                  <BookMarked className="w-3 h-3 mr-2" /> 存至個人筆記
+                </Button>
+              </div>
+              <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handlePublish} disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 公開發佈
+              </Button>
+            </>
+          ) : (
+            <>
+              {!isPublicPublishedNote(note) && (
+                <div className="rounded-2xl border border-sky-400/20 bg-sky-500/5 px-4 py-3 text-[10px] text-sky-100/80">
+                  這篇目前是私人筆記；補完內容後可直接發布成公開貼文。
+                </div>
+              )}
+              <Button className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest bg-primary" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 儲存所有修改
+              </Button>
+              {!isPublicPublishedNote(note) && (
+                <Button variant="outline" className="w-full h-12 text-xs rounded-full shadow-2xl font-bold uppercase tracking-widest border-emerald-400/40 text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/20" onClick={handlePublish} disabled={isSaving}>
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3 h-3 mr-2" />} 發布成正式貼文
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
