@@ -565,15 +565,20 @@ export default function ExpoEventPage() {
         });
         toast({ title: '快記已更新' });
       } else {
-        await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
+        const docRef = await addDoc(collection(firestore, 'sakeTastingNotes'), noteData);
         const toastMessages: Record<string, string> = {
           'private-draft': '草稿已儲存',
           'private-published': '已存至個人筆記',
           'public-published': '酒展快記已公開發佈',
         };
         toast({ title: toastMessages[`${visibility}-${publicationStatus}`] || '已儲存' });
+        resetForm();
+        setIsSaving(false);
+        if (publicationStatus === 'draft') {
+          router.push(`/notes/${docRef.id}/edit`);
+          return;
+        }
       }
-      resetForm();
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -945,26 +950,6 @@ export default function ExpoEventPage() {
 
             <div className="flex flex-col gap-2">
               <p className="text-[10px] leading-5 text-muted-foreground">銘柄、品牌、攤位至少填一項即可；送出後保留攤位與酒造，方便下一杯繼續記。</p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleCreateQuickNote('private', 'draft')}
-                  disabled={isSaving}
-                  className="flex-1 rounded-full h-10 px-3 text-[10px] font-bold uppercase tracking-widest border-primary/40 text-primary"
-                >
-                  <FilePen className="w-3.5 h-3.5 mr-1.5" /> 儲存草稿
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleCreateQuickNote('private', 'published')}
-                  disabled={isSaving}
-                  className="flex-1 rounded-full h-10 px-3 text-[10px] font-bold uppercase tracking-widest border-primary/40 text-primary"
-                >
-                  <BookMarked className="w-3.5 h-3.5 mr-1.5" /> 存至個人筆記
-                </Button>
-              </div>
               <div className="flex items-center gap-2 w-full">
                 {editingNoteId && (
                   <Button type="button" variant="outline" onClick={resetForm} className="rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest">
@@ -972,11 +957,12 @@ export default function ExpoEventPage() {
                   </Button>
                 )}
                 <Button
-                  onClick={() => handleCreateQuickNote('public', 'published')}
+                  type="button"
+                  onClick={() => handleCreateQuickNote('private', 'draft')}
                   disabled={isSaving}
                   className="flex-1 rounded-full h-10 px-5 text-[10px] font-bold uppercase tracking-widest"
                 >
-                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />} {editingNoteId ? '更新並公開' : '公開發佈'}
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FilePen className="w-3.5 h-3.5 mr-1.5" />} {editingNoteId ? '更新草稿' : '儲存草稿'}
                 </Button>
               </div>
             </div>
