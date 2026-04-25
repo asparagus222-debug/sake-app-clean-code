@@ -338,12 +338,12 @@ export function FloatingChatWidget() {
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
             className={cn(
-              'group flex h-16 w-16 touch-none items-center justify-center rounded-full border border-sky-400/30 bg-[#111317]/95 text-sky-200 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-sky-500/10',
+              'group flex h-12 w-12 touch-none items-center justify-center rounded-full border border-sky-400/30 bg-[#111317]/95 text-sky-200 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all hover:scale-105 hover:bg-sky-500/10',
               isDragging && 'cursor-grabbing scale-105'
             )}
           >
             <div className="relative">
-              <MessagesSquare className="h-7 w-7" />
+              <MessagesSquare className="h-5 w-5" />
               {latestAnnouncement && !readSeenAnnouncements().includes(latestAnnouncement.id) && (
                 <span className="absolute -right-1.5 -top-1.5 inline-flex h-3.5 w-3.5 rounded-full bg-amber-400 ring-2 ring-[#111317]" />
               )}
@@ -429,12 +429,11 @@ export function FloatingChatWidget() {
                 <Textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder={user ? '想說什麼就打什麼，公告請用 ! 開頭' : '登入後即可發言'}
+                  placeholder={user ? '顯示近30則留言，公告請用 ! 開頭' : '登入後即可發言'}
                   className="min-h-[78px] resize-none border-none bg-transparent px-2 py-2 text-sm text-foreground focus-visible:ring-0"
                   disabled={!user || isSending}
                 />
-                <div className="flex items-center justify-between gap-2 px-1 pb-1 pt-2">
-                  <p className="text-[10px] text-muted-foreground">近 100 則訊息。`!` 開頭會變公告，且 30 分鐘只能用一次。</p>
+                <div className="flex items-center justify-end gap-2 px-1 pb-1 pt-2">
                   <Button onClick={handleSend} disabled={!user || !draft.trim() || isSending} className="rounded-full h-9 px-4 text-[10px] font-bold uppercase tracking-widest">
                     {isSending ? <MessagesSquare className="w-3.5 h-3.5 mr-1.5 animate-pulse" /> : <Send className="w-3.5 h-3.5 mr-1.5" />} 送出
                   </Button>
