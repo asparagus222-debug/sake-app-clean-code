@@ -474,7 +474,7 @@ export function HomeClient({
                 <Flame className="w-5 h-5 text-sky-300" />
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold text-white">酒展快速模式</div>
+                <div className="text-sm font-bold text-white">建立品飲活動</div>
                 <div className="text-[9px] text-white/50">快速記錄、比較與整理想買酒款</div>
               </div>
             </button>

@@ -114,7 +114,7 @@ export default function ExpoPage() {
     return (
       <div className="min-h-screen notebook-texture px-4 py-10">
         <div className="max-w-xl mx-auto dark-glass rounded-[2rem] border border-white/10 p-6 text-center space-y-4">
-          <h1 className="text-xl font-headline font-bold text-primary tracking-widest uppercase">酒展快速模式</h1>
+          <h1 className="text-xl font-headline font-bold text-primary tracking-widest uppercase">品飲活動紀錄</h1>
           <p className="text-sm text-muted-foreground">登入後即可建立酒展活動，開始私人快記與比較。</p>
           <div className="flex justify-center gap-3">
             <Button onClick={() => router.push('/recover')} className="rounded-full h-10 px-5 text-xs font-bold uppercase tracking-widest">登入帳戶</Button>
@@ -131,7 +131,7 @@ export default function ExpoPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-300">私人品鑑清單</p>
-            <h1 className="text-2xl font-headline font-bold text-primary tracking-widest uppercase">酒展快速模式</h1>
+            <h1 className="text-xl font-headline font-bold text-primary tracking-widest uppercase">品飲活動紀錄</h1>
           </div>
           <Button variant="outline" onClick={() => router.push('/')} className="rounded-full h-10 px-5 text-xs font-bold uppercase tracking-widest">
             返回首頁
@@ -167,7 +167,7 @@ export default function ExpoPage() {
               <Textarea
                 value={formData.notes}
                 onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
-                placeholder="補充備註，例如先攻哪幾個酒造、想特別找什麼類型"
+                placeholder="活動補充備註"
                 className="min-h-[110px] rounded-2xl bg-white/5 border-white/10"
               />
             </div>
@@ -184,7 +184,7 @@ export default function ExpoPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">My Events</p>
-              <h2 className="text-lg font-bold text-foreground">我的酒展工作台</h2>
+              <h2 className="text-lg font-bold text-foreground">活動紀錄管理</h2>
             </div>
           </div>
 
