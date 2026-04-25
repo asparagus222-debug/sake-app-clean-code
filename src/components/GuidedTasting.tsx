@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Check, RotateCcw, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Home, RotateCcw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CUP_TYPE_OPTIONS, SERVING_TEMPERATURE_OPTIONS } from '@/lib/types';
 
@@ -395,6 +395,12 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     setActiveQuestionIndex(0);
   };
 
+  const movePrevQuestion = () => {
+    if (activeQuestionIndex > 0) {
+      setActiveQuestionIndex((prev) => prev - 1);
+    }
+  };
+
   const moveNextInSection = () => {
     if (continuousMode) {
       if (activeIsLastInSection) {
@@ -548,8 +554,9 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
     >
       <div className="px-5 pt-6 pb-3 shrink-0">
         <div className="mb-3 flex items-center justify-between">
-          <button onClick={returnHome} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-            <ArrowLeft className="w-4 h-4 text-white/60" />
+          <button onClick={returnHome} className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 h-9">
+            <Home className="w-3.5 h-3.5 text-white/60" />
+            <span className="text-[10px] font-bold text-white/50">主頁</span>
           </button>
 
           <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: `${activeQuestion.sectionColor}20`, border: `1px solid ${activeQuestion.sectionColor}40` }}>
@@ -658,32 +665,32 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           {primaryActionLabel} <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
 
-        {answered && continuousMode && (
+        <div className="flex items-center justify-between pt-1">
           <button
-            onClick={() => moveNextInSection()}
-            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/30 py-1.5"
+            onClick={movePrevQuestion}
+            disabled={activeQuestionIndex === 0}
+            className={cn(
+              'flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition-all',
+              activeQuestionIndex === 0 ? 'text-white/15' : 'text-white/45 hover:text-white/70'
+            )}
           >
-            跳過此題 →
+            <ArrowLeft className="h-3.5 w-3.5" /> 上一題
           </button>
-        )}
 
-        {!answered && !continuousMode && (
           <button
             onClick={returnHome}
-            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/25 py-1.5"
+            className="rounded-xl px-3 py-2 text-xs font-bold text-white/35 hover:text-white/60 transition-all"
           >
-            先跳過這題，返回首頁
+            回主頁
           </button>
-        )}
 
-        {!answered && continuousMode && (
           <button
-            onClick={() => moveNextInSection()}
-            className="w-full text-center text-xs font-bold uppercase tracking-widest text-white/25 py-1.5"
+            onClick={moveNextInSection}
+            className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white/45 hover:text-white/70 transition-all"
           >
-            先跳過這題 →
+            跳過 <ArrowRight className="h-3.5 w-3.5" />
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
