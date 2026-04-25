@@ -297,6 +297,7 @@ export default function ExpoRankingPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const dialogDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [imgTransforms, setImgTransforms] = useState<Record<string, ImageTransform>>({});
   const [editingImg, setEditingImg] = useState<string | null>(null);
   const getImgTransform = (id: string): ImageTransform => imgTransforms[id] ?? DEFAULT_TRANSFORM;
@@ -999,7 +1000,6 @@ export default function ExpoRankingPage() {
           const dialogNote = currentPageNotes.find(n => n.id === editingImg);
           const dialogSrc = dialogNote?.imageUrls?.[0];
           const t = getImgTransform(editingImg);
-          const dialogDragRef = { current: null as { startX: number; startY: number; origX: number; origY: number } | null };
           return (
             <Dialog open onOpenChange={(open) => { if (!open) setEditingImg(null); }}>
               <DialogContent className="max-w-[340px] rounded-2xl p-5">
