@@ -11,6 +11,7 @@ import { CUP_TYPE_OPTIONS, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAG
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck, FilePen } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { useFirestore, useUser, useAuth, addDocumentNonBlocking, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -88,6 +89,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   const { user, isUserLoading, authBootstrap } = useUser();
   
   const [isSaving, setIsSaving] = useState(false);
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const identifyAbortRef = useRef<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -242,6 +244,15 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
         clearTimeout(aiHighlightTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
   const flashAiHighlightedFields = (fields: string[]) => {
@@ -966,8 +977,21 @@ const handleSave = async () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+      <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>賨文尚未儲存</AlertDialogTitle>
+            <AlertDialogDescription>目前的內容尚未儲存，確定要離開此頁面嗎？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>繼續編輯</AlertDialogCancel>
+            <AlertDialogAction onClick={() => window.location.replace('/')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">放棄賨文</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => window.location.replace('/')} className="text-primary hover:bg-primary/10 transition-colors"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => setShowBackConfirm(true)} className="text-primary hover:bg-primary/10 transition-colors"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">建立品飲筆記</h1>
       </div>
 

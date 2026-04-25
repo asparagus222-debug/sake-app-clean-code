@@ -12,6 +12,7 @@ import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/comp
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck, FilePen, BookMarked } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, deleteField, collection, query, where } from 'firebase/firestore';
@@ -80,6 +81,7 @@ export default function EditNotePage() {
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifyCountdown, setIdentifyCountdown] = useState(0);
@@ -976,12 +978,25 @@ export default function EditNotePage() {
   };
 
   const handleBackToPrevious = () => {
+    setShowBackConfirm(true);
+  };
+
+  const confirmBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
-      return;
+    } else {
+      router.replace(`/notes/${id}`);
     }
-    router.replace(`/notes/${id}`);
   };
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   if (isUserLoading || isNoteLoading || !note) {
     return (
@@ -994,6 +1009,19 @@ export default function EditNotePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+      <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>賨文尚未儲存</AlertDialogTitle>
+            <AlertDialogDescription>目前的修改尚未儲存，確定要離開此頁面嗎？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>繼續編輯</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBack} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">放棄修改</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center mb-6">
         <Button variant="ghost" size="icon" onClick={handleBackToPrevious} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>

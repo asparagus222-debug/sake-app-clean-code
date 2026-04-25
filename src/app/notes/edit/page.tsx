@@ -11,6 +11,7 @@ import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTION
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, BookMarked, FilePen } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useAuth, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { deleteField, doc } from 'firebase/firestore';
@@ -27,6 +28,7 @@ export default function EditNotePage() {
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
   
   const [images, setImages] = useState<string[]>([]);
   const [zooms, setZooms] = useState<number[]>([1, 1]);
@@ -264,8 +266,21 @@ export default function EditNotePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+      <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>賨文尚未儲存</AlertDialogTitle>
+            <AlertDialogDescription>目前的修改尚未儲存，確定要離開此頁面嗎？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>繼續編輯</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push('/profile')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">放棄修改</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/profile')} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => setShowBackConfirm(true)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
       </div>
 
