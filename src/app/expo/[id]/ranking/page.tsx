@@ -18,7 +18,6 @@ type RankingSortMode = 'score' | 'price' | 'cp';
 type ShareCardThemeId = 'plum-light' | 'moss-light' | 'midnight-dark' | 'charcoal-dark';
 type ShareCardLayoutId = 'magazine' | 'rows' | 'cinematic' | 'list';
 
-const PAGE_SIZE = 5;
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
   score: { label: '風味評分', icon: Star },
   price: { label: '價格', icon: BadgeDollarSign },
@@ -295,6 +294,7 @@ export default function ExpoRankingPage() {
   const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('plum-light');
   const [layoutVariant, setLayoutVariant] = useState<ShareCardLayoutId>('rows');
   const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [isExporting, setIsExporting] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const dialogDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -339,17 +339,17 @@ export default function ExpoRankingPage() {
     });
   }, [rawNotes, sortMode]);
 
-  const totalPages = Math.max(1, Math.ceil(rankedNotes.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(rankedNotes.length / pageSize));
   const currentPageNotes = useMemo(() => {
     const safePageIndex = Math.min(pageIndex, totalPages - 1);
-    return rankedNotes.slice(safePageIndex * PAGE_SIZE, (safePageIndex + 1) * PAGE_SIZE);
-  }, [pageIndex, rankedNotes, totalPages]);
+    return rankedNotes.slice(safePageIndex * pageSize, (safePageIndex + 1) * pageSize);
+  }, [pageIndex, rankedNotes, totalPages, pageSize]);
   const currentSortMeta = SORT_MODE_META[sortMode];
   const currentShareCardTheme = SHARE_CARD_THEMES[shareCardTheme];
   const ct = layoutVariant === 'cinematic' ? SHARE_CARD_THEMES['charcoal-dark'] : currentShareCardTheme;
   const heroNote = currentPageNotes[0] ?? null;
   const featuredNotes = currentPageNotes.slice(1, 3);
-  const compactNotes = currentPageNotes.slice(3, 5);
+  const compactNotes = currentPageNotes.slice(3);
   const averageScore = useMemo(() => {
     if (currentPageNotes.length === 0) return 0;
     const sum = currentPageNotes.reduce((acc, note) => acc + (note.overallRating || 0), 0);
@@ -360,6 +360,10 @@ export default function ExpoRankingPage() {
   React.useEffect(() => {
     setPageIndex(0);
   }, [sortMode]);
+
+  React.useEffect(() => {
+    setPageIndex(0);
+  }, [pageSize]);
 
   React.useEffect(() => {
     if (pageIndex > totalPages - 1) {
@@ -440,7 +444,7 @@ export default function ExpoRankingPage() {
             <h1 className="mt-3 text-[2rem] font-headline font-bold tracking-[0.12em] text-[#fff4e5] uppercase break-words">活動排名打卡頁</h1>
             <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#d8b89a]">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Trophy className="w-2.5 h-2.5 text-[#ffb86b]" /> {event.name}</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><ClipboardList className="w-2.5 h-2.5 text-[#ffb86b]" /> 每頁 5 名</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><ClipboardList className="w-2.5 h-2.5 text-[#ffb86b]" /> 每頁 {pageSize} 名</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Sparkles className="w-2.5 h-2.5 text-[#ffb86b]" /> {currentSortMeta.label} 模式</span>
             </div>
           </div>
@@ -503,6 +507,28 @@ export default function ExpoRankingPage() {
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
+            </div>
+
+            {/* 顯示名數 */}
+            <div className="mt-3 border-t border-white/10 pt-3">
+              <p className="mb-2 text-[7px] font-bold uppercase tracking-[0.14em] text-[#ffcf99]/45">顯示名數</p>
+              <div className="grid grid-cols-6 gap-1">
+                {[5, 6, 7, 8, 9, 10].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPageSize(n)}
+                    className={cn(
+                      'rounded-[0.85rem] border py-2 text-center transition-all',
+                      pageSize === n
+                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_0_0_1.5px_rgba(255,209,102,0.28)]'
+                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                    )}
+                  >
+                    <p className="text-[9px] font-bold text-[#fff4e5]">{n}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 版型 */}
@@ -738,12 +764,12 @@ export default function ExpoRankingPage() {
                         </div>
                       )}
                       {compactNotes.length > 0 && (
-                        <div className="grid min-h-0 flex-[1.4] grid-rows-2 gap-1 overflow-hidden">
+                        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                           {compactNotes.map((note, compactIndex) => {
                             const cpScore = getExpoCpScore(note);
                             const authorNote = getRankingAuthorNote(note);
                             return (
-                              <div key={note.id} className="flex h-full items-center gap-2 overflow-hidden rounded-[0.8rem] border border-[#1c1c1c] bg-[#111111] px-2 py-1">
+                              <div key={note.id} className="flex min-h-0 flex-1 items-center gap-2 overflow-hidden rounded-[0.8rem] border border-[#1c1c1c] bg-[#111111] px-2 py-1">
                                 <div className="min-w-0 flex-1 overflow-hidden">
                                   <div className={cn('text-[8.5px] font-bold leading-[1.1]', ct.titleClassName)} style={clampText(1)}>{getExpoNoteDisplayName(note)}</div>
                                   <div className={cn('mt-0.5 overflow-hidden text-[6px] leading-[1.1]', ct.metaClassName)} style={clampText(1)}>{getRankingBrewery(note)}{authorNote ? ` ・ ${authorNote}` : ''}</div>
@@ -765,7 +791,7 @@ export default function ExpoRankingPage() {
                     /* ── LIST: 純文字清單，大排名數字 ── */
                     <div className="mt-1 flex min-h-0 flex-1 flex-col gap-[3px] overflow-hidden">
                       {currentPageNotes.map((note, i) => {
-                        const rank = pageIndex * PAGE_SIZE + i + 1;
+                        const rank = pageIndex * pageSize + i + 1;
                         const cpScore = getExpoCpScore(note);
                         const authorNote = getRankingAuthorNote(note);
                         const medalStyle = getRankMedalStyle(rank, shareCardTheme);
@@ -827,7 +853,7 @@ export default function ExpoRankingPage() {
                     /* ── MAGAZINE (default): 左圖右字，2col featured ── */
                     <div className="mt-1 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                       {heroNote && (() => {
-                        const heroRank = pageIndex * PAGE_SIZE + 1;
+                        const heroRank = pageIndex * pageSize + 1;
                         const heroScore = getExpoCpScore(heroNote);
                         const heroStyle = getRankMedalStyle(heroRank, shareCardTheme);
                         const heroAuthorNote = getRankingAuthorNote(heroNote);
@@ -877,7 +903,7 @@ export default function ExpoRankingPage() {
                       {featuredNotes.length > 0 && (
                         <div className="grid min-h-0 flex-[2.5] grid-cols-2 gap-1 overflow-hidden">
                           {featuredNotes.map((note, featuredIndex) => {
-                            const rank = pageIndex * PAGE_SIZE + featuredIndex + 2;
+                            const rank = pageIndex * pageSize + featuredIndex + 2;
                             const cpScore = getExpoCpScore(note);
                             const medalStyle = getRankMedalStyle(rank, shareCardTheme);
                             const authorNote = getRankingAuthorNote(note);
@@ -926,14 +952,14 @@ export default function ExpoRankingPage() {
                         </div>
                       )}
                       {compactNotes.length > 0 && (
-                        <div className="grid min-h-0 flex-[1.6] grid-rows-2 gap-1 overflow-hidden">
+                        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                           {compactNotes.map((note, compactIndex) => {
-                            const rank = pageIndex * PAGE_SIZE + compactIndex + 4;
+                            const rank = pageIndex * pageSize + compactIndex + 4;
                             const cpScore = getExpoCpScore(note);
                             const medalStyle = getRankMedalStyle(rank, shareCardTheme);
                             const authorNote = getRankingAuthorNote(note);
                             return (
-                              <div key={note.id} className={cn('flex h-full items-center gap-1.5 overflow-hidden rounded-[0.85rem] border p-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
+                              <div key={note.id} className={cn('flex min-h-0 flex-1 items-center gap-1.5 overflow-hidden rounded-[0.85rem] border p-1.5', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}>
                                 <div className={cn('relative h-full w-[52px] shrink-0 overflow-hidden rounded-[0.65rem] border', currentShareCardTheme.modeChipClassName)}>
                                   {note.imageUrls?.[0] ? (
                                     <EditableImage
@@ -972,7 +998,7 @@ export default function ExpoRankingPage() {
 
                   {/* ── FOOTER ── */}
                   <div className={cn('mt-1 flex shrink-0 items-center justify-between gap-2 border-t pt-1.5 text-[5.5px] font-bold uppercase tracking-[0.06em]', ct.footerClassName)}>
-                    <div className="whitespace-nowrap">酒展快記 TOP 5 · Pg {pageIndex + 1}/{totalPages} · Avg {averageScore.toFixed(1)}</div>
+                    <div className="whitespace-nowrap">酒展快記 TOP {pageSize} · Pg {pageIndex + 1}/{totalPages} · Avg {averageScore.toFixed(1)}</div>
                     <div className="whitespace-nowrap">CP = (風味^1.5 / 價格) × 係數</div>
                   </div>
                 </div>
