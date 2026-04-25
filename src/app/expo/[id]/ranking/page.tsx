@@ -269,7 +269,7 @@ function EditableImage({
         unoptimized
         draggable={false}
         style={{
-          objectFit: 'contain',
+          objectFit: 'cover',
           transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
           transformOrigin: 'center center',
           userSelect: 'none',
@@ -1030,7 +1030,7 @@ export default function ExpoRankingPage() {
                       unoptimized
                       draggable={false}
                       style={{
-                        objectFit: 'contain',
+                        objectFit: 'cover',
                         transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
                         transformOrigin: 'center center',
                         pointerEvents: 'none',
