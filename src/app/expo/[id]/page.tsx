@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { ArrowLeft, BadgeDollarSign, BookMarked, Building2, Camera, Check, ChevronDown, CircleDollarSign, ClipboardList, FilePen, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, BookMarked, Building2, Camera, Check, ChevronDown, CircleDollarSign, ClipboardList, Download, FilePen, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -184,6 +184,11 @@ export default function ExpoEventPage() {
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('score');
+  const [showAlbum, setShowAlbum] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [multiSelectActive, setMultiSelectActive] = useState(false);
+  const [selectedPhotoKeys, setSelectedPhotoKeys] = useState<Set<string>>(new Set());
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isQuickTagsExpanded, setIsQuickTagsExpanded] = useState(false);
   const [aromaSelection, setAromaSelection] = useState<{ intensity: AromaIntensity | null; profiles: AromaProfile[]; notes: AromaNote[] }>({ intensity: null, profiles: [], notes: [] });
   const [recognitionSnapshot, setRecognitionSnapshot] = useState<RecognitionSnapshot | null>(null);
@@ -253,6 +258,33 @@ export default function ExpoEventPage() {
     total: rawNotes?.length || 0,
     published: rawNotes?.filter((note) => isPublicPublishedNote(note)).length || 0,
   }), [rawNotes]);
+
+  const allPhotos = useMemo(() => {
+    const photos: { key: string; src: string; noteName: string }[] = [];
+    (rawNotes || []).forEach((note) => {
+      (note.imageUrls || []).forEach((src, idx) => {
+        if (src) photos.push({ key: `${note.id}-${idx}`, src, noteName: getExpoNoteDisplayName(note) });
+      });
+    });
+    return photos;
+  }, [rawNotes]);
+
+  const downloadImage = async (src: string, filename: string) => {
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ variant: 'destructive', title: '下載失敗', description: '請稍後再試' });
+    }
+  };
   const hasRecognitionData = Boolean(recognitionSnapshot && (recognitionSnapshot.brandName || recognitionSnapshot.brewery || recognitionSnapshot.origin));
 
   const toggleQuickTag = (category: string, tag: string) => {
@@ -1049,15 +1081,28 @@ export default function ExpoEventPage() {
             <div className="dark-glass rounded-[2rem] border border-white/10 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">Compare View</p>
-                  <h2 className="text-lg font-bold text-foreground">本場比較清單</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">{showAlbum ? 'Photo Album' : 'Compare View'}</p>
+                  <h2 className="text-lg font-bold text-foreground">{showAlbum ? '活動相簿' : '本場比較清單'}</h2>
                 </div>
-                <Link href={`/expo/${eventId}/ranking`}>
-                  <Button className="rounded-full h-10 bg-[#ffd166] px-5 text-[10px] font-bold uppercase tracking-widest text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.28)] hover:bg-[#ffe08f]">
-                    <Trophy className="w-3.5 h-3.5 mr-1.5" /> 排名打卡頁
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={showAlbum ? 'default' : 'outline'}
+                    onClick={() => { setShowAlbum(v => !v); setMultiSelectActive(false); setSelectedPhotoKeys(new Set()); }}
+                    className="rounded-full h-10 px-4 text-[10px] font-bold uppercase tracking-widest"
+                  >
+                    <Images className="w-3.5 h-3.5 mr-1.5" /> 相簿
                   </Button>
-                </Link>
+                  {!showAlbum && (
+                    <Link href={`/expo/${eventId}/ranking`}>
+                      <Button className="rounded-full h-10 bg-[#ffd166] px-5 text-[10px] font-bold uppercase tracking-widest text-[#21150d] shadow-[0_10px_24px_rgba(255,209,102,0.28)] hover:bg-[#ffe08f]">
+                        <Trophy className="w-3.5 h-3.5 mr-1.5" /> 排名打卡頁
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </div>
+              {!showAlbum && (
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {[
                   { value: 'score', label: '風味評分', icon: Star },
@@ -1078,9 +1123,86 @@ export default function ExpoEventPage() {
                   );
                 })}
               </div>
+              )}
             </div>
 
-            {isNotesLoading ? (
+            {showAlbum ? (
+              <>
+                {multiSelectActive && (
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">已選 {selectedPhotoKeys.size} 張</p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedPhotoKeys(new Set(allPhotos.map(p => p.key))); }} className="rounded-full h-8 px-3 text-[10px] font-bold uppercase">全選</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedPhotoKeys(new Set()); setMultiSelectActive(false); }} className="rounded-full h-8 px-3 text-[10px] font-bold uppercase">取消</Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={selectedPhotoKeys.size === 0}
+                        onClick={async () => {
+                          const toDownload = allPhotos.filter(p => selectedPhotoKeys.has(p.key));
+                          for (const photo of toDownload) {
+                            await downloadImage(photo.src, `${photo.noteName}-${photo.key}.jpg`);
+                            await new Promise(r => setTimeout(r, 300));
+                          }
+                        }}
+                        className="rounded-full h-8 px-3 text-[10px] font-bold uppercase"
+                      >
+                        <Download className="w-3 h-3 mr-1.5" /> 下載已選
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {allPhotos.length === 0 ? (
+                  <div className="dark-glass rounded-[2rem] border border-dashed border-white/10 p-10 text-center text-sm text-muted-foreground">
+                    還沒有任何照片，快記時拍照後照片會出現在這裡。
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {allPhotos.map((photo) => {
+                      const isSelected = selectedPhotoKeys.has(photo.key);
+                      return (
+                        <div
+                          key={photo.key}
+                          className={cn('relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all', isSelected ? 'border-primary' : 'border-transparent')}
+                          onTouchStart={() => {
+                            longPressTimerRef.current = setTimeout(() => { setMultiSelectActive(true); setSelectedPhotoKeys(new Set([photo.key])); }, 500);
+                          }}
+                          onTouchEnd={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current); }}
+                          onTouchMove={() => { if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current); }}
+                          onClick={() => {
+                            if (multiSelectActive) {
+                              setSelectedPhotoKeys(prev => {
+                                const next = new Set(prev);
+                                next.has(photo.key) ? next.delete(photo.key) : next.add(photo.key);
+                                return next;
+                              });
+                            } else {
+                              setLightboxSrc(photo.src);
+                            }
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.src} alt={photo.noteName} className="w-full h-full object-cover" />
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                                <Check className="w-3.5 h-3.5 text-white" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1">
+                            <p className="text-[8px] font-bold text-white truncate">{photo.noteName}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!multiSelectActive && allPhotos.length > 0 && (
+                  <p className="text-center text-[9px] text-muted-foreground">長按圖片可進入多選模式</p>
+                )}
+              </>
+            ) : isNotesLoading ? (
               <div className="dark-glass rounded-[2rem] border border-white/10 p-10 flex justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
@@ -1162,6 +1284,33 @@ export default function ExpoEventPage() {
           </div>
         </section>
       </div>
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90" onClick={() => setLightboxSrc(null)}>
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            className="absolute bottom-8 right-4 z-10 flex items-center gap-2 rounded-full bg-primary px-4 h-10 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg hover:bg-primary/80"
+            onClick={(e) => { e.stopPropagation(); void downloadImage(lightboxSrc, `sake-${Date.now()}.jpg`); }}
+          >
+            <Download className="w-4 h-4" /> 下載
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxSrc}
+            alt="photo"
+            className="max-h-[85vh] max-w-[95vw] rounded-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
