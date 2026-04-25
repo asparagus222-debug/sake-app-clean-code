@@ -82,8 +82,8 @@ export default function EditNotePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const markDirty = () => setIsDirty(true);
+  const isDirtyRef = useRef(false);
+  const markDirty = () => { isDirtyRef.current = true; };
   const [isGenerating, setIsGenerating] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifyCountdown, setIdentifyCountdown] = useState(0);
@@ -871,7 +871,7 @@ export default function EditNotePage() {
   const persistNote = async (mode: 'save' | 'personal' | 'public') => {
     const publishNote = mode === 'public';
     if (!firestore || !user || !note) return;
-    setIsDirty(false);
+    isDirtyRef.current = false;
     setIsSaving(true);
     try {
       // Snapshot current session before saving
@@ -982,7 +982,7 @@ export default function EditNotePage() {
   };
 
   const handleBackToPrevious = () => {
-    if (!isDirty) {
+    if (!isDirtyRef.current) {
       confirmBack();
       return;
     }
@@ -999,13 +999,13 @@ export default function EditNotePage() {
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (!isDirty) return;
+      if (!isDirtyRef.current) return;
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
+  }, []);
 
   if (isUserLoading || isNoteLoading || !note) {
     return (
@@ -1017,7 +1017,7 @@ export default function EditNotePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)} onChange={markDirty}>
+    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)} onInput={markDirty}>
       <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1288,7 +1288,7 @@ export default function EditNotePage() {
                   <Label className="font-bold text-foreground text-[9px] uppercase tracking-widest">{key === 'sweetness' ? '甘' : key === 'acidity' ? '酸' : key === 'bitterness' ? '苦' : key === 'umami' ? '旨' : '澀'}</Label>
                   <span className="text-primary font-bold text-[9px] bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">{RATING_LABELS[key as keyof typeof RATING_LABELS][(formData[key as keyof typeof formData] as number) - 1]}</span>
                 </div>
-                <Slider min={1} max={5} step={1} value={[formData[key as keyof typeof formData] as number]} onValueChange={v => setFormData(p => ({ ...p, [key]: v[0] }))} />
+                <Slider min={1} max={5} step={1} value={[formData[key as keyof typeof formData] as number]} onValueChange={v => { markDirty(); setFormData(p => ({ ...p, [key]: v[0] })); }} />
               </div>
             ))}
           </div>
@@ -1454,12 +1454,12 @@ export default function EditNotePage() {
                   <button
                     key={option}
                     type="button"
-                    onClick={() => setFormData(p => ({
+                    onClick={() => { markDirty(); setFormData(p => ({
                       ...p,
                       servingTemperatures: p.servingTemperatures.includes(option)
                         ? p.servingTemperatures.filter(item => item !== option)
                         : [...p.servingTemperatures, option],
-                    }))}
+                    })); }}
                     className={cn(
                       "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
                       formData.servingTemperatures.includes(option) ? "bg-amber-500 text-black border-amber-400 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
@@ -1477,12 +1477,12 @@ export default function EditNotePage() {
                   <button
                     key={option}
                     type="button"
-                    onClick={() => setFormData(p => ({
+                    onClick={() => { markDirty(); setFormData(p => ({
                       ...p,
                       cupTypes: p.cupTypes.includes(option)
                         ? p.cupTypes.filter(item => item !== option)
                         : [...p.cupTypes, option],
-                    }))}
+                    })); }}
                     className={cn(
                       "px-3 py-1 rounded-full border text-[9px] font-bold transition-all",
                       formData.cupTypes.includes(option) ? "bg-sky-400 text-black border-sky-300 shadow-lg" : "bg-white/5 border-primary/30 text-muted-foreground"
@@ -1505,7 +1505,7 @@ export default function EditNotePage() {
             <Label className="text-[10px] font-headline text-primary uppercase tracking-widest">綜合評分</Label>
             <div className="flex items-baseline gap-1"><span className="text-2xl font-bold text-primary">{formData.overallRating}</span><span className="text-[9px] font-bold text-muted-foreground opacity-60 uppercase">/ 10</span></div>
           </div>
-          <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => setFormData(p => ({ ...p, overallRating: v[0] }))} />
+          <Slider min={1} max={10} step={1} value={[formData.overallRating]} onValueChange={v => { markDirty(); setFormData(p => ({ ...p, overallRating: v[0] })); }} />
         </section>
 
         <div className="flex flex-col gap-3">
@@ -1603,7 +1603,7 @@ export default function EditNotePage() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {images.length === 2 && <Slider value={[splitRatio]} onValueChange={v => setSplitRatio(v[0])} min={20} max={80} step={1} className="h-4" />}
+                {images.length === 2 && <Slider value={[splitRatio]} onValueChange={v => { markDirty(); setSplitRatio(v[0]); }} min={20} max={80} step={1} className="h-4" />}
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <Button variant="outline" size="sm" type="button" className="text-[10px] font-bold h-8 px-3 rounded-full border-primary/40 text-primary bg-primary/5" onClick={() => openPicker()}>
                     <Camera className="w-3 h-3 mr-1" /> 重選圖片
