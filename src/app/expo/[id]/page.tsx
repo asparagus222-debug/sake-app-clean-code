@@ -678,7 +678,7 @@ export default function ExpoEventPage() {
             <button type="button" onClick={() => router.push('/expo')} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70 hover:text-primary transition-colors">
               <ArrowLeft className="w-3 h-3" /> 返回活動列表
             </button>
-            <h1 className="mt-3 text-2xl font-headline font-bold text-primary tracking-widest uppercase truncate">{event.name}</h1>
+            <h1 className="mt-3 text-base font-headline font-bold text-primary tracking-widest uppercase whitespace-nowrap overflow-x-auto">{event.name}</h1>
             <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               <span className="inline-flex items-center gap-1"><Store className="w-3 h-3 text-primary/70" /> {event.venue || '未填地點'}</span>
               <span className="inline-flex items-center gap-1"><ClipboardList className="w-3 h-3 text-primary/70" /> {event.eventDate}</span>
