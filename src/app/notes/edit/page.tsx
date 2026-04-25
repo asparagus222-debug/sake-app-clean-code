@@ -29,6 +29,8 @@ export default function EditNotePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const markDirty = () => setIsDirty(true);
   
   const [images, setImages] = useState<string[]>([]);
   const [zooms, setZooms] = useState<number[]>([1, 1]);
@@ -101,6 +103,16 @@ export default function EditNotePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   const handleBrandChange = (value: string) => {
     setFormData(prev => ({ ...prev, brandName: value }));
     if (value.length > 0) {
@@ -150,6 +162,7 @@ export default function EditNotePage() {
   };
 
   const toggleStyleTag = (tag: string) => {
+    markDirty();
     setFormData(prev => {
       const exists = prev.styleTags.includes(tag);
       if (exists) {
@@ -163,6 +176,7 @@ export default function EditNotePage() {
   const addCustomTag = () => {
     const tag = customTag.trim();
     if (tag && !formData.styleTags.includes(tag)) {
+      markDirty();
       setFormData(prev => ({ ...prev, styleTags: [...prev.styleTags, tag] }));
       setCustomTag("");
     }
@@ -212,6 +226,7 @@ export default function EditNotePage() {
 
   const handleSaveWithStatus = async (visibility: 'private' | 'public', publicationStatus: 'draft' | 'published') => {
     if (!firestore || !user || !note) return;
+    setIsDirty(false);
     setIsSaving(true);
     try {
       const finalImages = await Promise.all(images.map((_, i) => images[i].startsWith('http') ? images[i] : captureCurrentView(i)));
@@ -265,7 +280,7 @@ export default function EditNotePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)} onChange={markDirty}>
       <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -280,7 +295,7 @@ export default function EditNotePage() {
       </AlertDialog>
 
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => setShowBackConfirm(true)} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={() => isDirty ? setShowBackConfirm(true) : router.push('/profile')} className="text-primary"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="text-lg font-headline text-primary ml-2 gold-glow tracking-widest uppercase">編輯品飲筆記</h1>
       </div>
 

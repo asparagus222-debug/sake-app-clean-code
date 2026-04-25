@@ -82,6 +82,8 @@ export default function EditNotePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const markDirty = () => setIsDirty(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifyCountdown, setIdentifyCountdown] = useState(0);
@@ -686,6 +688,7 @@ export default function EditNotePage() {
   };
 
   const toggleStyleTag = (tag: string) => {
+    markDirty();
     setFormData(prev => ({
       ...prev,
       styleTags: prev.styleTags.includes(tag) ? prev.styleTags.filter(t => t !== tag) : [...prev.styleTags, tag]
@@ -868,6 +871,7 @@ export default function EditNotePage() {
   const persistNote = async (mode: 'save' | 'personal' | 'public') => {
     const publishNote = mode === 'public';
     if (!firestore || !user || !note) return;
+    setIsDirty(false);
     setIsSaving(true);
     try {
       // Snapshot current session before saving
@@ -978,6 +982,10 @@ export default function EditNotePage() {
   };
 
   const handleBackToPrevious = () => {
+    if (!isDirty) {
+      confirmBack();
+      return;
+    }
     setShowBackConfirm(true);
   };
 
@@ -991,12 +999,13 @@ export default function EditNotePage() {
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, []);
+  }, [isDirty]);
 
   if (isUserLoading || isNoteLoading || !note) {
     return (
@@ -1008,7 +1017,7 @@ export default function EditNotePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)}>
+    <div className="max-w-2xl mx-auto px-4 py-6 mb-24 notebook-texture min-h-screen font-body select-none" onMouseMove={onMouseMove} onMouseUp={() => setDraggingIdx(null)} onChange={markDirty}>
       <AlertDialog open={showBackConfirm} onOpenChange={setShowBackConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
