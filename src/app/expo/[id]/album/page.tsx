@@ -154,9 +154,11 @@ export default function ExpoAlbumPage() {
                   <div
                     key={photo.key}
                     className={cn(
-                      'relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all',
+                      'relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all select-none',
                       isSelected ? 'border-primary' : 'border-transparent'
                     )}
+                    style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+                    onContextMenu={(e) => e.preventDefault()}
                     onTouchStart={() => {
                       longPressTimerRef.current = setTimeout(() => {
                         setMultiSelectActive(true);
@@ -178,7 +180,7 @@ export default function ExpoAlbumPage() {
                     }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.src} alt={photo.noteName} className="w-full h-full object-cover" />
+                    <img src={photo.src} alt={photo.noteName} className="w-full h-full object-cover pointer-events-none" draggable={false} />
                     {isSelected && (
                       <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
                         <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
