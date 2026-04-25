@@ -19,6 +19,7 @@ interface Q {
   shortLabel?: string;
   hint?: string;
   optional?: boolean;
+  allowCustom?: boolean;
   type: QType;
   low?: string;
   high?: string;
@@ -85,7 +86,7 @@ const QUESTIONS: Q[] = [
   },
   {
     id: 'aromaType', section: '香氣', sectionColor: '#7c3aed',
-    text: '主要香氣類型？', shortLabel: '主要香氣', hint: '可多選', type: 'multi',
+    text: '主要香氣類型？', shortLabel: '主要香氣', hint: '可多選', type: 'multi', allowCustom: true,
     options: [
       { value: '吟釀花香', label: '吟釀花香', emoji: '🌸' },
       { value: '水果香', label: '水果香', emoji: '🍊' },
@@ -94,6 +95,7 @@ const QUESTIONS: Q[] = [
       { value: '木桶陳釀', label: '木桶陳釀', emoji: '🪵' },
       { value: '礦物土壤', label: '礦物土壤', emoji: '🪨' },
       { value: '草本植物', label: '草本植物', emoji: '🌿' },
+      { value: '煙燻味', label: '煙燻味', emoji: '🔥' },
     ],
   },
   {
@@ -274,12 +276,14 @@ function buildResult(answers: GuidedTastingAnswers): GuidedTastingResult {
 
   const aromaIntensity = get('aromaIntensity');
   const aromaType = getArr('aromaType');
+  const aromaTypeCustom = get('aromaTypeCustom')?.trim();
   const aromaDetail = getArr('aromaDetail');
-  if (aromaIntensity || aromaType.length > 0 || aromaDetail.length > 0) {
+  const allAromaTypes = aromaTypeCustom ? [...aromaType, aromaTypeCustom] : aromaType;
+  if (aromaIntensity || allAromaTypes.length > 0 || aromaDetail.length > 0) {
     let line = '【香氣】';
     if (aromaIntensity) line += `香氣${aromaIntensity}`;
-    if (aromaType.length > 0) line += `${aromaIntensity ? '，' : ''}帶有${aromaType.join('、')}`;
-    if (aromaDetail.length > 0) line += `${aromaIntensity || aromaType.length > 0 ? '；' : ''}細嗅可辨${aromaDetail.join('、')}`;
+    if (allAromaTypes.length > 0) line += `${aromaIntensity ? '，' : ''}帶有${allAromaTypes.join('、')}`;
+    if (aromaDetail.length > 0) line += `${aromaIntensity || allAromaTypes.length > 0 ? '；' : ''}細嗅可辨${aromaDetail.join('、')}`;
     parts.push(line);
   }
 
@@ -631,6 +635,15 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
               );
             })}
           </div>
+          {activeQuestion.allowCustom && (
+            <input
+              type="text"
+              className="mt-2.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all focus:border-white/30 placeholder:text-white/25"
+              placeholder="其他香氣（自填）"
+              value={typeof answers[`${activeQuestion.id}Custom`] === 'string' ? answers[`${activeQuestion.id}Custom`] as string : ''}
+              onChange={(e) => updateAnswer(`${activeQuestion.id}Custom`, e.target.value)}
+            />
+          )}
         )}
       </div>
 
