@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, RotateCcw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CUP_TYPE_OPTIONS, SERVING_TEMPERATURE_OPTIONS } from '@/lib/types';
 
@@ -513,22 +513,21 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           })}
         </div>
 
-        <div className="px-5 pb-10 pt-3 space-y-2">
+        <div className="px-5 pb-10 pt-3 space-y-3">
           <Button
-            className="h-12 w-full rounded-full text-xs font-bold uppercase tracking-widest"
-            variant="outline"
+            className="h-12 w-full rounded-2xl border border-primary/40 bg-primary/10 text-primary text-xs font-bold tracking-widest hover:bg-primary/20 hover:border-primary/60 transition-all"
+            variant="ghost"
             onClick={startFromBeginning}
           >
-            從頭開始品鑑 <ArrowRight className="ml-2 h-4 w-4" />
+            <RotateCcw className="mr-2 h-4 w-4" /> 從頭開始品鑑
           </Button>
           <Button
-            className="h-14 w-full rounded-full text-sm font-bold uppercase tracking-widest"
-            style={{ background: '#f97316' }}
+            className="h-14 w-full rounded-2xl bg-primary text-white text-sm font-bold tracking-widest shadow-lg shadow-primary/30 hover:brightness-110 transition-all"
             onClick={() => onComplete(buildResult(answers))}
           >
-            完成品鑑 <Check className="ml-2 h-4 w-4" />
+            <Check className="mr-2 h-5 w-5" /> 完成品鑑
           </Button>
-          <p className="text-center text-[10px] text-white/28">可只補特定分組，補完後直接點「完成品鑑」整理到筆記。</p>
+          <p className="text-center text-[10px] text-white/30">可只補特定分組，補完後直接點「完成品鑑」整理到筆記。</p>
         </div>
       </div>
     );
