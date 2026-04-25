@@ -270,7 +270,7 @@ function EditableImage({
         draggable={false}
         style={{
           objectFit: 'contain',
-          transform: `scale(${t.scale})`,
+          transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
           transformOrigin: 'center center',
           userSelect: 'none',
           pointerEvents: 'none',
@@ -994,32 +994,53 @@ export default function ExpoRankingPage() {
           </div>
         </section>
 
-        {/* Image Scale Edit Dialog */}
+        {/* Image Edit Dialog */}
         {editingImg && (() => {
           const dialogNote = currentPageNotes.find(n => n.id === editingImg);
           const dialogSrc = dialogNote?.imageUrls?.[0];
           const t = getImgTransform(editingImg);
+          const dialogDragRef = { current: null as { startX: number; startY: number; origX: number; origY: number } | null };
           return (
             <Dialog open onOpenChange={(open) => { if (!open) setEditingImg(null); }}>
-              <DialogContent className="max-w-[320px] rounded-2xl p-5">
+              <DialogContent className="max-w-[340px] rounded-2xl p-5">
                 <DialogHeader>
-                  <DialogTitle className="text-sm font-bold">調整圖片縮放</DialogTitle>
+                  <DialogTitle className="text-sm font-bold">調整圖片</DialogTitle>
                 </DialogHeader>
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black/10">
+                {/* Preview: drag to pan */}
+                <div
+                  className="relative w-full aspect-square rounded-xl overflow-hidden bg-black/10 cursor-grab active:cursor-grabbing touch-none select-none"
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    dialogDragRef.current = { startX: e.clientX, startY: e.clientY, origX: t.x, origY: t.y };
+                  }}
+                  onPointerMove={(e) => {
+                    if (!dialogDragRef.current) return;
+                    const dx = e.clientX - dialogDragRef.current.startX;
+                    const dy = e.clientY - dialogDragRef.current.startY;
+                    setImgTransform(editingImg, { ...t, x: dialogDragRef.current.origX + dx, y: dialogDragRef.current.origY + dy });
+                  }}
+                  onPointerUp={() => { dialogDragRef.current = null; }}
+                  onPointerCancel={() => { dialogDragRef.current = null; }}
+                >
                   {dialogSrc && (
                     <Image
                       src={dialogSrc}
                       alt={dialogNote ? getExpoNoteDisplayName(dialogNote) : ''}
                       fill
                       unoptimized
+                      draggable={false}
                       style={{
                         objectFit: 'contain',
-                        transform: `scale(${t.scale})`,
+                        transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
                         transformOrigin: 'center center',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
                       }}
                     />
                   )}
+                  <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] text-white/80">拖曳移動圖片</div>
                 </div>
+                {/* Scale slider */}
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>縮放</span>
@@ -1037,7 +1058,10 @@ export default function ExpoRankingPage() {
                     <span>3×</span>
                   </div>
                 </div>
-                <Button onClick={() => setEditingImg(null)} className="w-full rounded-full">完成</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setImgTransform(editingImg, DEFAULT_TRANSFORM)} className="flex-1 rounded-full text-xs">重置</Button>
+                  <Button onClick={() => setEditingImg(null)} className="flex-1 rounded-full">完成</Button>
+                </div>
               </DialogContent>
             </Dialog>
           );
