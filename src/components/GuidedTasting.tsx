@@ -616,41 +616,43 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             onChange={(event) => updateAnswer(activeQuestion.id, event.target.value)}
           />
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {activeQuestion.options.map((option) => {
-              const selected = activeQuestion.type === 'multi'
-                ? (answer as string[]).includes(option.value)
-                : answer === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => toggleOption(activeQuestion, option.value)}
-                  className={cn(
-                    'relative rounded-2xl border p-4 text-left transition-all active:scale-95',
-                    selected ? 'border-transparent text-white' : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8'
-                  )}
-                  style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor } : undefined}
-                >
-                  {option.emoji && <span className="mb-1.5 block text-2xl">{option.emoji}</span>}
-                  <span className="text-xs font-bold leading-tight">{option.label}</span>
-                  {selected && (
-                    <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full" style={{ background: activeQuestion.sectionColor }}>
-                      <Check className="h-2.5 w-2.5 text-white" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {activeQuestion.allowCustom && (
-            <input
-              type="text"
-              className="mt-2.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all focus:border-white/30 placeholder:text-white/25"
-              placeholder="其他香氣（自填）"
-              value={typeof answers[`${activeQuestion.id}Custom`] === 'string' ? answers[`${activeQuestion.id}Custom`] as string : ''}
-              onChange={(e) => updateAnswer(`${activeQuestion.id}Custom`, e.target.value)}
-            />
-          )}
+          <>
+            <div className="grid grid-cols-2 gap-2.5">
+              {activeQuestion.options.map((option) => {
+                const selected = activeQuestion.type === 'multi'
+                  ? (answer as string[]).includes(option.value)
+                  : answer === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => toggleOption(activeQuestion, option.value)}
+                    className={cn(
+                      'relative rounded-2xl border p-4 text-left transition-all active:scale-95',
+                      selected ? 'border-transparent text-white' : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8'
+                    )}
+                    style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor } : undefined}
+                  >
+                    {option.emoji && <span className="mb-1.5 block text-2xl">{option.emoji}</span>}
+                    <span className="text-xs font-bold leading-tight">{option.label}</span>
+                    {selected && (
+                      <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full" style={{ background: activeQuestion.sectionColor }}>
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {activeQuestion.allowCustom && (
+              <input
+                type="text"
+                className="mt-2.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all focus:border-white/30 placeholder:text-white/25"
+                placeholder="其他香氣（自填）"
+                value={typeof answers[`${activeQuestion.id}Custom`] === 'string' ? answers[`${activeQuestion.id}Custom`] as string : ''}
+                onChange={(e) => updateAnswer(`${activeQuestion.id}Custom`, e.target.value)}
+              />
+            )}
+          </>
         )}
       </div>
 
