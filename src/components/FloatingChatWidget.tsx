@@ -429,7 +429,7 @@ export function FloatingChatWidget() {
                 <Textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder={user ? '顯示近30則留言，公告請用 ! 開頭' : '登入後即可發言'}
+                  placeholder={user ? '顯示近100則留言，用 ! 開頭可公告，每30分鐘可使用一次' : '登入後即可發言'}
                   className="min-h-[78px] resize-none border-none bg-transparent px-2 py-2 text-sm text-foreground focus-visible:ring-0"
                   disabled={!user || isSending}
                 />
