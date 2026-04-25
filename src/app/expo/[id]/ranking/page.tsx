@@ -5,8 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
-import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Share2, Sparkles, Star, Trophy } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, ChevronLeft, ChevronRight, ClipboardList, Download, Loader2, Share2, Sparkles, Star, Trophy, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Slider } from '@/components/ui/slider';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { ExpoEvent, SakeNote } from '@/lib/types';
 import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice } from '@/lib/note-lifecycle';
@@ -246,79 +248,19 @@ function EditableImage({
   src?: string;
   alt: string;
   transform: ImageTransform;
-  isEditing: boolean;
+  isEditing?: boolean;
   isExporting: boolean;
   onToggleEdit: () => void;
-  onTransformChange: (t: ImageTransform) => void;
+  onTransformChange?: (t: ImageTransform) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean } | null>(null);
-  const pinchRef = useRef<{ dist: number; origScale: number } | null>(null);
-  const transformRef = useRef(transform);
-  transformRef.current = transform;
-  const onTransformChangeRef = useRef(onTransformChange);
-  onTransformChangeRef.current = onTransformChange;
-  const isEditingRef = useRef(isEditing);
-  isEditingRef.current = isEditing;
-  const isExportingRef = useRef(isExporting);
-  isExportingRef.current = isExporting;
-
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (!isEditingRef.current || isExportingRef.current) return;
-      e.preventDefault();
-      const t = transformRef.current;
-      const factor = e.deltaY < 0 ? 1.12 : 0.89;
-      onTransformChangeRef.current({ ...t, scale: Math.min(5, Math.max(0.3, t.scale * factor)) });
-    };
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
-  }, []);
-
   if (!src) return null;
   const t = transform;
 
   return (
     <div
-      ref={containerRef}
       className="absolute inset-0 overflow-hidden"
-      style={{
-        cursor: isExporting ? 'default' : isEditing ? 'grab' : 'pointer',
-        touchAction: isEditing ? 'none' : 'auto',
-        zIndex: isEditing && !isExporting ? 2 : undefined,
-      }}
-      onPointerDown={(e) => {
-        if (isExporting) return;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        dragRef.current = { startX: e.clientX, startY: e.clientY, origX: t.x, origY: t.y, moved: false };
-      }}
-      onPointerMove={(e) => {
-        if (!dragRef.current) return;
-        const dx = e.clientX - dragRef.current.startX;
-        const dy = e.clientY - dragRef.current.startY;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-          dragRef.current.moved = true;
-          if (isEditing) onTransformChange({ ...t, x: dragRef.current.origX + dx, y: dragRef.current.origY + dy });
-        }
-      }}
-      onPointerUp={() => {
-        if (dragRef.current && !dragRef.current.moved) onToggleEdit();
-        dragRef.current = null;
-      }}
-      onPointerCancel={() => { dragRef.current = null; }}
-      onTouchStart={(e) => {
-        if (e.touches.length !== 2) return;
-        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
-        pinchRef.current = { dist: d, origScale: t.scale };
-      }}
-      onTouchMove={(e) => {
-        if (e.touches.length !== 2 || !pinchRef.current || !isEditing) return;
-        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
-        onTransformChange({ ...t, scale: Math.min(5, Math.max(0.3, pinchRef.current.origScale * (d / pinchRef.current.dist))) });
-      }}
-      onTouchEnd={() => { pinchRef.current = null; }}
+      style={{ cursor: isExporting ? 'default' : 'pointer' }}
+      onClick={() => { if (!isExporting) onToggleEdit(); }}
     >
       <Image
         src={src}
@@ -327,15 +269,17 @@ function EditableImage({
         unoptimized
         draggable={false}
         style={{
-          objectFit: 'cover',
-          transform: `scale(${t.scale}) translate(${t.x / t.scale}px, ${t.y / t.scale}px)`,
+          objectFit: 'contain',
+          transform: `scale(${t.scale})`,
           transformOrigin: 'center center',
           userSelect: 'none',
           pointerEvents: 'none',
         }}
       />
-      {isEditing && !isExporting && (
-        <div className="pointer-events-none absolute inset-0 ring-2 ring-inset ring-[#ffd166]" />
+      {!isExporting && (
+        <div className="pointer-events-none absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/50">
+          <ZoomIn className="h-2.5 w-2.5 text-white/80" />
+        </div>
       )}
     </div>
   );
@@ -357,7 +301,7 @@ export default function ExpoRankingPage() {
   const [editingImg, setEditingImg] = useState<string | null>(null);
   const getImgTransform = (id: string): ImageTransform => imgTransforms[id] ?? DEFAULT_TRANSFORM;
   const setImgTransform = (id: string, t: ImageTransform) => setImgTransforms(prev => ({ ...prev, [id]: t }));
-  const toggleEditImg = (id: string) => setEditingImg(prev => prev === id ? null : id);
+  const toggleEditImg = (id: string) => setEditingImg(id);
 
   const eventRef = useMemoFirebase(() => {
     if (!firestore || !eventId) return null;
@@ -492,7 +436,7 @@ export default function ExpoRankingPage() {
             <button type="button" onClick={() => router.push(`/expo/${eventId}`)} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#ffcf99]/70 transition-colors hover:text-[#ffcf99]">
               <ArrowLeft className="w-3 h-3" /> 返回酒展工作台
             </button>
-            <h1 className="mt-3 text-[2rem] font-headline font-bold tracking-[0.12em] text-[#fff4e5] uppercase break-words">酒展排名打卡頁</h1>
+            <h1 className="mt-3 text-[2rem] font-headline font-bold tracking-[0.12em] text-[#fff4e5] uppercase break-words">活動排名打卡頁</h1>
             <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#d8b89a]">
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><Trophy className="w-2.5 h-2.5 text-[#ffb86b]" /> {event.name}</span>
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1"><ClipboardList className="w-2.5 h-2.5 text-[#ffb86b]" /> 每頁 5 名</span>
@@ -1049,6 +993,55 @@ export default function ExpoRankingPage() {
             </div>
           </div>
         </section>
+
+        {/* Image Scale Edit Dialog */}
+        {editingImg && (() => {
+          const dialogNote = currentPageNotes.find(n => n.id === editingImg);
+          const dialogSrc = dialogNote?.imageUrls?.[0];
+          const t = getImgTransform(editingImg);
+          return (
+            <Dialog open onOpenChange={(open) => { if (!open) setEditingImg(null); }}>
+              <DialogContent className="max-w-[320px] rounded-2xl p-5">
+                <DialogHeader>
+                  <DialogTitle className="text-sm font-bold">調整圖片縮放</DialogTitle>
+                </DialogHeader>
+                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black/10">
+                  {dialogSrc && (
+                    <Image
+                      src={dialogSrc}
+                      alt={dialogNote ? getExpoNoteDisplayName(dialogNote) : ''}
+                      fill
+                      unoptimized
+                      style={{
+                        objectFit: 'contain',
+                        transform: `scale(${t.scale})`,
+                        transformOrigin: 'center center',
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>縮放</span>
+                    <span>{t.scale.toFixed(2)}×</span>
+                  </div>
+                  <Slider
+                    min={0.5}
+                    max={3}
+                    step={0.05}
+                    value={[t.scale]}
+                    onValueChange={([val]) => setImgTransform(editingImg, { ...t, scale: val })}
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                    <span>0.5×</span>
+                    <span>3×</span>
+                  </div>
+                </div>
+                <Button onClick={() => setEditingImg(null)} className="w-full rounded-full">完成</Button>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
       </div>
     </div>
   );
