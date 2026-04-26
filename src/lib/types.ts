@@ -234,12 +234,8 @@ export const EXPO_QUICK_TAG_GROUPS: ExpoQuickTagGroup[] = [
     tags: ['俐落', '中等', '綿長'],
   },
   {
-    category: '酒精味',
-    tags: ['無明顯酒精味', '微酒精味', '酒精味明顯'],
-  },
-  {
-    category: '酒精刺激感',
-    tags: ['無刺激', '微刺激', '刺激明顯'],
+    category: '酒精',
+    tags: ['無酒精', '微酒精', '酒精明顯', '無刺激', '微刺激', '刺激明顯'],
   },
 ];
 
