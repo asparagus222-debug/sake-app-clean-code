@@ -1015,7 +1015,19 @@ export default function ExpoEventPage() {
               <div className="rounded-[1.25rem] border border-white/10 bg-white/5 px-3.5 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">風味評分</p>
-                  <p className="text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, overallRating: Number(Math.max(1, prev.overallRating - 0.1).toFixed(1)) }))}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-bold text-muted-foreground transition-all active:scale-90 hover:border-primary/40 hover:text-primary"
+                    >−</button>
+                    <p className="min-w-[2.5rem] text-center text-sm font-bold text-primary">{formatFlavorRating(formData.overallRating)}/10</p>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, overallRating: Number(Math.min(10, prev.overallRating + 0.1).toFixed(1)) }))}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-bold text-muted-foreground transition-all active:scale-90 hover:border-primary/40 hover:text-primary"
+                    >+</button>
+                  </div>
                 </div>
                 <Slider
                   min={1}
