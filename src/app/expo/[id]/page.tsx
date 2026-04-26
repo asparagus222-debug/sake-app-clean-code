@@ -940,46 +940,49 @@ export default function ExpoEventPage() {
                           ))}
                         </div>
                       ) : group.category === '酒精' ? (
-                        <div className="flex flex-col gap-1">
-                          {/* 第一列：兩個 label */}
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex items-start gap-1.5">
+                          {/* 左欄：酒精味 label + 按鈕 */}
+                          <div className="flex flex-col items-start gap-1">
                             <span className="text-[10px] font-bold tracking-[0.22em] text-primary/70">酒精味</span>
-                            <span className="px-1 text-[10px] text-muted-foreground">|</span>
-                            <span className="text-[10px] font-bold tracking-[0.22em] text-primary/70">酒精刺激感</span>
+                            <div className="flex gap-1.5">
+                              {group.tags.slice(0, 3).map((tag) => (
+                                <button
+                                  key={`${group.category}-${tag}`}
+                                  type="button"
+                                  onClick={() => toggleQuickTag(group.category, tag)}
+                                  className={cn(
+                                    'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                    isExpoQuickTagSelected(formData.quickTags, group.category, tag)
+                                      ? 'border-primary bg-primary text-white shadow-lg'
+                                      : 'border-white/10 bg-white/5 text-muted-foreground'
+                                  )}
+                                >
+                                  {tag.replace('酒精味', '')}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          {/* 第二列：兩組按鈕 */}
-                          <div className="flex items-center gap-1.5">
-                            {group.tags.slice(0, 3).map((tag) => (
-                              <button
-                                key={`${group.category}-${tag}`}
-                                type="button"
-                                onClick={() => toggleQuickTag(group.category, tag)}
-                                className={cn(
-                                  'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
-                                  isExpoQuickTagSelected(formData.quickTags, group.category, tag)
-                                    ? 'border-primary bg-primary text-white shadow-lg'
-                                    : 'border-white/10 bg-white/5 text-muted-foreground'
-                                )}
-                              >
-                                {tag.replace('酒精味', '')}
-                              </button>
-                            ))}
-                            <span className="px-1 text-[10px] text-muted-foreground">|</span>
-                            {group.tags.slice(3).map((tag) => (
-                              <button
-                                key={`${group.category}-${tag}`}
-                                type="button"
-                                onClick={() => toggleQuickTag(group.category, tag)}
-                                className={cn(
-                                  'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
-                                  isExpoQuickTagSelected(formData.quickTags, group.category, tag)
-                                    ? 'border-primary bg-primary text-white shadow-lg'
-                                    : 'border-white/10 bg-white/5 text-muted-foreground'
-                                )}
-                              >
-                                {tag.replace('酒精刺激感', '')}
-                              </button>
-                            ))}
+                          <span className="self-end pb-0.5 px-0.5 text-[10px] text-muted-foreground">|</span>
+                          {/* 右欄：酒精刺激感 label + 按鈕 */}
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-[10px] font-bold tracking-[0.22em] text-primary/70">酒精刺激感</span>
+                            <div className="flex gap-1.5">
+                              {group.tags.slice(3).map((tag) => (
+                                <button
+                                  key={`${group.category}-${tag}`}
+                                  type="button"
+                                  onClick={() => toggleQuickTag(group.category, tag)}
+                                  className={cn(
+                                    'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                    isExpoQuickTagSelected(formData.quickTags, group.category, tag)
+                                      ? 'border-primary bg-primary text-white shadow-lg'
+                                      : 'border-white/10 bg-white/5 text-muted-foreground'
+                                  )}
+                                >
+                                  {tag.replace('酒精刺激感', '')}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       ) : (
