@@ -840,7 +840,9 @@ export default function ExpoEventPage() {
                 <div className="space-y-2.5">
                   {EXPO_QUICK_TAG_GROUPS.map((group) => (
                     <div key={group.category} className="rounded-[1.15rem] border border-white/10 bg-white/5 p-2">
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary/70">{group.category}</p>
+                      {group.category !== '酒精' && (
+                        <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary/70">{group.category}</p>
+                      )}
                       {group.category === AROMA_CATEGORY ? (
                         <div className="space-y-1.5">
                           <div className="flex flex-wrap items-center gap-1">
@@ -939,6 +941,7 @@ export default function ExpoEventPage() {
                         </div>
                       ) : group.category === '酒精' ? (
                         <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-bold tracking-[0.22em] text-primary/70">酒精味</span>
                           {group.tags.slice(0, 3).map((tag) => (
                             <button
                               key={`${group.category}-${tag}`}
@@ -951,10 +954,11 @@ export default function ExpoEventPage() {
                                   : 'border-white/10 bg-white/5 text-muted-foreground'
                               )}
                             >
-                              {tag}
+                              {tag.replace('酒精味', '')}
                             </button>
                           ))}
                           <span className="px-1 text-[10px] text-muted-foreground">|</span>
+                          <span className="text-[10px] font-bold tracking-[0.22em] text-primary/70">酒精刺激感</span>
                           {group.tags.slice(3).map((tag) => (
                             <button
                               key={`${group.category}-${tag}`}
@@ -967,7 +971,7 @@ export default function ExpoEventPage() {
                                   : 'border-white/10 bg-white/5 text-muted-foreground'
                               )}
                             >
-                              {tag}
+                              {tag.replace('酒精刺激感', '')}
                             </button>
                           ))}
                         </div>
