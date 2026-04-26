@@ -583,10 +583,7 @@ export default function ExpoEventPage() {
         toast({ title: toastMessages[`${visibility}-${publicationStatus}`] || '已儲存' });
         resetForm();
         setIsSaving(false);
-        if (publicationStatus === 'draft') {
-          router.push(`/notes/${docRef.id}/edit`);
-          return;
-        }
+        return;
       }
     } catch (error: any) {
       toast({
