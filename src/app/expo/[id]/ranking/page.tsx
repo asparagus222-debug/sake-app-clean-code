@@ -15,7 +15,8 @@ import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSort
 import { cn } from '@/lib/utils';
 
 type RankingSortMode = 'score' | 'price' | 'cp';
-type ShareCardThemeId = 'plum-light' | 'moss-light' | 'midnight-dark' | 'charcoal-dark';
+type CardMode = 'light' | 'dark';
+type CardAccentId = 'amber' | 'rose' | 'sage' | 'indigo' | 'lavender';
 
 const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star }> = {
   score: { label: '風味評分', icon: Star },
@@ -23,8 +24,16 @@ const SORT_MODE_META: Record<RankingSortMode, { label: string; icon: typeof Star
   cp: { label: 'CP 值', icon: Trophy },
 };
 
-const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
-  label: string;
+
+const CARD_ACCENT_META: Record<CardAccentId, { label: string; swatch: string }> = {
+  amber:    { label: '琥珀', swatch: '#b89030' },
+  rose:     { label: '玫紅', swatch: '#c04060' },
+  sage:     { label: '松翠', swatch: '#2a8050' },
+  indigo:   { label: '靛藍', swatch: '#4050b8' },
+  lavender: { label: '薰紫', swatch: '#7060b8' },
+};
+
+type CardThemeShape = {
   exportBackground: string;
   shellClassName: string;
   frameClassName: string;
@@ -35,14 +44,190 @@ const SHARE_CARD_THEMES: Record<ShareCardThemeId, {
   modeChipClassName: string;
   modeLabelClassName: string;
   modeValueClassName: string;
-  tableClassName: string;
   tableHeaderClassName: string;
   metaClassName: string;
   valueClassName: string;
   footerClassName: string;
   rowBaseClassName: string;
-  previewSwatchClassName: string;
-}> = {
+};
+
+const CARD_THEMES: Record<CardMode, Record<CardAccentId, CardThemeShape>> = {
+  light: {
+    amber: {
+      exportBackground: '#f5eedf',
+      shellClassName: 'border-[#d8c49a] bg-[linear-gradient(160deg,#faf4e6_0%,#ede0c4_100%)] shadow-[0_30px_80px_rgba(160,120,40,0.14)]',
+      frameClassName: 'border-[#e0ccaa] bg-[#fdf9ee] text-[#2a1e08]',
+      emptyClassName: 'border-[#d8c49a] bg-[#f5eedf] text-[#2a1e08]',
+      dividerClassName: 'border-[#e4d0a8]',
+      eyebrowClassName: 'text-[#a07828]',
+      titleClassName: 'text-[#2a1e08]',
+      modeChipClassName: 'border-[#e0ccaa] bg-[#f5eedc]',
+      modeLabelClassName: 'text-[#a07828]',
+      modeValueClassName: 'text-[#2a1e08]',
+      tableHeaderClassName: 'text-[#a07828]',
+      metaClassName: 'text-[#7a5820]',
+      valueClassName: 'text-[#3e2c10]',
+      footerClassName: 'border-[#e4d0a8] text-[#a07828]',
+      rowBaseClassName: 'border-[#dcc8a0]',
+    },
+    rose: {
+      exportBackground: '#f8edf0',
+      shellClassName: 'border-[#e8b8c4] bg-[linear-gradient(160deg,#fdf0f4_0%,#f0dae0_100%)] shadow-[0_30px_80px_rgba(180,60,80,0.10)]',
+      frameClassName: 'border-[#e0b0be] bg-[#fdf6f8] text-[#2a1018]',
+      emptyClassName: 'border-[#e8b8c4] bg-[#f8edf0] text-[#2a1018]',
+      dividerClassName: 'border-[#e8c0cc]',
+      eyebrowClassName: 'text-[#b04060]',
+      titleClassName: 'text-[#2a1018]',
+      modeChipClassName: 'border-[#e0b0be] bg-[#fce8f0]',
+      modeLabelClassName: 'text-[#b04060]',
+      modeValueClassName: 'text-[#2a1018]',
+      tableHeaderClassName: 'text-[#b04060]',
+      metaClassName: 'text-[#8a3050]',
+      valueClassName: 'text-[#3a1828]',
+      footerClassName: 'border-[#e8c0cc] text-[#b04060]',
+      rowBaseClassName: 'border-[#e0b8c4]',
+    },
+    sage: {
+      exportBackground: '#edf5f0',
+      shellClassName: 'border-[#a8d0b8] bg-[linear-gradient(160deg,#f0f8f4_0%,#ddeee6_100%)] shadow-[0_30px_80px_rgba(40,120,70,0.10)]',
+      frameClassName: 'border-[#b0d4c0] bg-[#f6fcf8] text-[#0e2818]',
+      emptyClassName: 'border-[#a8d0b8] bg-[#edf5f0] text-[#0e2818]',
+      dividerClassName: 'border-[#b8d8c4]',
+      eyebrowClassName: 'text-[#2a8050]',
+      titleClassName: 'text-[#0e2818]',
+      modeChipClassName: 'border-[#b0d4c0] bg-[#e8f4ec]',
+      modeLabelClassName: 'text-[#2a8050]',
+      modeValueClassName: 'text-[#0e2818]',
+      tableHeaderClassName: 'text-[#2a8050]',
+      metaClassName: 'text-[#286040]',
+      valueClassName: 'text-[#183020]',
+      footerClassName: 'border-[#b8d8c4] text-[#2a8050]',
+      rowBaseClassName: 'border-[#b0d0bc]',
+    },
+    indigo: {
+      exportBackground: '#eeeef8',
+      shellClassName: 'border-[#b8b8e8] bg-[linear-gradient(160deg,#f2f2fc_0%,#e0e0f4_100%)] shadow-[0_30px_80px_rgba(60,70,180,0.10)]',
+      frameClassName: 'border-[#c0c0ea] bg-[#f8f8fe] text-[#14142a]',
+      emptyClassName: 'border-[#b8b8e8] bg-[#eeeef8] text-[#14142a]',
+      dividerClassName: 'border-[#c8c8ec]',
+      eyebrowClassName: 'text-[#4050b8]',
+      titleClassName: 'text-[#14142a]',
+      modeChipClassName: 'border-[#c0c0ea] bg-[#eaeafc]',
+      modeLabelClassName: 'text-[#4050b8]',
+      modeValueClassName: 'text-[#14142a]',
+      tableHeaderClassName: 'text-[#4050b8]',
+      metaClassName: 'text-[#404090]',
+      valueClassName: 'text-[#20203c]',
+      footerClassName: 'border-[#c8c8ec] text-[#4050b8]',
+      rowBaseClassName: 'border-[#c0c0e8]',
+    },
+    lavender: {
+      exportBackground: '#ede8f5',
+      shellClassName: 'border-[#cfc3e8] bg-[linear-gradient(160deg,#f0ecf8_0%,#e4daf2_100%)] shadow-[0_30px_80px_rgba(100,70,160,0.12)]',
+      frameClassName: 'border-[#d8ccec] bg-[#faf8fd] text-[#1e1530]',
+      emptyClassName: 'border-[#cfc3e8] bg-[#f2eef8] text-[#1e1530]',
+      dividerClassName: 'border-[#ddd4f0]',
+      eyebrowClassName: 'text-[#7060b8]',
+      titleClassName: 'text-[#1e1530]',
+      modeChipClassName: 'border-[#d8ccec] bg-[#f0eaf8]',
+      modeLabelClassName: 'text-[#7060b8]',
+      modeValueClassName: 'text-[#1e1530]',
+      tableHeaderClassName: 'text-[#7060b8]',
+      metaClassName: 'text-[#5e4890]',
+      valueClassName: 'text-[#2e2050]',
+      footerClassName: 'border-[#ddd4f0] text-[#7060b8]',
+      rowBaseClassName: 'border-[#d4c8e8]',
+    },
+  },
+  dark: {
+    amber: {
+      exportBackground: '#131316',
+      shellClassName: 'border-[#2a2a32] bg-[linear-gradient(160deg,#1c1c22_0%,#0e0e12_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.36)]',
+      frameClassName: 'border-[#252529] bg-[#161618] text-[#f0ece4]',
+      emptyClassName: 'border-[#2e2e34] bg-[#1a1a1e] text-[#f0ece4]',
+      dividerClassName: 'border-[#252529]',
+      eyebrowClassName: 'text-[#b5985a]',
+      titleClassName: 'text-[#f8f5ee]',
+      modeChipClassName: 'border-[#2e2e36] bg-[#202024]',
+      modeLabelClassName: 'text-[#b5985a]',
+      modeValueClassName: 'text-[#f8f5ee]',
+      tableHeaderClassName: 'text-[#a8904e]',
+      metaClassName: 'text-[#9e8862]',
+      valueClassName: 'text-[#ede5d4]',
+      footerClassName: 'border-[#252529] text-[#a8904e]',
+      rowBaseClassName: 'border-[#2e2e36]',
+    },
+    rose: {
+      exportBackground: '#12080e',
+      shellClassName: 'border-[#2e1020] bg-[linear-gradient(160deg,#1e0c18_0%,#0e0610_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.40)]',
+      frameClassName: 'border-[#281018] bg-[#130810] text-[#f0e0e8]',
+      emptyClassName: 'border-[#2e1020] bg-[#1a0c14] text-[#f0e0e8]',
+      dividerClassName: 'border-[#2a1020]',
+      eyebrowClassName: 'text-[#d47090]',
+      titleClassName: 'text-[#f8eaee]',
+      modeChipClassName: 'border-[#2e1020] bg-[#160a10]',
+      modeLabelClassName: 'text-[#d47090]',
+      modeValueClassName: 'text-[#f8eaee]',
+      tableHeaderClassName: 'text-[#c45878]',
+      metaClassName: 'text-[#c08090]',
+      valueClassName: 'text-[#f0d8e0]',
+      footerClassName: 'border-[#2a1020] text-[#c45878]',
+      rowBaseClassName: 'border-[#2e1020]',
+    },
+    sage: {
+      exportBackground: '#060e08',
+      shellClassName: 'border-[#142810] bg-[linear-gradient(160deg,#0c1c0a_0%,#050e04_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.40)]',
+      frameClassName: 'border-[#162c10] bg-[#091408] text-[#d8f0d8]',
+      emptyClassName: 'border-[#142810] bg-[#0c1a08] text-[#d8f0d8]',
+      dividerClassName: 'border-[#162c10]',
+      eyebrowClassName: 'text-[#48c058]',
+      titleClassName: 'text-[#e6f8e6]',
+      modeChipClassName: 'border-[#182e10] bg-[#0c1c08]',
+      modeLabelClassName: 'text-[#48c058]',
+      modeValueClassName: 'text-[#e6f8e6]',
+      tableHeaderClassName: 'text-[#40b050]',
+      metaClassName: 'text-[#508850]',
+      valueClassName: 'text-[#c8ecc8]',
+      footerClassName: 'border-[#162c10] text-[#40b050]',
+      rowBaseClassName: 'border-[#1a2e12]',
+    },
+    indigo: {
+      exportBackground: '#080810',
+      shellClassName: 'border-[#1c1c38] bg-[linear-gradient(160deg,#12122a_0%,#080812_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.40)]',
+      frameClassName: 'border-[#1e1e34] bg-[#0e0e20] text-[#e0e0f8]',
+      emptyClassName: 'border-[#1c1c38] bg-[#121224] text-[#e0e0f8]',
+      dividerClassName: 'border-[#1e1e36]',
+      eyebrowClassName: 'text-[#7080e0]',
+      titleClassName: 'text-[#f0f0fc]',
+      modeChipClassName: 'border-[#201e38] bg-[#121228]',
+      modeLabelClassName: 'text-[#7080e0]',
+      modeValueClassName: 'text-[#f0f0fc]',
+      tableHeaderClassName: 'text-[#6878d8]',
+      metaClassName: 'text-[#6070b0]',
+      valueClassName: 'text-[#d8d8f4]',
+      footerClassName: 'border-[#1e1e36] text-[#6878d8]',
+      rowBaseClassName: 'border-[#201e38]',
+    },
+    lavender: {
+      exportBackground: '#0a080e',
+      shellClassName: 'border-[#281438] bg-[linear-gradient(160deg,#180c24_0%,#0a0610_100%)] shadow-[0_30px_80px_rgba(0,0,0,0.40)]',
+      frameClassName: 'border-[#241030] bg-[#110820] text-[#ecd8f8]',
+      emptyClassName: 'border-[#281438] bg-[#160c20] text-[#ecd8f8]',
+      dividerClassName: 'border-[#261238]',
+      eyebrowClassName: 'text-[#c070f0]',
+      titleClassName: 'text-[#f6ecfc]',
+      modeChipClassName: 'border-[#281438] bg-[#160c24]',
+      modeLabelClassName: 'text-[#c070f0]',
+      modeValueClassName: 'text-[#f6ecfc]',
+      tableHeaderClassName: 'text-[#b860e0]',
+      metaClassName: 'text-[#9060b0]',
+      valueClassName: 'text-[#e8d4f8]',
+      footerClassName: 'border-[#261238] text-[#b860e0]',
+      rowBaseClassName: 'border-[#281438]',
+    },
+  },
+};
+> = {
   'plum-light': {
     label: '琅珀',
     exportBackground: '#f5eedf',
@@ -166,73 +351,40 @@ function clampText(lines: number): React.CSSProperties {
   };
 }
 
-function getRankMedalStyle(rank: number, themeId: ShareCardThemeId) {
-  const themeAccentMap: Record<ShareCardThemeId, { gold: string; goldRank: string; silver: string; silverRank: string; bronze: string; bronzeRank: string; base: string; baseRank: string }> = {
-    'plum-light': {
-      gold: 'border-[#c8a840]/50 bg-[#fdf5d8]',
-      goldRank: 'border-[#b89030] bg-[#d4a840] text-[#241800]',
-      silver: 'border-[#c8bc9a]/55 bg-[#faf5e8]',
-      silverRank: 'border-[#a09070] bg-[#c8b890] text-[#2a2010]',
-      bronze: 'border-[#d4a870]/45 bg-[#f8f0e4]',
-      bronzeRank: 'border-[#b47840] bg-[#d09060] text-[#2a1808]',
-      base: 'bg-[#fdf9ee]',
-      baseRank: 'border-[#dcc8a0] bg-[#f2e8d4] text-[#6a5020]',
-    },
-    'moss-light': {
-      gold: 'border-[#d4c060]/45 bg-[#faf6e8]',
-      goldRank: 'border-[#b8a030] bg-[#d8c048] text-[#201c08]',
-      silver: 'border-[#c8b8e8]/55 bg-[#f4f0fc]',
-      silverRank: 'border-[#9880d0] bg-[#c8b8e8] text-[#1a1030]',
-      bronze: 'border-[#e0b8d0]/45 bg-[#f8eefc]',
-      bronzeRank: 'border-[#b870a0] bg-[#d898c0] text-[#2e1028]',
-      base: 'bg-[#faf8fd]',
-      baseRank: 'border-[#d4c8e8] bg-[#ece8f8] text-[#4a3870]',
-    },
-    'midnight-dark': {
-      gold: 'border-[#5a2818]/45 bg-[#1e0c08]',
-      goldRank: 'border-[#d4a060] bg-[#e8b870] text-[#1c1008]',
-      silver: 'border-[#3e1828]/55 bg-[#1a0c14]',
-      silverRank: 'border-[#d090a8] bg-[#e8b8cc] text-[#180a12]',
-      bronze: 'border-[#4a1828]/45 bg-[#1c0c10]',
-      bronzeRank: 'border-[#c05870] bg-[#d88090] text-[#1c0a10]',
-      base: 'bg-[#130810]',
-      baseRank: 'border-[#2e1020] bg-[#1a0c14] text-[#f0d8e0]',
-    },
-    'charcoal-dark': {
-      gold: 'border-[#484230] bg-[#1e1c10]',
-      goldRank: 'border-[#c4a040] bg-[#deba48] text-[#181408]',
-      silver: 'border-[#38383e] bg-[#1a1a20]',
-      silverRank: 'border-[#8890a0] bg-[#c8ccd8] text-[#14141e]',
-      bronze: 'border-[#483020] bg-[#1c1410]',
-      bronzeRank: 'border-[#b87848] bg-[#cc9464] text-[#1c1008]',
-      base: 'bg-[#161618]',
-      baseRank: 'border-[#2e2e36] bg-[#1e1e22] text-[#e8e0cc]',
-    },
+function getRankMedalStyle(rank: number, isDark: boolean, rowBaseClassName: string) {
+  if (isDark) {
+    if (rank === 1) return {
+      rowClassName: 'border-[#484230] bg-[#1e1c10]',
+      rankClassName: 'border-[#c4a040] bg-[#deba48] text-[#181408]',
+    };
+    if (rank === 2) return {
+      rowClassName: 'border-[#38383e] bg-[#1a1a20]',
+      rankClassName: 'border-[#8890a0] bg-[#c8ccd8] text-[#14141e]',
+    };
+    if (rank === 3) return {
+      rowClassName: 'border-[#483020] bg-[#1c1410]',
+      rankClassName: 'border-[#b87848] bg-[#cc9464] text-[#1c1008]',
+    };
+    return {
+      rowClassName: rowBaseClassName,
+      rankClassName: 'border-[#3a3a42] bg-[#242428] text-[#d4ccb8]',
+    };
+  }
+  if (rank === 1) return {
+    rowClassName: 'border-[#c8a840]/50 bg-[#fdf5d8]',
+    rankClassName: 'border-[#b89030] bg-[#d4a840] text-[#241800]',
   };
-  const themeAccent = themeAccentMap[themeId];
-
-  if (rank === 1) {
-    return {
-      rowClassName: themeAccent.gold,
-      rankClassName: themeAccent.goldRank,
-    };
-  }
-  if (rank === 2) {
-    return {
-      rowClassName: themeAccent.silver,
-      rankClassName: themeAccent.silverRank,
-    };
-  }
-  if (rank === 3) {
-    return {
-      rowClassName: themeAccent.bronze,
-      rankClassName: themeAccent.bronzeRank,
-    };
-  }
-
+  if (rank === 2) return {
+    rowClassName: 'border-[#b0b0b0]/50 bg-[#f5f5f5]',
+    rankClassName: 'border-[#909090] bg-[#c8c8c8] text-[#202020]',
+  };
+  if (rank === 3) return {
+    rowClassName: 'border-[#d4a870]/45 bg-[#f8f0e4]',
+    rankClassName: 'border-[#b47840] bg-[#d09060] text-[#2a1808]',
+  };
   return {
-    rowClassName: `${themeAccent.base} ${SHARE_CARD_THEMES[themeId].rowBaseClassName}`,
-    rankClassName: themeAccent.baseRank,
+    rowClassName: rowBaseClassName,
+    rankClassName: 'border-[#c0b898] bg-[#ece4cc] text-[#4a3c20]',
   };
 }
 
@@ -290,7 +442,8 @@ export default function ExpoRankingPage() {
   const { user, isUserLoading } = useUser();
   const eventId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [sortMode, setSortMode] = useState<RankingSortMode>('score');
-  const [shareCardTheme, setShareCardTheme] = useState<ShareCardThemeId>('plum-light');
+  const [cardMode, setCardMode] = useState<CardMode>('light');
+  const [cardAccent, setCardAccent] = useState<CardAccentId>('amber');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState<number>(5);
   const [isExporting, setIsExporting] = useState(false);
@@ -343,7 +496,7 @@ export default function ExpoRankingPage() {
     return rankedNotes.slice(safePageIndex * pageSize, (safePageIndex + 1) * pageSize);
   }, [pageIndex, rankedNotes, totalPages, pageSize]);
   const currentSortMeta = SORT_MODE_META[sortMode];
-  const currentShareCardTheme = SHARE_CARD_THEMES[shareCardTheme];
+  const currentShareCardTheme = CARD_THEMES[cardMode][cardAccent];
   const averageScore = useMemo(() => {
     if (currentPageNotes.length === 0) return 0;
     const sum = currentPageNotes.reduce((acc, note) => acc + (note.overallRating || 0), 0);
@@ -529,32 +682,44 @@ export default function ExpoRankingPage() {
             {/* 配色 */}
             <div className="mt-3 border-t border-white/10 pt-3">
               <p className="mb-2 text-[7px] font-bold uppercase tracking-[0.14em] text-[#ffcf99]/45">卡片配色</p>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(Object.entries(SHARE_CARD_THEMES) as Array<[ShareCardThemeId, typeof SHARE_CARD_THEMES[ShareCardThemeId]]>).map(([themeId, theme]) => (
+              {/* 底色模式 */}
+              <div className="grid grid-cols-2 gap-1 mb-2">
+                {(['light', 'dark'] as const).map((mode) => (
                   <button
-                    key={themeId}
+                    key={mode}
                     type="button"
-                    onClick={() => setShareCardTheme(themeId)}
-                    style={{ backgroundColor: theme.exportBackground }}
+                    onClick={() => setCardMode(mode)}
                     className={cn(
-                      'rounded-[0.85rem] border py-2.5 text-center transition-all',
-                      shareCardTheme === themeId
-                        ? 'border-[#ffd166] shadow-[0_0_0_2px_rgba(255,209,102,0.35)]'
-                        : 'border-white/15 hover:border-white/30'
+                      'rounded-[0.85rem] border py-2 text-center transition-all',
+                      cardMode === mode
+                        ? 'border-[#ffd166] bg-[#ffd166]/12 shadow-[0_0_0_1.5px_rgba(255,209,102,0.28)]'
+                        : 'border-white/15 bg-white/5 hover:bg-white/10'
                     )}
                   >
-                    <p
-                      className="text-[9px] font-bold"
-                      style={{
-                        color: themeId.endsWith('-dark') ? '#f0ece4' : '#2a1f25',
-                        textShadow: '0 1px 3px rgba(0,0,0,0.18)',
-                      }}
-                    >
-                      {theme.label}
-                    </p>
+                    <p className="text-[9px] font-bold text-[#fff4e5]">{mode === 'light' ? '☀ 淺底' : '● 深底'}</p>
                   </button>
                 ))}
               </div>
+              {/* 強調色 */}
+              <div className="flex items-center gap-2">
+                {(Object.entries(CARD_ACCENT_META) as Array<[CardAccentId, { label: string; swatch: string }]>).map(([accentId, meta]) => (
+                  <button
+                    key={accentId}
+                    type="button"
+                    title={meta.label}
+                    onClick={() => setCardAccent(accentId)}
+                    style={{ backgroundColor: meta.swatch }}
+                    className={cn(
+                      'flex-1 rounded-full border transition-all',
+                      'aspect-square',
+                      cardAccent === accentId
+                        ? 'border-[#ffd166] shadow-[0_0_0_2px_rgba(255,209,102,0.45)] scale-110'
+                        : 'border-white/20 hover:border-white/50 opacity-70 hover:opacity-100'
+                    )}
+                  />
+                ))}
+              </div>
+              <p className="mt-1.5 text-[7px] text-center text-[#ffcf99]/50">{CARD_ACCENT_META[cardAccent].label}</p>
             </div>
           </div>
           <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-2.5 backdrop-blur-xl">
@@ -595,7 +760,7 @@ export default function ExpoRankingPage() {
                       const rank = pageIndex * pageSize + i + 1;
                       const cpScore = getExpoCpScore(note);
                       const authorNote = getRankingAuthorNote(note);
-                      const medalStyle = getRankMedalStyle(rank, shareCardTheme);
+                      const medalStyle = getRankMedalStyle(rank, cardMode === 'dark', currentShareCardTheme.rowBaseClassName);
                       return (
                         <div
                           key={note.id}
