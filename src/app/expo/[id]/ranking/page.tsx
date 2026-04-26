@@ -522,7 +522,6 @@ const CARD_THEMES: Record<CardMode, Record<CardAccentId, CardThemeShape>> = {
     },
   },
 };
-};
 
 function formatExpoCpScore(score: number | null | undefined) {
   if (score === null || score === undefined) return '--';
