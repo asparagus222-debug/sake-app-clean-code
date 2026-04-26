@@ -840,7 +840,7 @@ export default function ExpoEventPage() {
                 <div className="space-y-2.5">
                   {EXPO_QUICK_TAG_GROUPS.map((group) => (
                     <div key={group.category} className="rounded-[1.15rem] border border-white/10 bg-white/5 p-2">
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{group.category}</p>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary/70">{group.category}</p>
                       {group.category === AROMA_CATEGORY ? (
                         <div className="space-y-1.5">
                           <div className="flex flex-wrap items-center gap-1">
