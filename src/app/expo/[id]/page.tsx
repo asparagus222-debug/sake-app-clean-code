@@ -894,6 +894,40 @@ export default function ExpoEventPage() {
                               : '先選強度與花果/米旨/熟成，乳酸與果酸可獨立勾選'}
                           </p>
                         </div>
+                      ) : group.category === '口感' ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {group.tags.slice(0, 3).map((tag) => (
+                            <button
+                              key={`${group.category}-${tag}`}
+                              type="button"
+                              onClick={() => toggleQuickTag(group.category, tag)}
+                              className={cn(
+                                'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                isExpoQuickTagSelected(formData.quickTags, group.category, tag)
+                                  ? 'border-primary bg-primary text-white shadow-lg'
+                                  : 'border-white/10 bg-white/5 text-muted-foreground'
+                              )}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                          <span className="px-1 text-[10px] text-muted-foreground">|</span>
+                          {group.tags.slice(3).map((tag) => (
+                            <button
+                              key={`${group.category}-${tag}`}
+                              type="button"
+                              onClick={() => toggleQuickTag(group.category, tag)}
+                              className={cn(
+                                'rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-widest transition-all',
+                                isExpoQuickTagSelected(formData.quickTags, group.category, tag)
+                                  ? 'border-primary bg-primary text-white shadow-lg'
+                                  : 'border-white/10 bg-white/5 text-muted-foreground'
+                              )}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {group.tags.map((tag) => (
