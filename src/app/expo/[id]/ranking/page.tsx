@@ -547,7 +547,17 @@ function formatExpoQuickTagLabel(tag: string) {
 }
 
 function getRankingStyleTags(note: SakeNote) {
-  return (note.expoMeta?.quickTags || []).map((tag) => formatExpoQuickTagLabel(tag));
+  const separator = '::';
+  return (note.expoMeta?.quickTags || []).map((tag) => {
+    const sepIdx = tag.indexOf(separator);
+    if (sepIdx >= 0) {
+      const category = tag.slice(0, sepIdx);
+      const label = tag.slice(sepIdx + separator.length);
+      if (category === '氣泡') return label + '氣泡';
+      return label;
+    }
+    return tag;
+  });
 }
 
 function getRankingAuthorNote(note: SakeNote) {
@@ -1015,8 +1025,12 @@ export default function ExpoRankingPage() {
                               </div>
                             )}
                             {styleTags.length > 0 && (
-                              <div className={cn('mt-0.5 text-[5.5px] font-bold leading-[1.3]', currentShareCardTheme.modeLabelClassName)} style={clampText(2)}>
-                                {styleTags.join('・')}
+                              <div className="mt-0.5 flex flex-nowrap gap-[3px] overflow-hidden">
+                                {styleTags.map((tag) => (
+                                  <span key={tag} className={cn('shrink-0 rounded-full border px-1 py-px text-[5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                    {tag}
+                                  </span>
+                                ))}
                               </div>
                             )}
                             {authorNote && (
