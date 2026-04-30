@@ -533,11 +533,11 @@ function formatFlavorRating(score: number) {
 }
 
 function getRankingBrewery(note: SakeNote) {
-  return note.brewery?.trim() || '酒造';
+  return note.brewery?.trim() || '';
 }
 
 function getRankingBooth(note: SakeNote) {
-  return note.expoMeta?.booth?.trim() || '攤位';
+  return note.expoMeta?.booth?.trim() || '';
 }
 
 function formatExpoQuickTagLabel(tag: string) {
@@ -1003,17 +1003,21 @@ export default function ExpoRankingPage() {
                             <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
                               {getExpoNoteDisplayName(note)}
                             </div>
-                            <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
-                              {getRankingBrewery(note)} ・ {getRankingBooth(note)}
-                            </div>
+                            {(getRankingBrewery(note) || getRankingBooth(note)) && (
+                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
+                                {[getRankingBrewery(note), getRankingBooth(note)].filter(Boolean).join(' ・ ')}
+                              </div>
+                            )}
                             {typeof note.expoMeta?.price === 'number' && (
                               <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.15]', currentShareCardTheme.eyebrowClassName)}>
                                 ¥{note.expoMeta.price}
                               </div>
                             )}
-                            <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>
-                              {authorNote || '暫無描述'}
-                            </div>
+                            {authorNote && (
+                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>
+                                {authorNote}
+                              </div>
+                            )}
                           </div>
                           <div className="flex shrink-0 gap-2.5 pr-2">
                             <div className="text-center">
