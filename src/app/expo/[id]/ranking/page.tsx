@@ -547,7 +547,7 @@ function formatExpoQuickTagLabel(tag: string) {
 }
 
 function getRankingStyleTags(note: SakeNote) {
-  return (note.expoMeta?.quickTags || []).slice(0, 3).map((tag) => formatExpoQuickTagLabel(tag));
+  return (note.expoMeta?.quickTags || []).map((tag) => formatExpoQuickTagLabel(tag));
 }
 
 function getRankingAuthorNote(note: SakeNote) {
