@@ -1006,6 +1006,11 @@ export default function ExpoRankingPage() {
                             <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
                               {getRankingBrewery(note)} ・ {getRankingBooth(note)}
                             </div>
+                            {typeof note.expoMeta?.price === 'number' && (
+                              <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.15]', currentShareCardTheme.eyebrowClassName)}>
+                                ¥{note.expoMeta.price}
+                              </div>
+                            )}
                             <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>
                               {authorNote || '暫無描述'}
                             </div>
