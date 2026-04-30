@@ -1015,12 +1015,8 @@ export default function ExpoRankingPage() {
                               </div>
                             )}
                             {styleTags.length > 0 && (
-                              <div className="mt-0.5 flex flex-wrap gap-[3px] overflow-hidden" style={{ maxHeight: '2.2em' }}>
-                                {styleTags.map((tag) => (
-                                  <span key={tag} className={cn('shrink-0 rounded-full border px-1 py-px text-[5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
-                                    {tag}
-                                  </span>
-                                ))}
+                              <div className={cn('mt-0.5 text-[5.5px] font-bold leading-[1.3]', currentShareCardTheme.modeLabelClassName)} style={clampText(2)}>
+                                {styleTags.join('・')}
                               </div>
                             )}
                             {authorNote && (
