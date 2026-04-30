@@ -973,6 +973,7 @@ export default function ExpoRankingPage() {
                       const rank = pageIndex * pageSize + i + 1;
                       const cpScore = getExpoCpScore(note);
                       const authorNote = getRankingAuthorNote(note);
+                      const styleTags = getRankingStyleTags(note);
                       const medalStyle = getRankMedalStyle(rank, cardMode === 'dark', currentShareCardTheme.rowBaseClassName);
                       return (
                         <div
@@ -1011,6 +1012,15 @@ export default function ExpoRankingPage() {
                             {typeof note.expoMeta?.price === 'number' && (
                               <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.15]', currentShareCardTheme.eyebrowClassName)}>
                                 ¥{note.expoMeta.price}
+                              </div>
+                            )}
+                            {styleTags.length > 0 && (
+                              <div className="mt-0.5 flex flex-wrap gap-[3px]">
+                                {styleTags.map((tag) => (
+                                  <span key={tag} className={cn('rounded-full border px-1 py-px text-[5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                    {tag}
+                                  </span>
+                                ))}
                               </div>
                             )}
                             {authorNote && (
