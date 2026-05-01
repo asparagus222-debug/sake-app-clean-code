@@ -747,14 +747,20 @@ export default function ExpoRankingPage() {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(shareCardRef.current, {
-        pixelRatio: 3,
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(shareCardRef.current, {
         backgroundColor: currentShareCardTheme.exportBackground,
-        fetchRequestInit: { cache: 'force-cache' },
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        imageTimeout: 0,
+        windowWidth: shareCardRef.current.scrollWidth,
+        windowHeight: shareCardRef.current.scrollHeight,
       });
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      if (!blob) throw new Error('無法產生分享圖片');
       const fileName = `${event?.name || 'expo'}-${currentSortMeta.label}-page-${pageIndex + 1}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
@@ -1011,7 +1017,7 @@ export default function ExpoRankingPage() {
                             </div>
                           </div>
                           <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
-                          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_78px] grid-rows-[auto_auto] gap-x-2 px-2 pt-1 pb-0.5">
+                          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_78px] grid-rows-[auto_auto] gap-x-2 px-2 pt-0.5 pb-0">
                             <div className="min-w-0 overflow-hidden">
                               <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
                                 {getExpoNoteDisplayName(note)}
@@ -1041,9 +1047,9 @@ export default function ExpoRankingPage() {
                                 <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
                               </div>
                             </div>
-                            <div className="col-span-2 min-w-0 overflow-hidden">
+                            <div className="col-span-2 min-w-0 overflow-hidden self-start">
                               {styleTags.length > 0 && (
-                                <div className="mt-1 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
+                                <div className="mt-0.5 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
                                   {styleTags.map((tag) => (
                                     <span key={tag} className={cn('inline-flex h-[10px] shrink-0 items-center justify-center rounded-full border px-[3px] text-center text-[4.8px] font-bold leading-[1]', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
                                       {tag}
@@ -1052,7 +1058,7 @@ export default function ExpoRankingPage() {
                                 </div>
                               )}
                               {hasAuthorNote && (
-                                <div className={cn('mt-1 text-[6px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(styleTags.length > 8 ? 1 : 2)}>
+                                <div className={cn('mt-0.5 text-[6px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(styleTags.length > 8 ? 1 : 2)}>
                                   {authorNote}
                                 </div>
                               )}
