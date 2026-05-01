@@ -983,12 +983,13 @@ export default function ExpoRankingPage() {
                       const rank = pageIndex * pageSize + i + 1;
                       const cpScore = getExpoCpScore(note);
                       const authorNote = getRankingAuthorNote(note);
+                      const hasAuthorNote = Boolean(authorNote);
                       const styleTags = getRankingStyleTags(note);
                       const medalStyle = getRankMedalStyle(rank, cardMode === 'dark', currentShareCardTheme.rowBaseClassName);
                       return (
                         <div
                           key={note.id}
-                          className={cn('flex min-h-0 flex-1 items-center overflow-hidden rounded-[0.85rem] border', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}
+                          className={cn('flex min-h-0 flex-1 items-stretch overflow-hidden rounded-[0.85rem] border', currentShareCardTheme.rowBaseClassName, medalStyle.rowClassName)}
                         >
                           <div className="relative w-[28%] shrink-0 self-stretch overflow-hidden">
                             {note.imageUrls?.[0] ? (
@@ -1010,31 +1011,31 @@ export default function ExpoRankingPage() {
                             </div>
                           </div>
                           <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
-                          <div className="min-w-0 flex-1 overflow-hidden px-2 py-1.5">
+                          <div className="min-w-0 flex flex-1 flex-col justify-start overflow-hidden px-2 pt-1 pb-0.5">
                             <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
                               {getExpoNoteDisplayName(note)}
                             </div>
                             {(getRankingBrewery(note) || getRankingBooth(note)) && (
-                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
+                              <div className={cn('mt-px text-[6px] leading-[1.1]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
                                 {[getRankingBrewery(note), getRankingBooth(note)].filter(Boolean).join(' ・ ')}
                               </div>
                             )}
                             {typeof note.expoMeta?.price === 'number' && (
-                              <div className={cn('mt-0.5 text-[6px] font-bold leading-[1.15]', currentShareCardTheme.eyebrowClassName)}>
+                              <div className={cn('mt-px text-[6px] font-bold leading-[1.1]', currentShareCardTheme.eyebrowClassName)}>
                                 ¥{note.expoMeta.price}
                               </div>
                             )}
                             {styleTags.length > 0 && (
-                              <div className="mt-0.5 flex flex-nowrap gap-[3px] overflow-hidden">
+                              <div className="mt-1 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
                                 {styleTags.map((tag) => (
-                                  <span key={tag} className={cn('shrink-0 rounded-full border px-1 py-px text-[5px] font-bold leading-none', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                  <span key={tag} className={cn('inline-flex shrink-0 items-center rounded-full border px-[3px] py-[1px] text-[4.8px] font-bold leading-[1.15]', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
                                     {tag}
                                   </span>
                                 ))}
                               </div>
                             )}
-                            {authorNote && (
-                              <div className={cn('mt-0.5 text-[6px] leading-[1.15]', currentShareCardTheme.valueClassName)} style={clampText(2)}>
+                            {hasAuthorNote && (
+                              <div className={cn('mt-1 text-[6px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(styleTags.length > 6 ? 1 : 2)}>
                                 {authorNote}
                               </div>
                             )}
