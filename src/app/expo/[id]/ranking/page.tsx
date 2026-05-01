@@ -749,7 +749,7 @@ export default function ExpoRankingPage() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(shareCardRef.current, {
-        pixelRatio: 4,
+        pixelRatio: 5,
         backgroundColor: currentShareCardTheme.exportBackground,
         fetchRequestInit: { cache: 'force-cache' },
       });
@@ -1048,7 +1048,7 @@ export default function ExpoRankingPage() {
                             {styleTags.length > 0 && (
                               <div className="mt-0.5 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
                                 {styleTags.map((tag) => (
-                                  <span key={tag} className={cn('inline-flex shrink-0 items-center justify-center rounded-full border px-[3.5px] py-[1.5px] text-center text-[4.8px] font-bold', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                  <span key={tag} className={cn('inline-flex shrink-0 items-center justify-center rounded-full border px-[4px] py-[2px] text-center text-[5.5px] font-bold', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
                                     {tag}
                                   </span>
                                 ))}
