@@ -1011,50 +1011,54 @@ export default function ExpoRankingPage() {
                             </div>
                           </div>
                           <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
-                          <div className="flex min-w-0 flex-1 items-start gap-x-2 px-2 pt-0.5 pb-0.5">
-                            <div className="min-w-0 flex-1 overflow-hidden">
-                              <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
-                                {getExpoNoteDisplayName(note)}
+                          <div className="flex min-w-0 flex-1 flex-col px-2 pt-0.5 pb-0.5">
+                            {/* 上半：酒名/酒造 + 右側 stats */}
+                            <div className="flex items-start gap-x-2">
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
+                                  {getExpoNoteDisplayName(note)}
+                                </div>
+                                {(getRankingBrewery(note) || getRankingBooth(note)) && (
+                                  <div className={cn('mt-px text-[6px] leading-[1.1]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
+                                    {[getRankingBrewery(note), getRankingBooth(note)].filter(Boolean).join(' ・ ')}
+                                  </div>
+                                )}
+                                {typeof note.expoMeta?.price === 'number' && (
+                                  <div className={cn('mt-px text-[6px] font-bold leading-[1.1]', currentShareCardTheme.eyebrowClassName)}>
+                                    ¥{note.expoMeta.price}
+                                  </div>
+                                )}
                               </div>
-                              {(getRankingBrewery(note) || getRankingBooth(note)) && (
-                                <div className={cn('mt-px text-[6px] leading-[1.1]', currentShareCardTheme.metaClassName)} style={clampText(1)}>
-                                  {[getRankingBrewery(note), getRankingBooth(note)].filter(Boolean).join(' ・ ')}
+                              <div className="flex shrink-0 items-start gap-2 pt-px">
+                                <div className="text-center">
+                                  <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>價</div>
+                                  <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
                                 </div>
-                              )}
-                              {typeof note.expoMeta?.price === 'number' && (
-                                <div className={cn('mt-px text-[6px] font-bold leading-[1.1]', currentShareCardTheme.eyebrowClassName)}>
-                                  ¥{note.expoMeta.price}
+                                <div className="text-center">
+                                  <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>味</div>
+                                  <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
                                 </div>
-                              )}
-                              {styleTags.length > 0 && (
-                                <div className="mt-0.5 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
-                                  {styleTags.map((tag) => (
-                                    <span key={tag} className={cn('inline-flex h-[10px] shrink-0 items-center justify-center rounded-full border px-[3px] text-center text-[4.8px] font-bold leading-[1]', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
-                                      {tag}
-                                    </span>
-                                  ))}
+                                <div className="text-center">
+                                  <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                  <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
                                 </div>
-                              )}
-                              {hasAuthorNote && (
-                                <div className={cn('mt-0.5 text-[6px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(styleTags.length > 8 ? 1 : 2)}>
-                                  {authorNote}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex shrink-0 items-start gap-2 pt-px">
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>價</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>味</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
                               </div>
                             </div>
+                            {/* 下半：標籤 + 描述，跨滿全寬 */}
+                            {styleTags.length > 0 && (
+                              <div className="mt-0.5 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
+                                {styleTags.map((tag) => (
+                                  <span key={tag} className={cn('inline-flex shrink-0 items-center justify-center rounded-full border px-[3.5px] py-[1.5px] text-center text-[4.8px] font-bold', currentShareCardTheme.modeChipClassName, currentShareCardTheme.modeLabelClassName)}>
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {hasAuthorNote && (
+                              <div className={cn('mt-0.5 text-[6px] leading-[1.1]', currentShareCardTheme.valueClassName)} style={clampText(styleTags.length > 8 ? 1 : 2)}>
+                                {authorNote}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
