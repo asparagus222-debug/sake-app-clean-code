@@ -747,20 +747,14 @@ export default function ExpoRankingPage() {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     try {
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(shareCardRef.current, {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(shareCardRef.current, {
+        pixelRatio: 3,
         backgroundColor: currentShareCardTheme.exportBackground,
-        scale: 3,
-        useCORS: true,
-        logging: false,
-        imageTimeout: 0,
-        windowWidth: shareCardRef.current.scrollWidth,
-        windowHeight: shareCardRef.current.scrollHeight,
+        fetchRequestInit: { cache: 'force-cache' },
       });
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/png');
-      });
-      if (!blob) throw new Error('無法產生分享圖片');
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       const fileName = `${event?.name || 'expo'}-${currentSortMeta.label}-page-${pageIndex + 1}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
@@ -1017,8 +1011,8 @@ export default function ExpoRankingPage() {
                             </div>
                           </div>
                           <div className={cn('shrink-0 self-stretch border-l', currentShareCardTheme.dividerClassName)} />
-                          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_78px] grid-rows-[auto_auto] gap-x-2 px-2 pt-0.5 pb-0">
-                            <div className="min-w-0 overflow-hidden">
+                          <div className="flex min-w-0 flex-1 items-start gap-x-2 px-2 pt-0.5 pb-0.5">
+                            <div className="min-w-0 flex-1 overflow-hidden">
                               <div className={cn('text-[10px] font-bold leading-[1.1]', currentShareCardTheme.titleClassName)} style={clampText(1)}>
                                 {getExpoNoteDisplayName(note)}
                               </div>
@@ -1032,22 +1026,6 @@ export default function ExpoRankingPage() {
                                   ¥{note.expoMeta.price}
                                 </div>
                               )}
-                            </div>
-                            <div className="flex items-start justify-end gap-2 pt-px">
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>價</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>味</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
-                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
-                              </div>
-                            </div>
-                            <div className="col-span-2 min-w-0 overflow-hidden self-start">
                               {styleTags.length > 0 && (
                                 <div className="mt-0.5 flex flex-wrap content-start gap-x-[3px] gap-y-[2px]">
                                   {styleTags.map((tag) => (
@@ -1062,6 +1040,20 @@ export default function ExpoRankingPage() {
                                   {authorNote}
                                 </div>
                               )}
+                            </div>
+                            <div className="flex shrink-0 items-start gap-2 pt-px">
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>價</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{typeof note.expoMeta?.price === 'number' ? `$${note.expoMeta.price}` : '--'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>味</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatFlavorRating(note.overallRating)}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className={cn('text-[5px] font-bold uppercase leading-[1]', currentShareCardTheme.tableHeaderClassName)}>CP</div>
+                                <div className={cn('mt-0.5 text-[8px] font-bold leading-none', currentShareCardTheme.valueClassName)}>{formatExpoCpScore(cpScore)}</div>
+                              </div>
                             </div>
                           </div>
                         </div>
