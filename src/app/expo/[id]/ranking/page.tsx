@@ -749,7 +749,7 @@ export default function ExpoRankingPage() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(shareCardRef.current, {
-        pixelRatio: 3,
+        pixelRatio: 4,
         backgroundColor: currentShareCardTheme.exportBackground,
         fetchRequestInit: { cache: 'force-cache' },
       });
