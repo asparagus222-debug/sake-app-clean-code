@@ -116,27 +116,57 @@ const QUESTIONS: Q[] = [
   {
     id: 'sweetness', section: '口感', sectionColor: '#059669',
     text: '甜味強度？', shortLabel: '甜味', type: 'rating5', low: '乾爽無甜', high: '濃郁甜潤',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
+    options: [
+      { value: '1', label: '俐落乾型：幾乎無甜感，收尾偏乾淨。' },
+      { value: '2', label: '微甜清爽：僅有淡淡米甜，整體仍偏清爽。' },
+      { value: '3', label: '柔和均衡：甜感與酸旨平衡，口感圓潤。' },
+      { value: '4', label: '明顯甜潤：入口甜感清楚，酒體更飽滿。' },
+      { value: '5', label: '濃郁甘甜：甜味主導，質地濃密且延續久。' },
+    ],
   },
   {
     id: 'acidity', section: '口感', sectionColor: '#059669',
     text: '酸味強度？', shortLabel: '酸味', type: 'rating5', low: '幾乎無酸', high: '高酸活潑',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
+    options: [
+      { value: '1', label: '低酸柔順：幾乎感受不到酸，整體溫和。' },
+      { value: '2', label: '微酸提鮮：輕微酸感，略提升清爽度。' },
+      { value: '3', label: '酸甜平衡：酸度適中，口感更立體。' },
+      { value: '4', label: '清亮活潑：酸感明顯，入口更有張力。' },
+      { value: '5', label: '高酸銳利：酸度主導，收斂俐落且醒口。' },
+    ],
   },
   {
     id: 'bitterness', section: '口感', sectionColor: '#059669',
     text: '苦味強度？', shortLabel: '苦味', type: 'rating5', low: '幾乎無苦', high: '強烈苦澀',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
+    options: [
+      { value: '1', label: '幾乎無苦：尾韻乾淨，苦感不明顯。' },
+      { value: '2', label: '微苦點綴：尾段略有苦韻，增加層次。' },
+      { value: '3', label: '平衡微苦：苦感可感但不壓味，較均衡。' },
+      { value: '4', label: '明顯苦韻：中後段苦味突出，存在感高。' },
+      { value: '5', label: '強烈苦感：苦韻持久且主導尾段印象。' },
+    ],
   },
   {
     id: 'umami', section: '口感', sectionColor: '#059669',
     text: '旨味（鮮味）強度？', shortLabel: '旨味', type: 'rating5', low: '輕盈清淡', high: '濃郁旨鮮',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
+    options: [
+      { value: '1', label: '清淡輕盈：米旨感低，風格偏輕快。' },
+      { value: '2', label: '淡雅鮮味：可感些微旨味，口感仍爽口。' },
+      { value: '3', label: '均衡鮮潤：旨味與甜酸平衡，較有厚度。' },
+      { value: '4', label: '飽滿鮮甜：米旨感強，口中存在感高。' },
+      { value: '5', label: '濃郁鮮醇：旨味主導，風味深且延續久。' },
+    ],
   },
   {
     id: 'astringency', section: '口感', sectionColor: '#059669',
     text: '澀感強度？', shortLabel: '澀感', type: 'rating5', low: '絲滑無澀', high: '強烈收澀',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }],
+    options: [
+      { value: '1', label: '絲滑無澀：口感滑順，幾乎沒有收斂感。' },
+      { value: '2', label: '微收口：尾段些微收斂，不影響順口度。' },
+      { value: '3', label: '中度收斂：舌面有明顯收口感，仍平衡。' },
+      { value: '4', label: '偏強澀感：口腔收斂感明顯，尾韻較緊。' },
+      { value: '5', label: '強烈收澀：收口乾澀且持久，存在感高。' },
+    ],
   },
   {
     id: 'tasteOverall', section: '口感', sectionColor: '#059669',
@@ -525,8 +555,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
 
         <div className="px-5 pb-10 pt-3 space-y-3">
           <Button
-            className="h-12 w-full rounded-2xl border border-primary/40 bg-primary/10 text-primary text-xs font-bold tracking-widest hover:bg-primary/20 hover:border-primary/60 transition-all"
-            variant="ghost"
+            className="h-12 w-full rounded-2xl bg-primary text-white text-xs font-bold tracking-widest shadow-lg shadow-primary/30 hover:brightness-110 transition-all"
             onClick={startFromBeginning}
           >
             <RotateCcw className="mr-2 h-4 w-4" /> 從頭開始品鑑
@@ -589,7 +618,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
                 <span>{activeQuestion.high} →</span>
               </div>
             )}
-            <div className="flex gap-2.5">
+            <div className="space-y-2.5">
               {activeQuestion.options.map((option) => {
                 const selected = answer === option.value;
                 return (
@@ -597,12 +626,20 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
                     key={option.value}
                     onClick={() => toggleOption(activeQuestion, option.value)}
                     className={cn(
-                      'flex-1 aspect-square rounded-2xl flex items-center justify-center font-bold text-xl transition-all active:scale-95',
-                      selected ? 'text-white shadow-lg scale-105' : 'bg-white/6 text-white/40'
+                      'w-full rounded-2xl border p-3 text-left transition-all active:scale-[0.99]',
+                      selected ? 'border-transparent text-white shadow-lg' : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/8'
                     )}
-                    style={selected ? { background: activeQuestion.sectionColor, boxShadow: `0 4px 20px ${activeQuestion.sectionColor}50` } : undefined}
+                    style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor, boxShadow: `0 4px 20px ${activeQuestion.sectionColor}33` } : undefined}
                   >
-                    {option.value}
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                        style={selected ? { background: activeQuestion.sectionColor, color: '#fff' } : { background: 'rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.7)' }}
+                      >
+                        {option.value}
+                      </div>
+                      <p className="text-xs leading-relaxed">{option.label}</p>
+                    </div>
                   </button>
                 );
               })}
@@ -617,7 +654,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-2.5">
               {activeQuestion.options.map((option) => {
                 const selected = activeQuestion.type === 'multi'
                   ? (answer as string[]).includes(option.value)
@@ -627,7 +664,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
                     key={option.value}
                     onClick={() => toggleOption(activeQuestion, option.value)}
                     className={cn(
-                      'relative rounded-2xl border p-4 text-left transition-all active:scale-95',
+                      'relative w-full rounded-2xl border p-4 text-left transition-all active:scale-[0.99]',
                       selected ? 'border-transparent text-white' : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8'
                     )}
                     style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor } : undefined}
