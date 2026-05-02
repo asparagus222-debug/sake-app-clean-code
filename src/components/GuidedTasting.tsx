@@ -202,44 +202,31 @@ const QUESTIONS: Q[] = [
     ],
   },
   {
-    id: 'style', section: '風味總評', sectionColor: '#f97316',
-    text: '整體風格定位？', shortLabel: '風格定位', type: 'single',
+    id: 'drinkAgain', section: '風味總評', sectionColor: '#f97316',
+    text: '是否會想再喝？', shortLabel: '再喝意願', type: 'rating5',
+    low: '不會再喝', high: '一定會再喝',
     options: [
-      { value: '優雅細緻', label: '優雅細緻', emoji: '🎭' },
-      { value: '清新輕快', label: '清新輕快', emoji: '🍃' },
-      { value: '濃郁豐富', label: '濃郁豐富', emoji: '🌷' },
-      { value: '個性獨特', label: '個性獨特', emoji: '💥' },
-      { value: '均衡和諧', label: '均衡和諧', emoji: '☯️' },
-    ],
-  },
-  {
-    id: 'impression', section: '風味總評', sectionColor: '#f97316',
-    text: '對這款酒的整體印象？', shortLabel: '整體印象', hint: '可多選', optional: true, type: 'multi',
-    options: [
-      { value: '適合搭餐', label: '適合搭餐', emoji: '🍽️' },
-      { value: '適合單飲', label: '適合單飲', emoji: '🥂' },
-      { value: '高性價比', label: '高性價比', emoji: '💰' },
-      { value: '適合初學者', label: '適合初學者', emoji: '🎯' },
-      { value: '適合送禮', label: '適合送禮', emoji: '🎁' },
-      { value: '個性酒款', label: '個性酒款', emoji: '⭐' },
-      { value: '季節限定感', label: '季節限定感', emoji: '🍂' },
+      { value: '1', label: '不會再喝：整體不合口味，暫不考慮回訪。' },
+      { value: '2', label: '可能不會：有可取之處，但再喝意願偏低。' },
+      { value: '3', label: '中立觀望：可接受，未來視情境再決定。' },
+      { value: '4', label: '願意再喝：整體喜歡，會想再找機會喝。' },
+      { value: '5', label: '一定再喝：非常喜歡，會主動回購或再點。' },
     ],
   },
   {
     id: 'food', section: '餐搭', sectionColor: '#dc2626',
-    text: '推薦搭配的料理？', shortLabel: '推薦餐搭', hint: '可多選', optional: true, type: 'multi',
+    text: '推薦搭配的料理？', shortLabel: '推薦餐搭', hint: '可多選', optional: true, type: 'multi', allowCustom: true,
     options: [
       { value: '生魚片', label: '生魚片', emoji: '🐟' },
       { value: '壽司', label: '壽司', emoji: '🍣' },
       { value: '貝類海鮮', label: '貝類海鮮', emoji: '🦞' },
       { value: '天婦羅', label: '天婦羅', emoji: '🍤' },
       { value: '燒鳥', label: '燒鳥', emoji: '🍗' },
-      { value: '豆腐', label: '豆腐', emoji: '🫘' },
       { value: '起司', label: '起司', emoji: '🧀' },
       { value: '沙拉涼拌', label: '沙拉涼拌', emoji: '🥗' },
-      { value: '白肉料理', label: '白肉料理', emoji: '🍖' },
       { value: '燉煮料理', label: '燉煮料理', emoji: '🍲' },
       { value: '和牛紅肉', label: '和牛/紅肉', emoji: '🥩' },
+      { value: '適合單飲', label: '適合單飲', emoji: '🥂' },
     ],
   },
   {
@@ -331,21 +318,20 @@ function buildResult(answers: GuidedTastingAnswers): GuidedTastingResult {
     parts.push(line);
   }
 
-  const style = get('style');
-  const impression = getArr('impression');
-  if (style || impression.length > 0) {
-    let line = '【總評】';
-    if (style) line += style;
-    if (impression.length > 0) line += `${style ? '，' : ''}${impression.join('、')}`;
-    parts.push(line);
+  const drinkAgain = get('drinkAgain');
+  if (drinkAgain) {
+    const drinkAgainLabel = QUESTIONS.find((question) => question.id === 'drinkAgain')?.options.find((option) => option.value === drinkAgain)?.label;
+    if (drinkAgainLabel) {
+      parts.push(`【總評】再喝意願：${drinkAgainLabel}`);
+    }
   }
 
   const styleTags: string[] = [];
-  if (style) styleTags.push(style);
-  styleTags.push(...impression);
 
   const foods = getArr('food');
-  const foodPairings = foods.map((food) => ({ food, pairing: 'yes' as const, reason: '' }));
+  const foodCustom = get('foodCustom')?.trim();
+  const allFoods = foodCustom ? [...foods, foodCustom] : foods;
+  const foodPairings = allFoods.map((food) => ({ food, pairing: 'yes' as const, reason: '' }));
   const servingTemperatures = getArr('servingTemperature');
   const cupTypes = getArr('cupType');
   const otherComments = get('otherComments') ?? '';
@@ -684,7 +670,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
               <input
                 type="text"
                 className="mt-2.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all focus:border-white/30 placeholder:text-white/25"
-                placeholder="其他香氣（自填）"
+                placeholder={`其他${activeQuestion.shortLabel ?? activeQuestion.text}（自填）`}
                 value={typeof answers[`${activeQuestion.id}Custom`] === 'string' ? answers[`${activeQuestion.id}Custom`] as string : ''}
                 onChange={(e) => updateAnswer(`${activeQuestion.id}Custom`, e.target.value)}
               />
