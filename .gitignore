@@ -13,6 +13,7 @@ firebase-debug.log
 # Environment variables
 .env.local
 .env.*
+!.env.example
 
 # macOS specific files
 .DS_Store
