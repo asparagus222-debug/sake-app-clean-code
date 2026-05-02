@@ -1,8 +1,9 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useLayerBackNavigation } from '@/hooks/use-layer-back';
 import { Button } from '@/components/ui/button';
 import { UserProfile, SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
@@ -41,6 +42,7 @@ import Link from 'next/link';
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const goLayerBack = useLayerBackNavigation();
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
@@ -132,7 +134,7 @@ export default function PublicProfilePage() {
   return (
     <div className="min-h-screen notebook-texture pb-32">
       <header className="sticky top-0 z-50 dark-glass border-b border-white/5 px-4 py-4 flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-primary">
+        <Button variant="ghost" size="icon" onClick={goLayerBack} className="text-primary">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex items-center gap-2">

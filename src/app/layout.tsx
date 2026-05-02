@@ -5,6 +5,7 @@ import {Toaster} from '@/components/ui/toaster';
 import {FirebaseClientProvider} from '@/firebase/client-provider';
 import {ThemeProvider} from '@/components/ThemeProvider';
 import {TooltipProvider} from '@/components/ui/tooltip';
+import { HierarchicalBackHandler } from '@/components/HierarchicalBackHandler';
 
 export const viewport: Viewport = {
   themeColor: '#080808',
@@ -36,6 +37,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <ThemeProvider>
             <TooltipProvider delayDuration={0}>
+              <HierarchicalBackHandler />
               {children}
               <Toaster />
             </TooltipProvider>

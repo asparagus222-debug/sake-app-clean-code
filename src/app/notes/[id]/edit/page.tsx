@@ -957,11 +957,7 @@ export default function EditNotePage() {
         }
       }
       toast({ title: mode === 'public' ? '已發布公開貼文' : mode === 'personal' ? '已存至個人品飲紀錄' : '修改已儲存' });
-      if (typeof window !== 'undefined' && window.history.length > 1) {
-        router.back();
-      } else {
-        router.replace(`/notes/${id}`);
-      }
+      router.replace(`/notes/${id}`);
     } catch (err: any) {
       console.error('[EditNote] save error:', err);
       toast({ variant: "destructive", title: "儲存失敗", description: err?.message || String(err) });
@@ -990,11 +986,7 @@ export default function EditNotePage() {
   };
 
   const confirmBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.replace(`/notes/${id}`);
-    }
+    router.replace(`/notes/${id}`);
   };
 
   useEffect(() => {

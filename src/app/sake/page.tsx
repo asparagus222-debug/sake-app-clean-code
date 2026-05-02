@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useLayerBackNavigation } from '@/hooks/use-layer-back';
 import { SakeNote } from '@/lib/types';
 import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn } from '@/lib/utils';
 
 function SakeDetailInner() {
-  const router = useRouter();
+  const goLayerBack = useLayerBackNavigation();
   const params = useSearchParams();
   const brand = params.get('brand') || '';
   const brewery = params.get('brewery') || '';
@@ -88,7 +89,7 @@ function SakeDetailInner() {
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="hover:bg-primary/10 text-primary shrink-0">
+        <Button variant="ghost" size="icon" onClick={goLayerBack} className="hover:bg-primary/10 text-primary shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">

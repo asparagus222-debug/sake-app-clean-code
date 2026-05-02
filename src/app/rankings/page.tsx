@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useLayerBackNavigation } from '@/hooks/use-layer-back';
 import { SakeNote } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +13,7 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 export default function RankingsPage() {
-  const router = useRouter();
+  const goLayerBack = useLayerBackNavigation();
   const firestore = useFirestore();
 
   const rankingQuery = useMemoFirebase(() => {
@@ -119,7 +119,7 @@ export default function RankingsPage() {
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
       <nav className="sticky top-0 z-50 dark-glass border-b border-white/5 px-6 py-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="hover:bg-primary/10 text-primary shrink-0">
+        <Button variant="ghost" size="icon" onClick={goLayerBack} className="hover:bg-primary/10 text-primary shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h1 className="text-sm font-headline font-bold text-primary gold-glow tracking-widest">排行榜</h1>

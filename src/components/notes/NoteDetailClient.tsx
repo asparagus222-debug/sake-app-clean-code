@@ -45,6 +45,7 @@ import { canViewNote, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, formatSakeDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useLayerBackNavigation } from '@/hooks/use-layer-back';
 import { useDoc, useFirestore, useUser, useAuth, useMemoFirebase, useCollection, addDocumentNonBlocking } from '@/firebase';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { doc, collection, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -68,6 +69,7 @@ const RatingDots = ({ value }: { value: number }) => {
 export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null }) {
   const params = useParams();
   const router = useRouter();
+  const goLayerBack = useLayerBackNavigation();
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
@@ -273,7 +275,7 @@ export function NoteDetailClient({ initialNote }: { initialNote: SakeNote | null
     <div className="min-h-screen notebook-texture pb-20">
       <div className="max-w-2xl auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-primary hover:bg-primary/10">
+          <Button variant="ghost" size="icon" onClick={goLayerBack} className="text-primary hover:bg-primary/10">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex gap-2">

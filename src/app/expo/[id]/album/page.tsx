@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useLayerBackNavigation } from '@/hooks/use-layer-back';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
 import { ArrowLeft, Check, Download, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { cn } from '@/lib/utils';
 
 export default function ExpoAlbumPage() {
   const params = useParams();
-  const router = useRouter();
+  const goLayerBack = useLayerBackNavigation();
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
@@ -82,7 +83,7 @@ export default function ExpoAlbumPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-primary">
+            <Button variant="ghost" size="icon" onClick={goLayerBack} className="text-primary">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
