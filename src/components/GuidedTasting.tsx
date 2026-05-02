@@ -547,10 +547,10 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             <RotateCcw className="mr-2 h-4 w-4" /> 從頭開始品鑑
           </Button>
           <Button
-            className="h-14 w-full rounded-2xl bg-primary text-white text-sm font-bold tracking-widest shadow-lg shadow-primary/30 hover:brightness-110 transition-all"
+            className="h-12 w-full rounded-2xl bg-primary text-white text-xs font-bold tracking-widest shadow-lg shadow-primary/30 hover:brightness-110 transition-all"
             onClick={() => onComplete(buildResult(answers))}
           >
-            <Check className="mr-2 h-5 w-5" /> 完成品鑑
+            <Check className="mr-2 h-4 w-4" /> 完成品鑑
           </Button>
           <p className="text-center text-[10px] text-white/30">可只補特定分組，補完後直接點「完成品鑑」整理到筆記。</p>
         </div>
@@ -640,7 +640,7 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
           />
         ) : (
           <>
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {activeQuestion.options.map((option) => {
                 const selected = activeQuestion.type === 'multi'
                   ? (answer as string[]).includes(option.value)
@@ -650,16 +650,15 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
                     key={option.value}
                     onClick={() => toggleOption(activeQuestion, option.value)}
                     className={cn(
-                      'relative w-full rounded-2xl border p-4 text-left transition-all active:scale-[0.99]',
+                      'relative w-full rounded-xl border p-2.5 text-left transition-all active:scale-[0.99]',
                       selected ? 'border-transparent text-white' : 'border-white/10 bg-white/5 text-white/65 hover:bg-white/8'
                     )}
                     style={selected ? { background: `${activeQuestion.sectionColor}28`, borderColor: activeQuestion.sectionColor } : undefined}
                   >
-                    {option.emoji && <span className="mb-1.5 block text-2xl">{option.emoji}</span>}
-                    <span className="text-xs font-bold leading-tight">{option.label}</span>
+                    <span className="block text-[11px] font-bold leading-tight">{option.label}</span>
                     {selected && (
-                      <div className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full" style={{ background: activeQuestion.sectionColor }}>
-                        <Check className="h-2.5 w-2.5 text-white" />
+                      <div className="absolute right-1.5 top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ background: activeQuestion.sectionColor }}>
+                        <Check className="h-2 w-2 text-white" />
                       </div>
                     )}
                   </button>
