@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, where } from 'firebase/firestore';
-import { CalendarDays, ChevronRight, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { CalendarDays, ChevronRight, Loader2, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +37,9 @@ export default function ExpoPage() {
   const { user, isUserLoading } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<ExpoEvent | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editFormData, setEditFormData] = useState({ name: '', venue: '', eventDate: '', notes: '' });
   const [formData, setFormData] = useState({
     name: '',
     venue: '',
@@ -78,6 +88,40 @@ export default function ExpoPage() {
     } catch {
       toast({ variant: 'destructive', title: '建立活動失敗' });
       setIsCreating(false);
+    }
+  };
+
+  const openEditDialog = (event: ExpoEvent) => {
+    setEditFormData({
+      name: event.name,
+      venue: event.venue ?? '',
+      eventDate: event.eventDate,
+      notes: event.notes ?? '',
+    });
+    setEditingEvent(event);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!firestore || !editingEvent) return;
+    if (!editFormData.name.trim()) {
+      toast({ variant: 'destructive', title: '請先填寫活動名稱' });
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      await updateDoc(doc(firestore, 'expoEvents', editingEvent.id), {
+        name: editFormData.name.trim(),
+        venue: editFormData.venue.trim(),
+        eventDate: editFormData.eventDate,
+        notes: editFormData.notes.trim(),
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: '活動資料已更新' });
+      setEditingEvent(null);
+    } catch {
+      toast({ variant: 'destructive', title: '更新失敗，請稍後再試' });
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -209,6 +253,9 @@ export default function ExpoPage() {
                       </div>
                     </Link>
                     <div className="flex items-center gap-1 shrink-0">
+                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-white/10 hover:text-sky-300" onClick={() => openEditDialog(event)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                       <Link href={`/expo/${event.id}`} className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-sky-300 transition-colors">
                         <ChevronRight className="w-4 h-4" />
                       </Link>
@@ -245,6 +292,51 @@ export default function ExpoPage() {
           )}
         </section>
       </div>
+
+      {/* 編輯活動 Dialog */}
+      <Dialog open={!!editingEvent} onOpenChange={(open) => { if (!open) setEditingEvent(null); }}>
+        <DialogContent className="dark-glass border border-white/10 rounded-[2rem] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold uppercase tracking-widest text-primary">編輯活動</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <Input
+              value={editFormData.name}
+              onChange={(e) => setEditFormData((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="活動名稱"
+              className="h-11 rounded-2xl bg-white/5 border-white/10"
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                value={editFormData.venue}
+                onChange={(e) => setEditFormData((prev) => ({ ...prev, venue: e.target.value }))}
+                placeholder="地點"
+                className="h-11 rounded-2xl bg-white/5 border-white/10"
+              />
+              <Input
+                type="date"
+                value={editFormData.eventDate}
+                onChange={(e) => setEditFormData((prev) => ({ ...prev, eventDate: e.target.value }))}
+                className="h-11 rounded-2xl bg-white/5 border-white/10"
+              />
+            </div>
+            <Textarea
+              value={editFormData.notes}
+              onChange={(e) => setEditFormData((prev) => ({ ...prev, notes: e.target.value }))}
+              placeholder="活動備註"
+              className="min-h-[100px] rounded-2xl bg-white/5 border-white/10"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="rounded-full text-xs font-bold uppercase tracking-widest" onClick={() => setEditingEvent(null)}>
+              取消
+            </Button>
+            <Button disabled={isSavingEdit} className="rounded-full text-xs font-bold uppercase tracking-widest" onClick={handleSaveEdit}>
+              {isSavingEdit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}儲存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
