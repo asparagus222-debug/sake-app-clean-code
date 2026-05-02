@@ -1231,7 +1231,7 @@ const handleSave = async () => {
         {/* 感官評分 */}
         <section className="space-y-4 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-center">
             <div className="space-y-4">
               {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
                 <div key={key} className="space-y-2">
@@ -1243,7 +1243,7 @@ const handleSave = async () => {
                 </div>
               ))}
             </div>
-            <div className="flex flex-col items-center justify-center pt-2 lg:pt-0"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
+            <div className="flex flex-col items-center justify-center pt-2 md:pt-0"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
           </div>
         </section>
 
