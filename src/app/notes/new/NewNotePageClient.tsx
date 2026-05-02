@@ -1231,8 +1231,8 @@ const handleSave = async () => {
         {/* 感官評分 */}
         <section className="space-y-4 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>
-          <div className="grid grid-cols-2 items-center gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-[1.35fr_1fr] items-center gap-4">
+            <div className="space-y-4 min-w-0">
               {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
                 <div key={key} className="space-y-2">
                   <div className="flex justify-between items-center px-1">

@@ -39,14 +39,14 @@ export function SakeRadarChart({ data }: SakeRadarChartProps) {
     { subject: "澀", value: data.astringency },
   ]
 
-  if (!mounted) return <div className="w-full aspect-square max-w-[400px] mx-auto" />
+  if (!mounted) return <div className="w-full aspect-square max-w-[320px] mx-auto" />
 
   return (
-    <div className="w-full aspect-square max-w-[400px] mx-auto flex items-center justify-center">
+    <div className="w-full aspect-square max-w-[320px] mx-auto flex items-center justify-center">
       <ChartContainer config={chartConfig} className="aspect-square w-full">
         <RadarChart 
           data={chartData} 
-          margin={{ top: 35, right: 45, bottom: 35, left: 45 }}
+          margin={{ top: 28, right: 32, bottom: 28, left: 32 }}
         >
           <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
           <PolarGrid stroke="hsl(var(--foreground) / 0.15)" />
@@ -58,7 +58,7 @@ export function SakeRadarChart({ data }: SakeRadarChartProps) {
           />
           <PolarAngleAxis 
             dataKey="subject" 
-            tick={{ fill: "hsl(var(--primary))", fontSize: 16, fontWeight: "bold" }} 
+            tick={{ fill: "hsl(var(--primary))", fontSize: 12, fontWeight: "bold" }} 
           />
           <Radar
             name="風味"
