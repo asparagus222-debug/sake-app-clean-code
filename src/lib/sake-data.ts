@@ -7,6 +7,11 @@ export interface SakeDatabaseEntry {
   brand: string;
   brewery: string;
   location: string;
+  /**
+   * 別名：假名、常見誤字、羅馬字等，列入銘柄建議搜尋與 AI 銘柄正規化比對。
+   * 例：三諸杉 ↔ みむろ杉、みもろ（誤讀）等。
+   */
+  aliases?: readonly string[];
 }
 
 export const SAKE_DATABASE: SakeDatabaseEntry[] = [
@@ -56,6 +61,21 @@ export const SAKE_DATABASE: SakeDatabaseEntry[] = [
   { brand: "LAGOON BREWERY", brewery: "LAGOON BREWERY", location: "新潟縣" },
   { brand: "阿部酒造", brewery: "阿部酒造", location: "新潟縣" },
   { brand: "屋守", brewery: "豐島屋酒造", location: "東京都" },
+  {
+    brand: "三諸杉",
+    brewery: "今西酒造",
+    location: "奈良縣",
+    aliases: [
+      "みむろ杉",
+      "みむろすぎ",
+      "三諸杉（みむろ杉）",
+      "みもろ杉",
+      "みもろすぎ",
+      "三諸衫",
+      "MIMUROSUGI",
+      "Mimurosugi",
+    ],
+  },
 
   // --- 辨識別名補強與 SAKETIME 排名擴充 (2026-04) ---
   { brand: "赤武", brewery: "赤武酒造", location: "岩手縣" },
@@ -413,7 +433,136 @@ export const SAKE_DATABASE: SakeDatabaseEntry[] = [
   { brand: "天領", brewery: "天領酒造", location: "岐阜縣" },
   { brand: "一品", brewery: "吉久保酒造", location: "茨城縣" },
   { brand: "旭鳳", brewery: "旭鳳酒造", location: "廣島縣" },
-  { brand: "松乃井", brewery: "松乃井酒造場", location: "新潟縣" }
+
+  // --- SAKETIME 人気／假名検索補強（對照公開排行／蔵公式資訊，2026-05） ---
+  {
+    brand: "産土",
+    brewery: "花の香酒造",
+    location: "熊本縣",
+    aliases: ["產土", "うぶすな", "Ubusuna"],
+  },
+  {
+    brand: "宮寒梅",
+    brewery: "寒梅酒造",
+    location: "宮城縣",
+    aliases: ["みやかんばい"],
+  },
+  {
+    brand: "金雀",
+    brewery: "堀江酒場",
+    location: "山口縣",
+    aliases: ["きんすずめ"],
+  },
+  {
+    brand: "花陽浴",
+    brewery: "南陽醸造",
+    location: "埼玉縣",
+    aliases: ["はなあび"],
+  },
+  {
+    brand: "電照菊",
+    brewery: "寒菊銘醸",
+    location: "千葉縣",
+    aliases: ["でんしょうぎく"],
+  },
+  {
+    brand: "総乃寒菊",
+    brewery: "寒菊銘醸",
+    location: "千葉縣",
+    aliases: ["總乃寒菊", "ふさのかんきく"],
+  },
+  {
+    brand: "OCEAN99",
+    brewery: "寒菊銘醸",
+    location: "千葉縣",
+    aliases: ["Ocean99", "Ocean 99", "オーシャンナインティナイン", "寒菊 Ocean 99"],
+  },
+  {
+    brand: "川中島 幻舞",
+    brewery: "酒せん蔵の",
+    location: "長野縣",
+    aliases: ["かわなかじまげんぶ", "幻舞"],
+  },
+  {
+    brand: "亜麻貓",
+    brewery: "新政酒造",
+    location: "秋田縣",
+    aliases: ["亞麻貓", "あまねこ", "AMA NEKO", "亚麻猫"],
+  },
+  {
+    brand: "廣戶川",
+    brewery: "松崎酒造店",
+    location: "福島縣",
+    aliases: ["広戸川", "廣户川", "ひろとがわ"],
+  },
+  {
+    brand: "横山",
+    brewery: "重家酒造",
+    location: "長野縣",
+    aliases: ["橫山", "よこやま"],
+  },
+  {
+    brand: "新政",
+    brewery: "新政酒造",
+    location: "秋田縣",
+    aliases: ["アラマサ", "ARAMASA"],
+  },
+  {
+    brand: "龜泉",
+    brewery: "亀泉酒造",
+    location: "高知縣",
+    aliases: ["亀泉", "かめいずみ", "KAMEIZUMI", "CEL-24"],
+  },
+  {
+    brand: "Ohmine",
+    brewery: "大嶺酒造",
+    location: "山口縣",
+    aliases: ["大嶺", "OHMINE", "おおみね", "3粒", "2粒", "1粒"],
+  },
+  {
+    brand: "御湖鶴",
+    brewery: "諏訪御湖鶴酒造場",
+    location: "長野縣",
+    aliases: ["みこつる", "MICOTURU"],
+  },
+  {
+    brand: "射美",
+    brewery: "杉原酒造",
+    location: "岐阜縣",
+    aliases: ["いび", "揖斐"],
+  },
+  {
+    brand: "龜之海",
+    brewery: "土屋酒造店",
+    location: "長野縣",
+    aliases: ["亀の海", "かめのうみ", "カメノウミ"],
+  },
+  {
+    brand: "勝駒",
+    brewery: "清都酒造場",
+    location: "富山縣",
+    aliases: ["かちこま"],
+  },
+  {
+    brand: "七水",
+    brewery: "虎屋本店",
+    location: "栃木縣",
+    aliases: ["しちすい"],
+  },
+  {
+    brand: "くどき上手",
+    brewery: "村上酒造",
+    location: "山口縣",
+    aliases: ["くどきじょうず", "クドキジョウズ", "KUDOKI JOUZU"],
+  },
+  {
+    brand: "小布施 Sogga",
+    brewery: "小布施ワイナリー",
+    location: "長野縣",
+    aliases: ["Sogga Pere et Fils", "ソガペールエフィス", "ソガ", "DOMAINESOGGA"],
+  },
+
+  { brand: "松乃井", brewery: "松乃井酒造場", location: "新潟縣" },
 ];
 
 /**
@@ -446,6 +595,44 @@ function buildBrandKeys(value: string): Set<string> {
   const cleaned = cleanSakeName(value);
   const parts = cleaned.split(/[\s\u3000\/]+/).map(normalizeLookupText).filter(Boolean);
   return new Set([normalizeLookupText(cleaned), ...parts]);
+}
+
+/** 銘柄建議：忽略大小寫、全半形、空白後做子字串比對 */
+export function normalizeSakeSearchText(value: string): string {
+  return cleanSakeName(value)
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/\s+/g, '');
+}
+
+export function sakeEntryMatchesSearchQuery(entry: SakeDatabaseEntry, rawQuery: string): boolean {
+  const q = normalizeSakeSearchText(rawQuery);
+  if (!q) return false;
+  const pool = [entry.brand, entry.brewery, entry.location, ...(entry.aliases ?? [])];
+  return pool.some((field) => normalizeSakeSearchText(field).includes(q));
+}
+
+/** 建議列表主行：漢字銘柄旁括號顯示假名別名（若有） */
+export function formatSakeBrandSuggestionTitle(entry: SakeDatabaseEntry): string {
+  const kanaAlias = entry.aliases?.find((a) => {
+    const t = a.trim();
+    return /[\u3040-\u309f\u30a0-\u30ff]/.test(t) && t.length >= 2 && !/[（(]/.test(t);
+  });
+  if (!kanaAlias) return entry.brand;
+  const brandN = normalizeSakeSearchText(entry.brand);
+  const kanaN = normalizeSakeSearchText(kanaAlias);
+  if (brandN.includes(kanaN)) return entry.brand;
+  return `${entry.brand}（${kanaAlias}）`;
+}
+
+function collectEntryBrandMatchKeys(entry: SakeDatabaseEntry): Set<string> {
+  const keys = buildBrandKeys(entry.brand);
+  for (const alias of entry.aliases ?? []) {
+    for (const k of buildBrandKeys(alias)) {
+      keys.add(k);
+    }
+  }
+  return keys;
 }
 
 const BREWERY_NAME_ALIASES: Record<string, string> = {
@@ -516,9 +703,9 @@ export function normalizeSakeInfo(
     }
   }
 
-  // ② 比對 SAKE_DATABASE
+  // ② 比對 SAKE_DATABASE（含 aliases）
   for (const entry of SAKE_DATABASE) {
-    const entryKeys = buildBrandKeys(entry.brand);
+    const entryKeys = collectEntryBrandMatchKeys(entry);
     const brandMatch = [...entryKeys].some(key => key.length >= 2 && brandKeys.has(key));
     if (brandMatch) {
       return { brandName: entry.brand, brewery: entry.brewery, origin: entry.location };
@@ -559,7 +746,7 @@ export function inferOriginFromSakeInfo(
       return entry.location;
     }
 
-    const entryBrandKeys = buildBrandKeys(entry.brand);
+    const entryBrandKeys = collectEntryBrandMatchKeys(entry);
     const brandMatch = [...entryBrandKeys].some((key) => key.length >= 2 && brandKeys.has(key));
     if (brandMatch) {
       return entry.location;

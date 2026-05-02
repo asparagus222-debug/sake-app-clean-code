@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession, CUP_TYPE_OPTIONS } from '@/lib/types';
 import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
+import { formatSakeBrandSuggestionTitle, type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck, FilePen, BookMarked } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -1190,7 +1190,7 @@ export default function EditNotePage() {
               <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
                 {brandSuggestions.map((item, idx) => (
                   <button key={idx} type="button" className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 last:border-none transition-colors" onMouseDown={(e) => e.preventDefault()} onClick={() => selectSuggestion(item)}>
-                    <p className="font-bold text-primary text-xs">{item.brand}</p>
+                    <p className="font-bold text-primary text-xs">{formatSakeBrandSuggestionTitle(item)}</p>
                     <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
                   </button>
                 ))}

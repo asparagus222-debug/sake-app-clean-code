@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import type { SakeDatabaseEntry } from '@/lib/sake-data';
+import { formatSakeBrandSuggestionTitle, type SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, BookMarked, FilePen } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -333,7 +333,7 @@ export default function EditNotePage() {
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => selectSuggestion(item)}
                   >
-                    <p className="font-bold text-primary text-xs">{item.brand}</p>
+                    <p className="font-bold text-primary text-xs">{formatSakeBrandSuggestionTitle(item)}</p>
                     <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
                   </button>
                 ))}

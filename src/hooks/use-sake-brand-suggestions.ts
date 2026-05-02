@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SAKE_DATABASE, type SakeDatabaseEntry } from '@/lib/sake-data';
+import { SAKE_DATABASE, sakeEntryMatchesSearchQuery, type SakeDatabaseEntry } from '@/lib/sake-data';
 
 /**
  * 依 SAKE_DATABASE 篩選銘柄／酒造／產地，供品飲筆記與展場快速品鑑共用。
@@ -27,13 +27,7 @@ export function useSakeBrandSuggestions() {
       setShowSuggestions(false);
       return;
     }
-    const q = query.toLowerCase();
-    const filtered = SAKE_DATABASE.filter(
-      (item) =>
-        item.brand.toLowerCase().includes(q)
-        || item.brewery.toLowerCase().includes(q)
-        || item.location.toLowerCase().includes(q)
-    );
+    const filtered = SAKE_DATABASE.filter((item) => sakeEntryMatchesSearchQuery(item, query));
     setBrandSuggestions(filtered);
     setShowSuggestions(true);
   }, []);

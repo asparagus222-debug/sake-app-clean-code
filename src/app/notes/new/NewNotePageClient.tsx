@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { CUP_TYPE_OPTIONS, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
+import { formatSakeBrandSuggestionTitle, type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck, FilePen } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -1155,7 +1155,7 @@ const handleSave = async () => {
                 <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
                   {brandSuggestions.map((item, idx) => (
                     <button key={idx} type="button" className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 transition-colors" onMouseDown={(e) => e.preventDefault()} onClick={() => selectSuggestion(item)}>
-                      <p className="font-bold text-primary text-xs">{item.brand}</p>
+                      <p className="font-bold text-primary text-xs">{formatSakeBrandSuggestionTitle(item)}</p>
                       <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
                     </button>
                   ))}

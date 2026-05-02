@@ -29,6 +29,7 @@ import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
 import { useSakeBrandSuggestions } from '@/hooks/use-sake-brand-suggestions';
+import { formatSakeBrandSuggestionTitle } from '@/lib/sake-data';
 import { cn } from '@/lib/utils';
 
 type SortMode = 'score' | 'price' | 'cp';
@@ -777,7 +778,7 @@ export default function ExpoEventPage() {
                             setFormData((prev) => ({ ...prev, ...pickSuggestionFields(item) }));
                           }}
                         >
-                          <p className="text-sm font-semibold text-primary">{item.brand}</p>
+                          <p className="text-sm font-semibold text-primary">{formatSakeBrandSuggestionTitle(item)}</p>
                           <p className="mt-0.5 text-[10px] text-muted-foreground">
                             {item.brewery} | {item.location}
                           </p>
