@@ -10,7 +10,7 @@ type QType = 'single' | 'multi' | 'rating5' | 'text';
 type GuidedAnswerValue = string | string[];
 export type GuidedTastingAnswers = Record<string, GuidedAnswerValue>;
 
-interface Opt { value: string; label: string; emoji?: string; }
+interface Opt { value: string; label: string; emoji?: string; group?: string; }
 interface Q {
   id: string;
   section: string;
@@ -102,15 +102,27 @@ const QUESTIONS: Q[] = [
     id: 'aromaDetail', section: '香氣', sectionColor: '#7c3aed',
     text: '更細緻的香氣描述？', shortLabel: '細緻香氣', hint: '可多選', optional: true, type: 'multi',
     options: [
-      { value: '蘋果梨子', label: '蘋果梨子', emoji: '🍎' },
-      { value: '哈密瓜', label: '哈密瓜', emoji: '🍈' },
-      { value: '香蕉鳳梨', label: '香蕉鳳梨', emoji: '🍋' },
-      { value: '柑橘檸檬', label: '柑橘檸檬', emoji: '🍊' },
-      { value: '白桃荔枝', label: '白桃荔枝', emoji: '🍑' },
-      { value: '栗子蜂蜜', label: '栗子蜂蜜', emoji: '🍯' },
-      { value: '白花茉莉', label: '白花茉莉', emoji: '🌼' },
-      { value: '奶油布丁', label: '奶油布丁', emoji: '🍮' },
-      { value: '辛香料', label: '辛香料', emoji: '🧄' },
+      { value: '香蕉', label: '香蕉', group: '水果類' },
+      { value: '鳳梨', label: '鳳梨', group: '水果類' },
+      { value: '哈密瓜', label: '哈密瓜', group: '水果類' },
+      { value: '青蘋果', label: '青蘋果', group: '水果類' },
+      { value: '洋梨', label: '洋梨', group: '水果類' },
+      { value: '白桃', label: '白桃', group: '水果類' },
+      { value: '檸檬皮', label: '檸檬皮', group: '水果類' },
+      { value: '葡萄柚', label: '葡萄柚', group: '水果類' },
+      { value: '白花', label: '白花', group: '花卉' },
+      { value: '黃花', label: '黃花', group: '花卉' },
+      { value: '紅花', label: '紅花', group: '花卉' },
+      { value: '米飯', label: '米飯', group: '原物料' },
+      { value: '麻糬', label: '麻糬', group: '原物料' },
+      { value: '堅果', label: '堅果', group: '原物料' },
+      { value: '優格', label: '優格', group: '發酵品' },
+      { value: '起司', label: '起司', group: '發酵品' },
+      { value: '香草', label: '香草', group: '辛香料' },
+      { value: '青草', label: '青草', group: '辛香料' },
+      { value: '薄荷', label: '薄荷', group: '辛香料' },
+      { value: '胡椒', label: '胡椒', group: '辛香料' },
+      { value: '木質調', label: '木質調', group: '辛香料' },
     ],
   },
   {
@@ -638,6 +650,39 @@ export function GuidedTasting({ onComplete, onClose, initialAnswers, onAnswersCh
             value={typeof answer === 'string' ? answer : ''}
             onChange={(event) => updateAnswer(activeQuestion.id, event.target.value)}
           />
+        ) : activeQuestion.id === 'aromaDetail' ? (
+          <div className="space-y-3">
+            {Object.entries(
+              activeQuestion.options.reduce((acc, option) => {
+                const key = option.group || '其他';
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(option);
+                return acc;
+              }, {} as Record<string, Opt[]>)
+            ).map(([groupName, groupOptions]) => (
+              <div key={groupName} className="space-y-1.5">
+                <p className="text-[10px] font-bold tracking-wider text-white/45">{groupName}</p>
+                <div className="flex flex-wrap gap-2">
+                  {groupOptions.map((option) => {
+                    const selected = (answer as string[]).includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => toggleOption(activeQuestion, option.value)}
+                        className={cn(
+                          'rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all active:scale-[0.98]',
+                          selected ? 'border-transparent text-white' : 'border-white/12 bg-white/5 text-white/70 hover:bg-white/8'
+                        )}
+                        style={selected ? { background: `${activeQuestion.sectionColor}33`, borderColor: activeQuestion.sectionColor } : undefined}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <>
             <div className="space-y-2">
