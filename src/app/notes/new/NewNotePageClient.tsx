@@ -1231,18 +1231,20 @@ const handleSave = async () => {
         {/* 感官評分 */}
         <section className="space-y-4 dark-glass p-5 rounded-xl border border-primary/20 shadow-xl">
           <h2 className="text-[10px] font-headline text-primary border-b border-primary/10 pb-1 gold-glow uppercase tracking-widest">感官評分</h2>
-          <div className="space-y-4">
-            {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
-              <div key={key} className="space-y-2">
-                <div className="flex justify-between items-center px-1">
-                  <Label className="font-bold text-foreground text-[9px] uppercase tracking-widest">{key === 'sweetness' ? '甘' : key === 'acidity' ? '酸' : key === 'bitterness' ? '苦' : key === 'umami' ? '旨' : '澀'}</Label>
-                  <span className="text-primary font-bold text-[9px] bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">{RATING_LABELS[key as keyof typeof RATING_LABELS][(formData[key as keyof typeof formData] as number) - 1]}</span>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center">
+            <div className="space-y-4">
+              {['sweetness', 'acidity', 'bitterness', 'umami', 'astringency'].map((key) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="font-bold text-foreground text-[9px] uppercase tracking-widest">{key === 'sweetness' ? '甘' : key === 'acidity' ? '酸' : key === 'bitterness' ? '苦' : key === 'umami' ? '旨' : '澀'}</Label>
+                    <span className="text-primary font-bold text-[9px] bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">{RATING_LABELS[key as keyof typeof RATING_LABELS][(formData[key as keyof typeof formData] as number) - 1]}</span>
+                  </div>
+                  <Slider min={1} max={5} step={1} value={[formData[key as keyof typeof formData] as number]} onValueChange={v => { markDirty(); setFormData(p => ({ ...p, [key]: v[0] })); }} />
                 </div>
-                <Slider min={1} max={5} step={1} value={[formData[key as keyof typeof formData] as number]} onValueChange={v => { markDirty(); setFormData(p => ({ ...p, [key]: v[0] })); }} />
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="flex flex-col items-center justify-center pt-2 lg:pt-0"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
           </div>
-          <div className="flex flex-col items-center justify-center pt-2"><SakeRadarChart data={{ sweetness: formData.sweetness, acidity: formData.acidity, bitterness: formData.bitterness, umami: formData.umami, astringency: formData.astringency }} /></div>
         </section>
 
 {/* --- AI 品鑑筆記區塊 --- */}
