@@ -28,6 +28,6 @@ fi
 
 COMMIT_MSG="agent(auto): $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 cd "$ROOT" || exit 0
-bash scripts/git-publish.sh "$COMMIT_MSG" >&2 || echo '[agent-stop-push] git:publish 失敗（請檢查变更、远端、認證）。' >&2
+bash scripts/git-publish.sh "$COMMIT_MSG" >&2 || echo '[agent-stop-push] git:publish 失敗（請檢查變更、遠端、認證）。' >&2
 echo '{}'
 exit 0
