@@ -33,15 +33,16 @@ CHANGED_FILES="$(
     | paste -sd ', ' -
 )"
 if [[ -z "$CHANGED_FILES" ]]; then
-  SHORT_DESC="no file changes detected"
+  SHORT_DESC="未偵測到檔案變更"
 else
-  SHORT_DESC="$CHANGED_FILES"
+  FILE_COUNT="$(git status --porcelain | wc -l | tr -d ' ')"
+  SHORT_DESC="更新 ${FILE_COUNT} 個檔案（${CHANGED_FILES}）"
 fi
 if [[ ${#SHORT_DESC} -gt 90 ]]; then
   SHORT_DESC="${SHORT_DESC:0:87}..."
 fi
 
-COMMIT_MSG="agent(auto): ${SHORT_DESC} @ $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+COMMIT_MSG="自動提交：${SHORT_DESC} @ $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 cd "$ROOT" || exit 0
 bash scripts/git-publish.sh "$COMMIT_MSG" >&2 || echo '[agent-stop-push] git:publish 失敗（請檢查變更、遠端、認證）。' >&2
 echo '{}'
