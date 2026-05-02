@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, TastingSession, CUP_TYPE_OPTIONS } from '@/lib/types';
 import { GuidedTasting, GuidedTastingAnswers, GuidedTastingResult } from '@/components/GuidedTasting';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
+import { type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Camera, Images, Clock, Lock, Unlock, ListChecks, ClipboardCheck, FilePen, BookMarked } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { buildRenderedNoteImageStyle, getCoverFrame, normalizeNoteImageTransform, resolveNoteImageTransform } from '@/lib/note-image-layout';
 import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
+import { useSakeBrandSuggestions } from '@/hooks/use-sake-brand-suggestions';
 
 async function getImageRatio(src: string): Promise<number> {
   return new Promise(resolve => {
@@ -116,9 +117,13 @@ export default function EditNotePage() {
   const imgRef0 = useRef<HTMLImageElement>(null);
   const imgRef1 = useRef<HTMLImageElement>(null);
 
-  const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionRef = useRef<HTMLDivElement>(null);
+  const {
+    suggestionRef,
+    brandSuggestions,
+    showSuggestions,
+    refreshSuggestionsForQuery,
+    pickSuggestionFields,
+  } = useSakeBrandSuggestions();
   const [customTag, setCustomTag] = useState("");
 
   // Multi-session state
@@ -328,8 +333,9 @@ export default function EditNotePage() {
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
       restoredTransformsNoteIdRef.current = null;
       if (note.sessions) setExtraSessions(note.sessions);
+      refreshSuggestionsForQuery('');
     }
-  }, [note]);
+  }, [note, refreshSuggestionsForQuery]);
 
   useEffect(() => {
     if (!note?.imageTransforms?.length) return;
@@ -406,23 +412,12 @@ export default function EditNotePage() {
   };
 
   const handleBrandChange = (value: string) => {
-    setFormData(prev => ({ ...prev, brandName: value }));
-    if (value.length > 0) {
-      const filtered = SAKE_DATABASE.filter(item => 
-        item.brand.toLowerCase().includes(value.toLowerCase()) || 
-        item.brewery.toLowerCase().includes(value.toLowerCase()) ||
-        item.location.toLowerCase().includes(value.toLowerCase())
-      );
-      setBrandSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    setFormData((prev) => ({ ...prev, brandName: value }));
+    refreshSuggestionsForQuery(value);
   };
 
   const selectSuggestion = (item: SakeDatabaseEntry) => {
-    setFormData(prev => ({ ...prev, brandName: item.brand, brewery: item.brewery, origin: item.location }));
-    setShowSuggestions(false);
+    setFormData((prev) => ({ ...prev, ...pickSuggestionFields(item) }));
   };
 
   // AI 雙腦品鑑
@@ -1178,17 +1173,23 @@ export default function EditNotePage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-2 gap-3 relative" ref={suggestionRef}>
-          <div className="space-y-1 relative">
+        <section className="grid grid-cols-2 gap-3 relative">
+          <div className="space-y-1 relative" ref={suggestionRef}>
             <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
             <div className="relative">
-              <Input placeholder="例如：十四代" className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
+              <Input
+                placeholder="例如：十四代"
+                className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs"
+                value={formData.brandName}
+                onChange={(e) => handleBrandChange(e.target.value)}
+                onFocus={() => formData.brandName && refreshSuggestionsForQuery(formData.brandName)}
+              />
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
             </div>
             {showSuggestions && brandSuggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
                 {brandSuggestions.map((item, idx) => (
-                  <button key={idx} className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 last:border-none transition-colors" onClick={() => selectSuggestion(item)}>
+                  <button key={idx} type="button" className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 last:border-none transition-colors" onMouseDown={(e) => e.preventDefault()} onClick={() => selectSuggestion(item)}>
                     <p className="font-bold text-primary text-xs">{item.brand}</p>
                     <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
                   </button>

@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "backfill:author-stats": "node scripts/backfill-author-stats.mjs"
+    "backfill:author-stats": "node scripts/backfill-author-stats.mjs",
+    "git:publish": "bash scripts/git-publish.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { ArrowLeft, BadgeDollarSign, BookMarked, Building2, Camera, Check, ChevronDown, CircleDollarSign, ClipboardList, FilePen, Images, Loader2, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, BookMarked, Building2, Camera, Check, ChevronDown, CircleDollarSign, ClipboardList, FilePen, Images, Loader2, Search, Star, Store, Trash2, PencilLine, Trophy, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,7 @@ import { ExpoEvent, EXPO_QUICK_TAG_GROUPS, SakeNote, UserProfile } from '@/lib/t
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { getExpoCpScore, getExpoNoteDisplayName, getSortableExpoCpScore, getSortableExpoPrice, isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { useToast } from '@/hooks/use-toast';
+import { useSakeBrandSuggestions } from '@/hooks/use-sake-brand-suggestions';
 import { cn } from '@/lib/utils';
 
 type SortMode = 'score' | 'price' | 'cp';
@@ -197,6 +198,13 @@ export default function ExpoEventPage() {
   const brandInputEditedAtRef = useRef(0);
   const breweryInputEditedAtRef = useRef(0);
   const originInputEditedAtRef = useRef(0);
+  const {
+    suggestionRef,
+    brandSuggestions,
+    showSuggestions,
+    refreshSuggestionsForQuery,
+    pickSuggestionFields,
+  } = useSakeBrandSuggestions();
   const [formData, setFormData] = useState({
     brandName: '',
     brewery: '',
@@ -500,6 +508,7 @@ export default function ExpoEventPage() {
       quickTags: [],
       quickNote: '',
     }));
+    refreshSuggestionsForQuery('');
   };
 
   const handleCreateQuickNote = async (visibility: 'private' | 'public' = 'private', publicationStatus: 'draft' | 'published' = 'draft') => {
@@ -623,6 +632,7 @@ export default function ExpoEventPage() {
       quickTags: normalizedQuickTags,
       quickNote: note.expoMeta?.quickNote || note.userDescription || note.description || '',
     });
+    refreshSuggestionsForQuery('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -738,10 +748,44 @@ export default function ExpoEventPage() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">快速品鑑</p>
                 <h2 className="text-lg font-bold text-foreground">{editingNoteId ? '編輯這杯快記' : '快速品鑑'}</h2>
                 </div>
-                <Input value={formData.brandName} onChange={(event) => {
-                  brandInputEditedAtRef.current = Date.now();
-                  setFormData((prev) => ({ ...prev, brandName: event.target.value }));
-                }} placeholder="酒名 / 銘柄" className="h-10 rounded-2xl bg-white/5 border-white/10" />
+                <div className="relative" ref={suggestionRef}>
+                  <Input
+                    value={formData.brandName}
+                    onChange={(event) => {
+                      brandInputEditedAtRef.current = Date.now();
+                      const next = event.target.value;
+                      setFormData((prev) => ({ ...prev, brandName: next }));
+                      refreshSuggestionsForQuery(next);
+                    }}
+                    onFocus={() => formData.brandName && refreshSuggestionsForQuery(formData.brandName)}
+                    placeholder="酒名 / 銘柄"
+                    className="h-10 rounded-2xl border-white/10 bg-white/5 pr-10"
+                  />
+                  <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/45" aria-hidden />
+                  {showSuggestions && brandSuggestions.length > 0 ? (
+                    <div className="absolute z-[60] mt-1 max-h-48 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c0f]/95 shadow-2xl backdrop-blur-md">
+                      {brandSuggestions.map((item, idx) => (
+                        <button
+                          key={`${item.brand}-${item.brewery}-${idx}`}
+                          type="button"
+                          className="w-full border-b border-white/10 px-3 py-2.5 text-left transition-colors last:border-none hover:bg-primary/15"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            brandInputEditedAtRef.current = Date.now();
+                            breweryInputEditedAtRef.current = Date.now();
+                            originInputEditedAtRef.current = Date.now();
+                            setFormData((prev) => ({ ...prev, ...pickSuggestionFields(item) }));
+                          }}
+                        >
+                          <p className="text-sm font-semibold text-primary">{item.brand}</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {item.brewery} | {item.location}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <Input value={formData.brewery} onChange={(event) => {
                   breweryInputEditedAtRef.current = Date.now();
                   setFormData((prev) => ({ ...prev, brewery: event.target.value }));

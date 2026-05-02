@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { SakeNote, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
+import type { SakeDatabaseEntry } from '@/lib/sake-data';
 import { ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, BookMarked, FilePen } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,7 @@ import { useFirestore, useUser, useAuth, updateDocumentNonBlocking, useDoc, useM
 import { deleteField, doc } from 'firebase/firestore';
 import { authorizedJsonFetch } from '@/lib/authorized-fetch';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
+import { useSakeBrandSuggestions } from '@/hooks/use-sake-brand-suggestions';
 
 export default function EditNotePage() {
   const router = useRouter();
@@ -42,9 +43,13 @@ export default function EditNotePage() {
   const [initialDist, setInitialDist] = useState<number | null>(null);
   const [initialZoom, setInitialZoom] = useState<number | null>(null);
 
-  const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionRef = useRef<HTMLDivElement>(null);
+  const {
+    suggestionRef,
+    brandSuggestions,
+    showSuggestions,
+    refreshSuggestionsForQuery,
+    pickSuggestionFields,
+  } = useSakeBrandSuggestions();
   const [customTag, setCustomTag] = useState("");
 
   const noteRef = useMemoFirebase(() => {
@@ -90,18 +95,9 @@ export default function EditNotePage() {
         setOffsets(note.imageUrls.map(() => ({ x: 0, y: 0 })));
       }
       if (note.imageSplitRatio) setSplitRatio(note.imageSplitRatio);
+      refreshSuggestionsForQuery('');
     }
-  }, [note]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [note, refreshSuggestionsForQuery]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -115,27 +111,11 @@ export default function EditNotePage() {
 
   const handleBrandChange = (value: string) => {
     setFormData(prev => ({ ...prev, brandName: value }));
-    if (value.length > 0) {
-      const filtered = SAKE_DATABASE.filter(item => 
-        item.brand.toLowerCase().includes(value.toLowerCase()) || 
-        item.brewery.toLowerCase().includes(value.toLowerCase()) ||
-        item.location.toLowerCase().includes(value.toLowerCase())
-      );
-      setBrandSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    refreshSuggestionsForQuery(value);
   };
 
   const selectSuggestion = (item: SakeDatabaseEntry) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      brandName: item.brand, 
-      brewery: item.brewery, 
-      origin: item.location 
-    }));
-    setShowSuggestions(false);
+    setFormData((prev) => ({ ...prev, ...pickSuggestionFields(item) }));
   };
 
   const captureCurrentView = async (idx: number): Promise<string> => {
@@ -339,7 +319,7 @@ export default function EditNotePage() {
                 className="bg-white/5 border-primary/40 h-9 rounded-xl text-xs" 
                 value={formData.brandName} 
                 onChange={e => handleBrandChange(e.target.value)} 
-                onFocus={() => formData.brandName && setShowSuggestions(true)}
+                onFocus={() => formData.brandName && refreshSuggestionsForQuery(formData.brandName)}
               />
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
             </div>
@@ -348,7 +328,9 @@ export default function EditNotePage() {
                 {brandSuggestions.map((item, idx) => (
                   <button 
                     key={idx} 
+                    type="button"
                     className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 last:border-none transition-colors" 
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => selectSuggestion(item)}
                   >
                     <p className="font-bold text-primary text-xs">{item.brand}</p>

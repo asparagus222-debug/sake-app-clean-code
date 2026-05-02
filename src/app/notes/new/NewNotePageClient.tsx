@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { CUP_TYPE_OPTIONS, RATING_LABELS, SERVING_TEMPERATURE_OPTIONS, STYLE_TAGS_OPTIONS, SakeNote, UserProfile } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
-import { SAKE_DATABASE, SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
+import { type SakeDatabaseEntry, normalizeSakeInfo } from '@/lib/sake-data';
 import { Camera, ArrowLeft, Loader2, Check, MapPin, Repeat, Plus, X, Tag, Info, Search, Sparkles, BrainCircuit, Palette, Images, BookMarked, Bell, Clock, ArrowRight, ListChecks, ClipboardCheck, FilePen } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,7 @@ import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
 import { deleteNoteDraft, getNoteDraft, saveNoteDraft } from '@/lib/note-draft-storage';
 import { buildRenderedNoteImageStyle, getCoverFrame, normalizeNoteImageTransform } from '@/lib/note-image-layout';
 import { cn, mergeSakeBrandName } from '@/lib/utils';
+import { useSakeBrandSuggestions } from '@/hooks/use-sake-brand-suggestions';
 
 type NewNotePageClientProps = {
   initialAuthBootstrap: AuthBootstrapSnapshot | null;
@@ -119,9 +120,13 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionRef = useRef<HTMLDivElement>(null);
+  const {
+    suggestionRef,
+    brandSuggestions,
+    showSuggestions,
+    refreshSuggestionsForQuery,
+    pickSuggestionFields,
+  } = useSakeBrandSuggestions();
   const [customTag, setCustomTag] = useState("");
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -275,16 +280,6 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
     : '';
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
     const element = previewFrameRef.current;
     if (!element) return;
 
@@ -389,23 +384,12 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
   }, []);
 
   const handleBrandChange = (value: string) => {
-    setFormData(prev => ({ ...prev, brandName: value }));
-    if (value.length > 0) {
-      const filtered = SAKE_DATABASE.filter(item => 
-        item.brand.toLowerCase().includes(value.toLowerCase()) || 
-        item.brewery.toLowerCase().includes(value.toLowerCase()) ||
-        item.location.toLowerCase().includes(value.toLowerCase())
-      );
-      setBrandSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    setFormData((prev) => ({ ...prev, brandName: value }));
+    refreshSuggestionsForQuery(value);
   };
 
   const selectSuggestion = (item: SakeDatabaseEntry) => {
-    setFormData(prev => ({ ...prev, brandName: item.brand, brewery: item.brewery, origin: item.location }));
-    setShowSuggestions(false);
+    setFormData((prev) => ({ ...prev, ...pickSuggestionFields(item) }));
   };
 
   // --- AI 雙腦品鑑邏輯 ---
@@ -577,9 +561,7 @@ export default function NewNotePageClient({ initialAuthBootstrap }: NewNotePageC
       alcoholPercent: '',
       sakeInfoTags: [],
     }));
-    setShowSuggestions(false);
-    setBrandSuggestions([]);
-    toast({ title: '已清空 AI 辨識資料', description: '銘柄、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
+    refreshSuggestionsForQuery('');
     toast({ title: '已清空 AI 辨識資料', description: '銘柄、酒造、產地、酒精濃度與酒鑑標籤已清除。' });
   };
 
@@ -1148,7 +1130,7 @@ const handleSave = async () => {
         </section>
 
         {/* 基礎資訊 */}
-        <section className="space-y-3 relative" ref={suggestionRef}>
+        <section className="space-y-3 relative">
           <div className="flex items-center justify-between gap-2 px-1">
             <Label className="text-[10px] uppercase font-bold text-primary tracking-widest">基礎資訊</Label>
             <Button
@@ -1163,16 +1145,16 @@ const handleSave = async () => {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1 relative">
+            <div className="space-y-1 relative" ref={suggestionRef}>
               <Label className="text-[9px] uppercase font-bold text-muted-foreground ml-1">銘柄 (品牌)</Label>
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50" />
-                <Input placeholder="例如：十四代" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brandName'))} value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && setShowSuggestions(true)} />
+                <Input placeholder="例如：十四代" className={cn("bg-white/5 border-primary/40 h-9 rounded-xl text-xs", getAiHighlightClass('brandName'))} value={formData.brandName} onChange={e => handleBrandChange(e.target.value)} onFocus={() => formData.brandName && refreshSuggestionsForQuery(formData.brandName)} />
               </div>
               {showSuggestions && brandSuggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 dark-glass border border-primary/20 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto">
                   {brandSuggestions.map((item, idx) => (
-                    <button key={idx} className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 transition-colors" onClick={() => selectSuggestion(item)}>
+                    <button key={idx} type="button" className="w-full text-left px-3 py-2 hover:bg-primary/20 border-b border-primary/10 transition-colors" onMouseDown={(e) => e.preventDefault()} onClick={() => selectSuggestion(item)}>
                       <p className="font-bold text-primary text-xs">{item.brand}</p>
                       <p className="text-[10px] text-muted-foreground">{item.brewery} | {item.location}</p>
                     </button>
