@@ -206,7 +206,7 @@ const QUESTIONS: Q[] = [
     text: '是否會想再喝？', shortLabel: '再喝意願', type: 'rating5',
     low: '不會再喝', high: '一定會再喝',
     options: [
-      { value: '1', label: '不會再喝：整體不合口味，暫不考慮回訪。' },
+      { value: '1', label: '不會考慮：不符合個人口味，回訪意願低。' },
       { value: '2', label: '可能不會：有可取之處，但再喝意願偏低。' },
       { value: '3', label: '中立觀望：可接受，未來視情境再決定。' },
       { value: '4', label: '願意再喝：整體喜歡，會想再找機會喝。' },
@@ -217,6 +217,7 @@ const QUESTIONS: Q[] = [
     id: 'food', section: '餐搭', sectionColor: '#dc2626',
     text: '推薦搭配的料理？', shortLabel: '推薦餐搭', hint: '可多選', optional: true, type: 'multi', allowCustom: true,
     options: [
+      { value: '適合單飲', label: '適合單飲', emoji: '🥂' },
       { value: '生魚片', label: '生魚片', emoji: '🐟' },
       { value: '壽司', label: '壽司', emoji: '🍣' },
       { value: '貝類海鮮', label: '貝類海鮮', emoji: '🦞' },
@@ -226,7 +227,6 @@ const QUESTIONS: Q[] = [
       { value: '沙拉涼拌', label: '沙拉涼拌', emoji: '🥗' },
       { value: '燉煮料理', label: '燉煮料理', emoji: '🍲' },
       { value: '和牛紅肉', label: '和牛/紅肉', emoji: '🥩' },
-      { value: '適合單飲', label: '適合單飲', emoji: '🥂' },
     ],
   },
   {
