@@ -293,7 +293,7 @@ export function HomeClient({
             </Link>
           ) : isInstallable ? (
             <Button variant="ghost" size="sm" onClick={promptInstall} className="rounded-full text-[10px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary border border-primary/20 hover:border-primary/50 h-10 px-4">
-              <img src="/icons/icon-192x192.png" alt="" className="w-4 h-4 mr-1 rounded-sm" /> 下載離線版
+              <img src="/icons/icon-192x192.png" alt="" className="w-5 h-5 mr-1 rounded-full" /> 下載離線版
             </Button>
           ) : (
             <Link href="/offline">
