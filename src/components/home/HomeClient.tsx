@@ -6,7 +6,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X, BookOpen, Download, WifiOff } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X, BookOpen, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -293,7 +293,7 @@ export function HomeClient({
             </Link>
           ) : isInstallable ? (
             <Button variant="ghost" size="sm" onClick={promptInstall} className="rounded-full text-[10px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary border border-primary/20 hover:border-primary/50 h-10 px-4">
-              <Download className="w-3 h-3 mr-1" /> 下載離線版
+              <img src="/icons/icon-192x192.png" alt="" className="w-4 h-4 mr-1 rounded-sm" /> 下載離線版
             </Button>
           ) : (
             <Link href="/offline">
