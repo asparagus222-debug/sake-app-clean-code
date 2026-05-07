@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, CalendarDays, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarDays, MapPin, Tag, Plus, X } from 'lucide-react';
 import { createExpo } from '@/lib/offline-storage';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +19,17 @@ export default function OfflineNewExpoPage() {
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
   });
+  const [quickTags, setQuickTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || quickTags.includes(t)) return;
+    setQuickTags(prev => [...prev, t]);
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => setQuickTags(prev => prev.filter(t => t !== tag));
 
   const handleSave = () => {
     if (!formData.title.trim()) {
@@ -32,6 +43,7 @@ export default function OfflineNewExpoPage() {
         location: formData.location || undefined,
         startDate: formData.startDate,
         endDate: formData.endDate || undefined,
+        quickTags: quickTags.length > 0 ? quickTags : undefined,
       });
       router.replace(`/offline/expos/${expo.id}`);
     } catch {
@@ -94,6 +106,36 @@ export default function OfflineNewExpoPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* 快速品鑑標籤 */}
+        <div className="space-y-3">
+          <Label className="text-white/50 text-xs font-bold uppercase tracking-widest block">
+            <Tag className="w-3 h-3 inline mr-1" />快速品鑑標籤（選填）
+          </Label>
+          <p className="text-[10px] text-white/30">在此活動新增品飲筆記時，這些標籤會出現在快速選取區塊</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="例：必買、想買、不考慮、現場限定…"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addTag()}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 text-sm"
+            />
+            <Button variant="outline" size="icon" onClick={addTag} className="border-white/10 text-white/50 hover:text-white shrink-0">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          {quickTags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {quickTags.map(tag => (
+                <span key={tag} className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#f97316]/10 border border-[#f97316]/30 text-[#f97316]/80">
+                  {tag}
+                  <button onClick={() => removeTag(tag)}><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <Button

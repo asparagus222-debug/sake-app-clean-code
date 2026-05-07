@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,9 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Plus, X, Tag, Search, Save, Upload, ImageIcon } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, MapPin, Plus, X, Tag, Search, Save, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createNote, saveImage, getExpoById } from '@/lib/offline-storage';
+import { getNoteById, updateNote, saveImage, deleteImages, getAllImages, getExpoById } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 
 async function resizeImage(base64: string, maxDimension = 1024): Promise<string> {
@@ -34,24 +34,24 @@ async function resizeImage(base64: string, maxDimension = 1024): Promise<string>
   });
 }
 
-type SaveMode = 'local' | 'upload';
-
-export default function OfflineNewNotePage() {
+export default function OfflineEditNotePage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [images, setImages] = useState<string[]>([]);
+  // 圖片：{ dataUrl, imageId | null } — null 代表新圖（尚未存入 IndexedDB）
+  const [imageItems, setImageItems] = useState<Array<{ dataUrl: string; imageId: string | null }>>([]);
+  const [originalImageIds, setOriginalImageIds] = useState<string[]>([]);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
+
   const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState('');
-
-  const [expoId, setExpoId] = useState<string | undefined>(undefined);
-  const [expoTitle, setExpoTitle] = useState<string | undefined>(undefined);
   const [expoQuickTags, setExpoQuickTags] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
@@ -71,26 +71,46 @@ export default function OfflineNewNotePage() {
     tastingDate: new Date().toISOString().split('T')[0],
   });
 
-  // 從 URL 取得活動參數
+  // 載入既有筆記
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const eid = params.get('expoId');
-    const etitle = params.get('expoTitle');
-    if (eid) {
-      setExpoId(eid);
-      setExpoTitle(etitle || undefined);
-      const expo = getExpoById(eid);
+    const note = getNoteById(id);
+    if (!note) { router.replace('/offline'); return; }
+
+    setFormData({
+      brandName: note.brandName,
+      subBrand: note.subBrand || '',
+      brewery: note.brewery,
+      origin: note.origin || '',
+      sweetness: note.sweetnessRating,
+      acidity: note.acidityRating,
+      bitterness: note.bitternessRating,
+      umami: note.umamiRating,
+      astringency: note.astringencyRating,
+      overallRating: note.overallRating,
+      styleTags: note.styleTags || [],
+      description: note.description,
+      userDescription: note.userDescription || '',
+      tastingDate: note.tastingDate,
+    });
+
+    setOriginalImageIds(note.imageIds);
+    getAllImages(note.imageIds).then(urls => {
+      setImageItems(note.imageIds.map((id, i) => ({ dataUrl: urls[i] || '', imageId: id })).filter(item => item.dataUrl));
+    });
+
+    if (note.expoId) {
+      const expo = getExpoById(note.expoId);
       if (expo?.quickTags?.length) setExpoQuickTags(expo.quickTags);
     }
-  }, []);
+
+    setIsLoading(false);
+  }, [id, router]);
 
   // 品牌搜尋
   useEffect(() => {
     if (formData.brandName.trim().length < 1) { setBrandSuggestions([]); setShowSuggestions(false); return; }
     const q = formData.brandName.toLowerCase();
-    const results = SAKE_DATABASE.filter(s =>
-      s.brand.toLowerCase().includes(q)
-    ).slice(0, 6);
+    const results = SAKE_DATABASE.filter(s => s.brand.toLowerCase().includes(q)).slice(0, 6);
     setBrandSuggestions(results);
     setShowSuggestions(results.length > 0);
   }, [formData.brandName]);
@@ -105,23 +125,21 @@ export default function OfflineNewNotePage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // 拍照 / 選圖
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const newImages: string[] = [];
-    for (const file of files.slice(0, 2 - images.length)) {
+    for (const file of files.slice(0, 2 - imageItems.length)) {
       const reader = new FileReader();
       const base64 = await new Promise<string>((res) => {
         reader.onload = (ev) => res(ev.target?.result as string);
         reader.readAsDataURL(file);
       });
-      newImages.push(await resizeImage(base64));
+      const resized = await resizeImage(base64);
+      setImageItems(prev => [...prev, { dataUrl: resized, imageId: null }].slice(0, 2));
     }
-    setImages(prev => [...prev, ...newImages].slice(0, 2));
+    e.target.value = '';
   };
 
-  // 填充品牌資訊
   const fillFromSuggestion = (s: SakeDatabaseEntry) => {
     setFormData(prev => ({
       ...prev,
@@ -132,7 +150,6 @@ export default function OfflineNewNotePage() {
     setShowSuggestions(false);
   };
 
-  // 風味標籤
   const toggleTag = (tag: string) => {
     setFormData(prev => ({
       ...prev,
@@ -149,28 +166,37 @@ export default function OfflineNewNotePage() {
     setCustomTag('');
   };
 
-  // 儲存
-  const handleSave = async (mode: SaveMode) => {
+  const handleSave = async () => {
     if (!formData.brandName.trim()) {
       toast({ variant: 'destructive', title: '請填入品牌名稱' });
       return;
     }
     setIsSaving(true);
     try {
-      // 將圖片存入 IndexedDB
-      const imageIds: string[] = [];
-      for (const [i, img] of images.entries()) {
-        const id = `img_${Date.now()}_${i}`;
-        await saveImage(id, img);
-        imageIds.push(id);
+      // 找出被移除的舊圖片
+      const removedIds = originalImageIds.filter(
+        oid => !imageItems.some(item => item.imageId === oid)
+      );
+      if (removedIds.length > 0) await deleteImages(removedIds);
+
+      // 新圖片存入 IndexedDB
+      const finalImageIds: string[] = [];
+      for (const item of imageItems) {
+        if (item.imageId) {
+          finalImageIds.push(item.imageId);
+        } else {
+          const newId = `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          await saveImage(newId, item.dataUrl);
+          finalImageIds.push(newId);
+        }
       }
 
-      const note = createNote({
+      updateNote(id, {
         brandName: formData.brandName,
         subBrand: formData.subBrand || undefined,
         brewery: formData.brewery,
         origin: formData.origin || undefined,
-        imageIds,
+        imageIds: finalImageIds,
         sweetnessRating: formData.sweetness,
         acidityRating: formData.acidity,
         bitternessRating: formData.bitterness,
@@ -181,24 +207,13 @@ export default function OfflineNewNotePage() {
         description: formData.description,
         userDescription: formData.userDescription || undefined,
         tastingDate: formData.tastingDate,
-        uploadedFirestoreId: null,
-        expoId,
-        expoTitle,
       });
 
-      if (mode === 'upload') {
-        router.push(`/offline/notes/${note.id}/upload`);
-      } else {
-        toast({ title: '筆記已儲存至裝置' });
-        if (expoId) {
-          router.replace(`/offline/expos/${expoId}`);
-        } else {
-          router.replace('/offline');
-        }
-      }
+      toast({ title: '筆記已更新' });
+      router.replace(`/offline/notes/${id}`);
     } catch (err) {
       console.error(err);
-      toast({ variant: 'destructive', title: '儲存失敗' });
+      toast({ variant: 'destructive', title: '更新失敗' });
     } finally {
       setIsSaving(false);
     }
@@ -212,16 +227,21 @@ export default function OfflineNewNotePage() {
     { key: 'astringency' as const, label: '澀感', colors: RATING_LABELS.astringency },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-[#f97316] animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a0a0c] pb-40 font-body">
+    <div className="min-h-screen bg-[#0a0a0c] pb-32 font-body">
       <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur border-b border-white/5 px-5 py-4 flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0 text-white/60 hover:text-white">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
-          <h1 className="text-sm font-bold text-white">新增品飲筆記</h1>
-          {expoTitle && <p className="text-[10px] text-[#f97316]/70">{expoTitle}</p>}
-        </div>
+        <h1 className="text-sm font-bold text-white">編輯品飲筆記</h1>
       </nav>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-8">
@@ -229,18 +249,18 @@ export default function OfflineNewNotePage() {
         <section>
           <Label className="text-white/60 text-xs font-bold uppercase tracking-widest mb-3 block">照片（最多 2 張）</Label>
           <div className="flex gap-3">
-            {images.map((img, idx) => (
+            {imageItems.map((item, idx) => (
               <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-white/10">
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={item.dataUrl} alt="" className="w-full h-full object-cover" />
                 <button
-                  onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                  onClick={() => setImageItems(prev => prev.filter((_, i) => i !== idx))}
                   className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
                 >
                   <X className="w-3 h-3 text-white" />
                 </button>
               </div>
             ))}
-            {images.length < 2 && (
+            {imageItems.length < 2 && (
               <>
                 <button
                   type="button"
@@ -291,7 +311,7 @@ export default function OfflineNewNotePage() {
         <section className="space-y-4">
           <Label className="text-white/60 text-xs font-bold uppercase tracking-widest block">基本資訊</Label>
 
-          {/* 品牌名稱（含搜尋） */}
+          {/* 品牌名稱 */}
           <div className="relative" ref={suggestionRef}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -302,11 +322,11 @@ export default function OfflineNewNotePage() {
                 className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
             </div>
-            {showSuggestions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden z-30 shadow-xl">
-                {brandSuggestions.map((s, i) => (
+            {showSuggestions && brandSuggestions.length > 0 && (
+              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#1a1a1e] border border-white/10 rounded-xl overflow-hidden shadow-xl">
+                {brandSuggestions.map(s => (
                   <button
-                    key={i}
+                    key={s.brand}
                     onClick={() => fillFromSuggestion(s)}
                     className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors"
                   >
@@ -377,8 +397,6 @@ export default function OfflineNewNotePage() {
               />
             </div>
           ))}
-
-          {/* 綜合評分 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-white/70 text-sm font-bold">綜合評分</Label>
@@ -398,7 +416,6 @@ export default function OfflineNewNotePage() {
           <Label className="text-white/60 text-xs font-bold uppercase tracking-widest block">
             <Tag className="w-3 h-3 inline mr-1" /> 風格標籤
           </Label>
-          {/* 活動快速品鑑標籤 */}
           {expoQuickTags.length > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] text-[#f97316]/70 font-bold uppercase tracking-widest">活動快速標籤</p>
@@ -490,27 +507,17 @@ export default function OfflineNewNotePage() {
         </section>
       </div>
 
-      {/* 固定底部按鈕 */}
+      {/* 固定底部 */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0c]/95 backdrop-blur border-t border-white/5 px-4 py-4">
-        <div className="max-w-xl mx-auto grid grid-cols-2 gap-3">
+        <div className="max-w-xl mx-auto">
           <Button
-            variant="outline"
             size="lg"
             disabled={isSaving}
-            onClick={() => handleSave('local')}
-            className="border-white/20 text-white hover:bg-white/5 font-bold"
+            onClick={handleSave}
+            className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-bold shadow-[0_0_15px_rgba(249,115,22,0.3)]"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            儲存至本機
-          </Button>
-          <Button
-            size="lg"
-            disabled={isSaving}
-            onClick={() => handleSave('upload')}
-            className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold shadow-[0_0_15px_rgba(249,115,22,0.3)]"
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-            上傳分享
+            儲存更新
           </Button>
         </div>
       </div>

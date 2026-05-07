@@ -16,6 +16,7 @@ import {
   ChevronRight,
   WifiOff,
   Globe,
+  Edit,
 } from 'lucide-react';
 import { getAllNotes, getAllExpos, deleteNote, deleteExpo, OfflineNote, OfflineExpo } from '@/lib/offline-storage';
 import { useToast } from '@/hooks/use-toast';
@@ -202,6 +203,11 @@ function NoteCard({ note, onDelete, isOnline }: { note: OfflineNote; onDelete: (
               </Button>
             </Link>
           )}
+          <Link href={`/offline/notes/${note.id}/edit`}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-white/40 hover:text-white rounded-full">
+              <Edit className="w-3 h-3" />
+            </Button>
+          </Link>
           <Link href={`/offline/notes/${note.id}`}>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] text-white/50 hover:text-white rounded-full">
               查看 <ChevronRight className="w-3 h-3 ml-1" />

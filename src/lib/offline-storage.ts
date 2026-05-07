@@ -26,6 +26,8 @@ export type OfflineNote = {
   overallRating: number;
   styleTags?: string[];
   description: string;
+  /** 作者個人品飲描述 */
+  userDescription?: string;
   tastingDate: string;
   createdAt: string;
   /** 已上傳到 Firestore 的對應 id，null 代表尚未上傳 */
@@ -42,6 +44,8 @@ export type OfflineExpo = {
   startDate: string;
   endDate?: string;
   createdAt: string;
+  /** 活動自訂快速品鑑標籤 */
+  quickTags?: string[];
 };
 
 // ─── IndexedDB 初始化 ────────────────────────────────────
