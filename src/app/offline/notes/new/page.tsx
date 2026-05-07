@@ -232,7 +232,7 @@ export default function OfflineNewNotePage() {
             {images.length < 2 && (
               <label className="flex items-center justify-center w-24 h-24 rounded-xl border-2 border-dashed border-white/20 hover:border-[#f97316]/60 cursor-pointer transition-colors">
                 <Camera className="w-6 h-6 text-white/30" />
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageCapture} multiple />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageCapture} multiple />
               </label>
             )}
           </div>
