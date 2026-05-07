@@ -13,9 +13,9 @@ import { openDB, IDBPDatabase } from 'idb';
 export type OfflineNote = {
   id: string;
   brandName: string;
-  subBrand?: string;
   brewery: string;
   origin?: string;
+  alcoholContent?: string;
   /** 圖片儲存於 IndexedDB，這裡只存 id refs */
   imageIds: string[];
   sweetnessRating: number;

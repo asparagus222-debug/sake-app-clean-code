@@ -142,7 +142,6 @@ export default function OfflineExpoBatchUploadPage() {
           userId: uploadUser.uid,
           username: uploadUser.displayName || uploadUser.email?.split('@')[0] || '品飲愛好者',
           brandName: note.brandName,
-          subBrand: note.subBrand || '',
           brewery: note.brewery,
           origin: note.origin || '',
           imageUrls: uploadedUrls,

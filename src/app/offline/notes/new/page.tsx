@@ -58,9 +58,9 @@ export default function OfflineNewNotePage() {
 
   const [formData, setFormData] = useState({
     brandName: '',
-    subBrand: '',
     brewery: '',
     origin: '',
+    alcoholContent: '',
     sweetness: 3,
     acidity: 3,
     bitterness: 3,
@@ -184,9 +184,9 @@ export default function OfflineNewNotePage() {
 
       const note = createNote({
         brandName: formData.brandName,
-        subBrand: formData.subBrand || undefined,
         brewery: formData.brewery,
         origin: formData.origin || undefined,
+        alcoholContent: formData.alcoholContent || undefined,
         imageIds,
         sweetnessRating: formData.sweetness,
         acidityRating: formData.acidity,
@@ -350,24 +350,26 @@ export default function OfflineNewNotePage() {
           </div>
 
           <Input
-            placeholder="副品牌 / 酒款"
-            value={formData.subBrand}
-            onChange={e => setFormData(p => ({ ...p, subBrand: e.target.value }))}
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-          />
-          <Input
             placeholder="酒藏"
             value={formData.brewery}
             onChange={e => setFormData(p => ({ ...p, brewery: e.target.value }))}
             className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
           />
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Input
+                placeholder="產地 (縣市)"
+                value={formData.origin}
+                onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))}
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            </div>
             <Input
-              placeholder="產地 (縣市)"
-              value={formData.origin}
-              onChange={e => setFormData(p => ({ ...p, origin: e.target.value }))}
-              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              placeholder="酒精濃度 (%)"
+              value={formData.alcoholContent}
+              onChange={e => setFormData(p => ({ ...p, alcoholContent: e.target.value }))}
+              className="w-32 bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
           <Input
@@ -378,9 +380,9 @@ export default function OfflineNewNotePage() {
           />
         </section>
 
-        {/* 雷達圖預覽 */}
-        <section>
-          <Label className="text-white/60 text-xs font-bold uppercase tracking-widest mb-3 block">風味輪廓</Label>
+        {/* 風味輪廓 */}
+        <section className="space-y-4">
+          <Label className="text-white/60 text-xs font-bold uppercase tracking-widest block">風味輪廓</Label>
           <div className="w-full max-w-xs mx-auto">
             <SakeRadarChart data={{
               sweetness: formData.sweetness,
@@ -390,38 +392,44 @@ export default function OfflineNewNotePage() {
               astringency: formData.astringency,
             }} />
           </div>
+          <div className="space-y-3">
+            {ratingLabels.map(({ key, label, colors }) => (
+              <div key={key}>
+                <p className="text-[11px] text-white/50 font-bold uppercase tracking-widest mb-2">{label}</p>
+                <div className="flex flex-wrap gap-2">
+                  {colors.map((chipLabel, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, [key]: i + 1 }))}
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-bold border transition-all',
+                        (formData as any)[key] === i + 1
+                          ? 'bg-[#f97316] border-[#f97316] text-white'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
+                      )}
+                    >
+                      {chipLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
-        {/* 風味滑桿 */}
-        <section className="space-y-6">
-          {ratingLabels.map(({ key, label, colors }) => (
-            <div key={key} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-white/70 text-sm font-bold">{label}</Label>
-                <span className="text-[#f97316] text-sm font-bold">{colors[(formData as any)[key] - 1]}</span>
-              </div>
-              <Slider
-                min={1} max={5} step={1}
-                value={[(formData as any)[key]]}
-                onValueChange={([v]) => setFormData(p => ({ ...p, [key]: v }))}
-                className="w-full"
-              />
-            </div>
-          ))}
-
-          {/* 綜合評分 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-white/70 text-sm font-bold">綜合評分</Label>
-              <span className="text-[#f97316] text-xl font-bold">{formData.overallRating.toFixed(1)} <span className="text-white/30 text-sm">/ 10</span></span>
-            </div>
-            <Slider
-              min={1} max={10} step={0.1}
-              value={[formData.overallRating]}
-              onValueChange={([v]) => setFormData(p => ({ ...p, overallRating: Math.round(v * 10) / 10 }))}
-              className="w-full"
-            />
+        {/* 綜合評分 */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-white/70 text-sm font-bold">綜合評分</Label>
+            <span className="text-[#f97316] text-xl font-bold">{formData.overallRating.toFixed(1)} <span className="text-white/30 text-sm">/ 10</span></span>
           </div>
+          <Slider
+            min={1} max={10} step={0.1}
+            value={[formData.overallRating]}
+            onValueChange={([v]) => setFormData(p => ({ ...p, overallRating: Math.round(v * 10) / 10 }))}
+            className="w-full"
+          />
         </section>
 
         {/* 風格標籤 */}
@@ -452,24 +460,22 @@ export default function OfflineNewNotePage() {
               <div className="border-t border-white/5 pt-2" />
             </div>
           )}
-          {Object.entries(STYLE_TAGS_OPTIONS).map(([group, tags]) => (
-            <div key={group} className="flex flex-wrap gap-2">
-              {tags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={cn(
-                    'px-3 py-1 rounded-full text-xs font-bold border transition-all',
-                    formData.styleTags.includes(tag)
-                      ? 'bg-[#f97316] border-[#f97316] text-white'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
-                  )}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          ))}
+          <div className="flex flex-wrap gap-2">
+            {Object.values(STYLE_TAGS_OPTIONS).flat().map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={cn(
+                  'px-3 py-1 rounded-full text-xs font-bold border transition-all',
+                  formData.styleTags.includes(tag)
+                    ? 'bg-[#f97316] border-[#f97316] text-white'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
+                )}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-2">
             <Input
               placeholder="自訂標籤"

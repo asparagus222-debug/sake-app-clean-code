@@ -182,7 +182,6 @@ function NoteCard({ note, onDelete, isOnline }: { note: OfflineNote; onDelete: (
               <Badge variant="outline" className="text-[9px] border-yellow-400/40 text-yellow-400 bg-yellow-400/10">本地</Badge>
             )}
           </div>
-          {note.subBrand && <p className="text-white/40 text-[11px] truncate">{note.subBrand}</p>}
           <p className="text-white/40 text-[11px] truncate">{note.brewery}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">

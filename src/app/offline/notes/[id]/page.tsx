@@ -117,7 +117,6 @@ export default function OfflineNoteDetailPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white">{note.brandName}</h1>
-              {note.subBrand && <p className="text-[#f97316]/70 text-sm">{note.subBrand}</p>}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Star className="w-5 h-5 text-[#f97316]" />

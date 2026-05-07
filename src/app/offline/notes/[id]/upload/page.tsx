@@ -140,7 +140,6 @@ export default function OfflineUploadPage() {
         userId: uploadUser.uid,
         username: uploadUser.displayName || uploadUser.email?.split('@')[0] || '品飲愛好者',
         brandName: note.brandName,
-        subBrand: note.subBrand || '',
         brewery: note.brewery,
         origin: note.origin || '',
         imageUrls: uploadedUrls,
@@ -189,7 +188,6 @@ export default function OfflineUploadPage() {
         {/* 筆記摘要 */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <h2 className="font-bold text-white">{note.brandName}</h2>
-          {note.subBrand && <p className="text-[#f97316]/70 text-sm">{note.subBrand}</p>}
           <p className="text-white/40 text-xs mt-1">{note.brewery} · {note.tastingDate}</p>
         </div>
 
