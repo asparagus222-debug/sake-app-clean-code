@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Plus, X, Tag, Search, Save, Upload, ImageIcon } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Plus, X, Tag, Search, Save, Upload, ImageIcon, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createNote, saveImage, getExpoById } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
+import { GuidedTasting, GuidedTastingResult } from '@/components/GuidedTasting';
 
 async function resizeImage(base64: string, maxDimension = 1024): Promise<string> {
   return new Promise((resolve) => {
@@ -49,6 +50,7 @@ export default function OfflineNewNotePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
   const [customTag, setCustomTag] = useState('');
+  const [showGuidedTasting, setShowGuidedTasting] = useState(false);
 
   const [expoId, setExpoId] = useState<string | undefined>(undefined);
   const [expoTitle, setExpoTitle] = useState<string | undefined>(undefined);
@@ -70,6 +72,21 @@ export default function OfflineNewNotePage() {
     userDescription: '',
     tastingDate: new Date().toISOString().split('T')[0],
   });
+
+  const handleGuidedComplete = (result: GuidedTastingResult) => {
+    setFormData(prev => ({
+      ...prev,
+      sweetness: result.sweetness,
+      acidity: result.acidity,
+      bitterness: result.bitterness,
+      umami: result.umami,
+      astringency: result.astringency,
+      description: result.guidedSummary || prev.description,
+      userDescription: prev.userDescription,
+      styleTags: [...new Set([...prev.styleTags, ...result.styleTags])],
+    }));
+    setShowGuidedTasting(false);
+  };
 
   // 從 URL 取得活動參數
   useEffect(() => {
@@ -218,11 +235,25 @@ export default function OfflineNewNotePage() {
         <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0 text-white/60 hover:text-white">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-sm font-bold text-white">新增品飲筆記</h1>
           {expoTitle && <p className="text-[10px] text-[#f97316]/70">{expoTitle}</p>}
         </div>
+        <Button
+          variant="ghost" size="sm"
+          onClick={() => setShowGuidedTasting(true)}
+          className="shrink-0 rounded-full text-[10px] font-bold text-[#f97316]/80 hover:text-[#f97316] border border-[#f97316]/30 hover:border-[#f97316]/60 h-9 px-3"
+        >
+          <BookOpen className="w-3 h-3 mr-1" /> 引導品鑑
+        </Button>
       </nav>
+
+      {showGuidedTasting && (
+        <GuidedTasting
+          onComplete={handleGuidedComplete}
+          onClose={() => setShowGuidedTasting(false)}
+        />
+      )}
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-8">
         {/* 照片 */}
@@ -382,12 +413,12 @@ export default function OfflineNewNotePage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-white/70 text-sm font-bold">綜合評分</Label>
-              <span className="text-[#f97316] text-xl font-bold">{formData.overallRating} <span className="text-white/30 text-sm">/ 10</span></span>
+              <span className="text-[#f97316] text-xl font-bold">{formData.overallRating.toFixed(1)} <span className="text-white/30 text-sm">/ 10</span></span>
             </div>
             <Slider
-              min={1} max={10} step={1}
+              min={1} max={10} step={0.1}
               value={[formData.overallRating]}
-              onValueChange={([v]) => setFormData(p => ({ ...p, overallRating: v }))}
+              onValueChange={([v]) => setFormData(p => ({ ...p, overallRating: Math.round(v * 10) / 10 }))}
               className="w-full"
             />
           </div>
