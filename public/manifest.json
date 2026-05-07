@@ -1,0 +1,26 @@
+{
+  "name": "品飲筆記 離線版",
+  "short_name": "品飲筆記",
+  "description": "清酒品飲筆記 — 離線記錄，隨時分享",
+  "start_url": "/offline",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#f97316",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["food", "lifestyle"]
+}

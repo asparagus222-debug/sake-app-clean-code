@@ -6,7 +6,7 @@ import { SakeNoteCard } from '@/components/SakeNoteCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X, BookOpen } from 'lucide-react';
+import { Plus, User, Trophy, Flame, Loader2, KeyRound, Users, ChevronRight, ChevronLeft, FileText, X, BookOpen, Download, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import { AuthBootstrapSnapshot } from '@/lib/auth-bootstrap';
 import { isPublicPublishedNote } from '@/lib/note-lifecycle';
 import { deleteNoteDraft, listNoteDrafts } from '@/lib/note-draft-storage';
 import { formatSakeDisplayName } from '@/lib/utils';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
 
 type Top3Group = {
   brandName: string;
@@ -274,6 +275,7 @@ export function HomeClient({
     || null;
   const displayAvatar = profile?.avatarUrl || cachedAvatar || effectiveBootstrap?.avatarUrl || (user?.uid || effectiveBootstrap?.uid ? `https://picsum.photos/seed/${user?.uid || effectiveBootstrap?.uid}/100/100` : undefined);
   const isResolvingIdentity = isUserLoading && !!effectiveBootstrap;
+  const { isInstallable, isInstalled, promptInstall } = usePwaInstall();
 
   return (
     <div className="min-h-screen notebook-texture pb-32 font-body">
@@ -282,6 +284,24 @@ export function HomeClient({
           {displayUsername ? `${displayUsername} 的品飲筆記` : "品飲筆記"}
         </h1>
         <div className="flex items-center gap-3 shrink-0">
+          {/* 離線版按鈕 */}
+          {isInstalled ? (
+            <Link href="/offline">
+              <Button variant="ghost" size="sm" className="rounded-full text-[10px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary border border-primary/20 hover:border-primary/50 h-10 px-4">
+                <WifiOff className="w-3 h-3 mr-1" /> 離線版
+              </Button>
+            </Link>
+          ) : isInstallable ? (
+            <Button variant="ghost" size="sm" onClick={promptInstall} className="rounded-full text-[10px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary border border-primary/20 hover:border-primary/50 h-10 px-4">
+              <Download className="w-3 h-3 mr-1" /> 下載離線版
+            </Button>
+          ) : (
+            <Link href="/offline">
+              <Button variant="ghost" size="sm" className="rounded-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary border border-white/10 h-10 px-4">
+                <WifiOff className="w-3 h-3 mr-1" /> 離線版
+              </Button>
+            </Link>
+          )}
           {!isFormalUser && !displayUsername && !isResolvingIdentity && !isUserLoading && (
              <Link href="/recover">
                <Button variant="ghost" size="sm" className="rounded-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary border border-white/10 h-10 px-4">

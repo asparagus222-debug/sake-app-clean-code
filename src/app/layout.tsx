@@ -8,7 +8,7 @@ import {TooltipProvider} from '@/components/ui/tooltip';
 import { HierarchicalBackHandler } from '@/components/HierarchicalBackHandler';
 
 export const viewport: Viewport = {
-  themeColor: '#080808',
+  themeColor: '#f97316',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
