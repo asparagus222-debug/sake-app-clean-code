@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RATING_LABELS, STYLE_TAGS_OPTIONS } from '@/lib/types';
 import { SakeRadarChart } from '@/components/SakeRadarChart';
 import { SAKE_DATABASE, SakeDatabaseEntry } from '@/lib/sake-data';
-import { Camera, ArrowLeft, Loader2, Check, MapPin, Plus, X, Tag, Search, Save, Upload } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, MapPin, Plus, X, Tag, Search, Save, Upload, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createNote, saveImage } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,9 @@ export default function OfflineNewNotePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [images, setImages] = useState<string[]>([]);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
   const [brandSuggestions, setBrandSuggestions] = useState<SakeDatabaseEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
@@ -230,12 +233,50 @@ export default function OfflineNewNotePage() {
               </div>
             ))}
             {images.length < 2 && (
-              <label className="flex items-center justify-center w-24 h-24 rounded-xl border-2 border-dashed border-white/20 hover:border-[#f97316]/60 cursor-pointer transition-colors">
-                <Camera className="w-6 h-6 text-white/30" />
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageCapture} multiple />
-              </label>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowImagePicker(true)}
+                  className="flex items-center justify-center w-24 h-24 rounded-xl border-2 border-dashed border-white/20 hover:border-[#f97316]/60 transition-colors"
+                >
+                  <Camera className="w-6 h-6 text-white/30" />
+                </button>
+                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageCapture} />
+                <input ref={libraryInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageCapture} multiple />
+              </>
             )}
           </div>
+          {/* 照片來源選單 */}
+          {showImagePicker && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={() => setShowImagePicker(false)}>
+              <div className="w-full max-w-xl bg-[#18181b] rounded-t-2xl p-4 space-y-2" onClick={e => e.stopPropagation()}>
+                <p className="text-center text-xs text-white/40 uppercase tracking-widest font-bold mb-3">選擇照片方式</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowImagePicker(false); cameraInputRef.current?.click(); }}
+                  className="flex items-center gap-3 w-full px-4 py-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <Camera className="w-5 h-5 text-[#f97316]" />
+                  <span className="text-sm font-bold text-white">拍照</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowImagePicker(false); libraryInputRef.current?.click(); }}
+                  className="flex items-center gap-3 w-full px-4 py-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <ImageIcon className="w-5 h-5 text-[#f97316]" />
+                  <span className="text-sm font-bold text-white">從相簿選取</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowImagePicker(false)}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white/40 hover:text-white/60 transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 基本資訊 */}
