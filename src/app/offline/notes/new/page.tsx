@@ -79,7 +79,7 @@ export default function OfflineNewNotePage() {
     if (formData.brandName.trim().length < 1) { setBrandSuggestions([]); setShowSuggestions(false); return; }
     const q = formData.brandName.toLowerCase();
     const results = SAKE_DATABASE.filter(s =>
-      s.brandName.toLowerCase().includes(q) || (s.subBrand && s.subBrand.toLowerCase().includes(q))
+      s.brand.toLowerCase().includes(q)
     ).slice(0, 6);
     setBrandSuggestions(results);
     setShowSuggestions(results.length > 0);
@@ -115,10 +115,9 @@ export default function OfflineNewNotePage() {
   const fillFromSuggestion = (s: SakeDatabaseEntry) => {
     setFormData(prev => ({
       ...prev,
-      brandName: s.brandName,
-      subBrand: s.subBrand || prev.subBrand,
+      brandName: s.brand,
       brewery: s.brewery || prev.brewery,
-      origin: s.origin || prev.origin,
+      origin: s.location || prev.origin,
     }));
     setShowSuggestions(false);
   };
@@ -262,8 +261,8 @@ export default function OfflineNewNotePage() {
                     onClick={() => fillFromSuggestion(s)}
                     className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors"
                   >
-                    <p className="text-sm font-bold text-white">{s.brandName}</p>
-                    <p className="text-[11px] text-white/40">{s.brewery}{s.origin ? ` · ${s.origin}` : ''}</p>
+                    <p className="text-sm font-bold text-white">{s.brand}</p>
+                    <p className="text-[11px] text-white/40">{s.brewery}{s.location ? ` · ${s.location}` : ''}</p>
                   </button>
                 ))}
               </div>
