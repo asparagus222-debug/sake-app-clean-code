@@ -1,15 +1,23 @@
 
 /**
  * @fileOverview Firebase 配置檔案。
- * 確保 apiKey 字串完全符合您的專案設定，無前後多餘空格。
+ * 從環境變數讀取，避免硬編碼敏感資訊到版本控制。
+ * 所有環境變數使用 NEXT_PUBLIC_ 前綴（客戶端代碼）。
  */
 
+if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+  throw new Error('Missing NEXT_PUBLIC_FIREBASE_API_KEY');
+}
+if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+  throw new Error('Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+}
+
 export const firebaseConfig = {
-  apiKey: "AIzaSyAqWTIIkkXnx5NajBDo-9zqgbU8XiEKUqU",
-  authDomain: "drinking-notes.firebaseapp.com",
-  projectId: "drinking-notes",
-  storageBucket: "drinking-notes.firebasestorage.app",
-  messagingSenderId: "850044253764",
-  appId: "1:850044253764:web:a90e4d0a388ce5570aae11",
-  measurementId: "G-0WP8SKFE2E"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || '',
 };

@@ -42,7 +42,16 @@ export async function requireAdminUser(request: NextRequest): Promise<DecodedIdT
 }
 
 export async function requireVerifiedAppCheck(request: NextRequest): Promise<void> {
-  if (process.env.FIREBASE_APP_CHECK_ENFORCED !== 'true') {
+  const isProduction = process.env.NODE_ENV === 'production';
+  // 在生產環境中默認強制啟用，開發環境中可通過環境變數 bypass
+  const shouldEnforceAppCheck = isProduction 
+    ? process.env.FIREBASE_APP_CHECK_ENFORCED !== 'false' 
+    : process.env.FIREBASE_APP_CHECK_ENFORCED === 'true';
+
+  if (!shouldEnforceAppCheck) {
+    if (!isProduction) {
+      console.debug('[App Check] Skipped in development environment');
+    }
     return;
   }
 
