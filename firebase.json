@@ -15,8 +15,8 @@
         },
         "workloadType": "nodejs",
         "cpuClass": "general",
-        "minInstances": 1,
-        "maxInstances": 5,
+        "minInstances": 0,
+        "maxInstances": 1,
         "refreshRate": 300,
         "labels": {
           "environment": "production"
